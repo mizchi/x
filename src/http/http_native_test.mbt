@@ -1,3 +1,320 @@
+// Streaming API tests
+
+///|
+async test "stream: GET read_some" {
+  @async.with_task_group(group => {
+    let server = @async_http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+    let addr = server.addr()
+    group.spawn_bg(() => {
+      defer server.close()
+      let (conn, _) = server.accept()
+      defer conn.close()
+      ignore(conn.read_request())
+      conn.skip_request_body()
+      conn.send_response(200, "OK")
+      conn.write("chunk1")
+      conn.flush()
+      conn.write("chunk2")
+      conn.end_response()
+    })
+    let (resp, stream) = @http.get_stream(
+      "http://localhost:\{addr.port()}/stream",
+    )
+    defer stream.close()
+    assert_eq(resp.code, 200)
+    let buf = StringBuilder::new()
+    for {
+      match stream.read_some() {
+        Some(chunk) => {
+          for i = 0; i < chunk.length(); i = i + 1 {
+            buf.write_char(chunk[i].to_int().unsafe_to_char())
+          }
+        }
+        None => break
+      }
+    }
+    assert_eq(buf.to_string(), "chunk1chunk2")
+  })
+}
+
+///|
+async test "stream: GET read_all" {
+  @async.with_task_group(group => {
+    let server = @async_http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+    let addr = server.addr()
+    group.spawn_bg(() => {
+      defer server.close()
+      let (conn, _) = server.accept()
+      defer conn.close()
+      ignore(conn.read_request())
+      conn.skip_request_body()
+      conn.send_response(200, "OK")
+      conn.write("full body content")
+      conn.end_response()
+    })
+    let (resp, stream) = @http.get_stream(
+      "http://localhost:\{addr.port()}/all",
+    )
+    defer stream.close()
+    assert_eq(resp.code, 200)
+    let body = stream.read_all()
+    let body_str : &@io.Data = body
+    assert_eq(body_str.text(), "full body content")
+  })
+}
+
+///|
+async test "stream: POST with body" {
+  @async.with_task_group(group => {
+    let server = @async_http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+    let addr = server.addr()
+    group.spawn_bg(() => {
+      defer server.close()
+      let (conn, _) = server.accept()
+      defer conn.close()
+      let req = conn.read_request()
+      guard req.meth is Post else { fail("expected POST") }
+      let body = conn.read_all()
+      conn.send_response(200, "OK")
+      conn.write("echo:")
+      conn.flush()
+      conn.write(body.text())
+      conn.end_response()
+    })
+    let post_body : String = "stream data"
+    let (resp, stream) = @http.post_stream(
+      "http://localhost:\{addr.port()}/post",
+      post_body,
+    )
+    defer stream.close()
+    assert_eq(resp.code, 200)
+    let body = stream.read_all()
+    let body_data : &@io.Data = body
+    assert_eq(body_data.text(), "echo:stream data")
+  })
+}
+
+///|
+async test "stream: SSE-like chunked response" {
+  @async.with_task_group(group => {
+    let server = @async_http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+    let addr = server.addr()
+    group.spawn_bg(() => {
+      defer server.close()
+      let (conn, _) = server.accept()
+      defer conn.close()
+      ignore(conn.read_request())
+      conn.skip_request_body()
+      let extra : Map[String, String] = {
+        "Content-Type": "text/event-stream",
+      }
+      conn.send_response(200, "OK", extra_headers=extra)
+      // Simulate SSE events
+      conn.write("data: event1\n\n")
+      conn.flush()
+      conn.write("data: event2\n\n")
+      conn.flush()
+      conn.write("data: event3\n\n")
+      conn.end_response()
+    })
+    let (resp, stream) = @http.get_stream(
+      "http://localhost:\{addr.port()}/events",
+    )
+    defer stream.close()
+    assert_eq(resp.code, 200)
+    assert_eq(
+      resp.headers.get("content-type").unwrap_or(""),
+      "text/event-stream",
+    )
+    // Read all chunks and verify complete SSE data
+    let buf = StringBuilder::new()
+    for {
+      match stream.read_some() {
+        Some(chunk) => {
+          for i = 0; i < chunk.length(); i = i + 1 {
+            buf.write_char(chunk[i].to_int().unsafe_to_char())
+          }
+        }
+        None => break
+      }
+    }
+    let result = buf.to_string()
+    assert_true(result.contains("data: event1"))
+    assert_true(result.contains("data: event2"))
+    assert_true(result.contains("data: event3"))
+  })
+}
+
+///|
+async test "stream: OpenAI-like POST SSE" {
+  // Simulates OpenAI chat completions streaming:
+  // POST with JSON body + Authorization header → SSE response
+  @async.with_task_group(group => {
+    let server = @async_http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+    let addr = server.addr()
+    group.spawn_bg(() => {
+      defer server.close()
+      let (conn, _) = server.accept()
+      defer conn.close()
+      let req = conn.read_request()
+      // Verify request
+      guard req.meth is Post else { fail("expected POST") }
+      let auth = req.headers.get("authorization").unwrap_or("")
+      guard auth == "Bearer test-key" else { fail("bad auth: " + auth) }
+      let ct = req.headers.get("content-type").unwrap_or("")
+      guard ct == "application/json" else { fail("bad content-type: " + ct) }
+      let body = conn.read_all()
+      let body_text = body.text()
+      guard body_text.contains("\"stream\":true") || body_text.contains("\"stream\": true") else {
+        fail("body missing stream:true")
+      }
+      // Send SSE response
+      let extra : Map[String, String] = {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+      }
+      conn.send_response(200, "OK", extra_headers=extra)
+      // Simulate streaming tokens
+      conn.write("data: {\"choices\":[{\"delta\":{\"content\":\"Hello\"}}]}\n\n")
+      conn.flush()
+      conn.write("data: {\"choices\":[{\"delta\":{\"content\":\" world\"}}]}\n\n")
+      conn.flush()
+      conn.write("data: [DONE]\n\n")
+      conn.end_response()
+    })
+    let headers : Map[String, String] = {
+      "Authorization": "Bearer test-key",
+      "Content-Type": "application/json",
+    }
+    let body : String = "{\"model\":\"gpt-4\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"stream\":true}"
+    let (resp, stream) = @http.post_stream(
+      "http://localhost:\{addr.port()}/v1/chat/completions",
+      body,
+      headers~,
+    )
+    defer stream.close()
+    assert_eq(resp.code, 200)
+    assert_eq(
+      resp.headers.get("content-type").unwrap_or(""),
+      "text/event-stream",
+    )
+    // Parse SSE events from stream
+    let events : Array[String] = []
+    let buf = StringBuilder::new()
+    for {
+      match stream.read_some() {
+        Some(chunk) => {
+          for i = 0; i < chunk.length(); i = i + 1 {
+            buf.write_char(chunk[i].to_int().unsafe_to_char())
+          }
+        }
+        None => break
+      }
+    }
+    // Split by double newline to get events
+    let raw = buf.to_string()
+    let lines = raw.split("\n")
+    for line in lines {
+      let trimmed = line.to_string()
+      if trimmed.has_prefix("data: ") {
+        events.push(
+          trimmed.view(start_offset=6).to_string(),
+        )
+      }
+    }
+    assert_eq(events.length(), 3)
+    assert_true(events[0].contains("Hello"))
+    assert_true(events[1].contains(" world"))
+    assert_eq(events[2], "[DONE]")
+  })
+}
+
+///|
+async test "stream: response headers available before body" {
+  @async.with_task_group(group => {
+    let server = @async_http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+    let addr = server.addr()
+    group.spawn_bg(() => {
+      defer server.close()
+      let (conn, _) = server.accept()
+      defer conn.close()
+      ignore(conn.read_request())
+      conn.skip_request_body()
+      let extra : Map[String, String] = { "X-Stream-Id": "abc123" }
+      conn.send_response(200, "OK", extra_headers=extra)
+      conn.write("body")
+      conn.end_response()
+    })
+    let (resp, stream) = @http.get_stream(
+      "http://localhost:\{addr.port()}/headers",
+    )
+    defer stream.close()
+    // Headers are available immediately, before reading body
+    assert_eq(resp.code, 200)
+    assert_eq(resp.headers.get("x-stream-id").unwrap_or(""), "abc123")
+    // Now read body
+    let body = stream.read_all()
+    let body_data : &@io.Data = body
+    assert_eq(body_data.text(), "body")
+  })
+}
+
+///|
+async test "smoke: stream matches upstream get_stream" {
+  @async.with_task_group(group => {
+    let server = @async_http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+    let addr = server.addr()
+    group.spawn_bg(() => {
+      defer server.close()
+      for i = 0; i < 2; i = i + 1 {
+        let (conn, _) = server.accept()
+        ignore(conn.read_request())
+        conn.skip_request_body()
+        conn.send_response(200, "OK")
+        conn.write("part1\n")
+        conn.flush()
+        conn.write("part2\n")
+        conn.end_response()
+        conn.close()
+      }
+    })
+    let port = addr.port()
+    // Upstream: get_stream + read_some
+    let (upstream_resp, upstream_client) = @async_http.get_stream(
+      "http://localhost:\{port}/test",
+    )
+    defer upstream_client.close()
+    let upstream_buf = StringBuilder::new()
+    while upstream_client.read_some() is Some(chunk) {
+      for i = 0; i < chunk.length(); i = i + 1 {
+        upstream_buf.write_char(chunk[i].to_int().unsafe_to_char())
+      }
+    }
+    // Wrapper: get_stream + read_some
+    let (wrapper_resp, wrapper_stream) = @http.get_stream(
+      "http://localhost:\{port}/test",
+    )
+    defer wrapper_stream.close()
+    let wrapper_buf = StringBuilder::new()
+    for {
+      match wrapper_stream.read_some() {
+        Some(chunk) => {
+          for i = 0; i < chunk.length(); i = i + 1 {
+            wrapper_buf.write_char(chunk[i].to_int().unsafe_to_char())
+          }
+        }
+        None => break
+      }
+    }
+    // Compare
+    assert_eq(upstream_resp.code, wrapper_resp.code)
+    assert_eq(upstream_buf.to_string(), wrapper_buf.to_string())
+    assert_eq(upstream_buf.to_string(), "part1\npart2\n")
+  })
+}
+
+// Non-streaming API tests
+
 ///|
 async test "http GET" {
   @async.with_task_group(group => {
