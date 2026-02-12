@@ -51,6 +51,11 @@ pub async fn Conn::connect(
 ///|
 pub async fn Conn::recv(self : Conn) -> Message raise WebSocketError {
   let msg = self.inner.recv() catch {
+    @async_ws.ConnectionClosed(code, reason) =>
+      raise WebSocketError::ConnectionClosed(
+        from_upstream_close_code(code),
+        reason,
+      )
     err => raise WebSocketError::ProtocolError(err.to_string())
   }
   let data : &@io.Data = @io.Reader::read_all(msg) catch {
