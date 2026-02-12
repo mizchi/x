@@ -1,0 +1,19 @@
+import {
+  "moonbitlang/async/pipe" @async_pipe,
+  "moonbitlang/async/io",
+}
+
+import {
+  "moonbitlang/async",
+  "moonbitlang/core/encoding/utf8",
+} for "test"
+
+options(
+  targets: {
+    "pipe_native.mbt": [ "native" ],
+    "pipe_js.mbt": [ "js" ],
+    "pipe_wasm.mbt": [ "wasm" ],
+    "pipe_wasmgc.mbt": [ "wasm-gc" ],
+    "pipe_test.mbt": [ "native", "js" ],
+  },
+)

@@ -13,6 +13,7 @@ options(
     "process_js.mbt": [ "js" ],
     "process_native.mbt": [ "native" ],
     "process_native_test.mbt": [ "native" ],
+    "process_test.mbt": [ "native", "js" ],
     "process_wasm.mbt": [ "wasm" ],
     "process_wasmgc.mbt": [ "wasm-gc" ],
   },

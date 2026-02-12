@@ -27,8 +27,11 @@ just info      # generate type definition files
 
 - `src/process/` - Command execution (`run`, `collect_output`)
 - `src/fs/` - File system operations (`read_file`, `write_file`, `exists`, `mkdir`, `readdir`, `remove`, `rmdir`)
-- `src/http/` - HTTP client (`get`, `post`, `put`)
+- `src/http/` - HTTP client (`get`, `post`, `put`, `get_stream`, `post_stream`, `put_stream`)
 - `src/sys/` - Environment variables and CLI args (`get_env_var`, `get_cli_args`, `exit`)
+- `src/websocket/` - WebSocket client (`connect`, `Conn::send`, `Conn::recv`, `Conn::close`)
+- `src/stdio/` - Standard I/O (`stdin`, `stdout`, `stderr` with `@io.Reader`/`@io.Writer`)
+- `src/pipe/` - Pipes (`pipe()` → `PipeRead`/`PipeWrite` with `@io.Reader`/`@io.Writer`)
 
 ### Cross-platform targeting
 

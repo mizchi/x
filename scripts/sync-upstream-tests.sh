@@ -27,12 +27,18 @@ fi
 declare -A PKG_MAP=(
   [http]="src/http"
   [websocket]="src/websocket"
+  [pipe]="src/pipe"
+  [stdio]="src/stdio"
+  [process]="src/process"
 )
 
 # Map of upstream package -> source directory in zip
 declare -A SRC_MAP=(
   [http]="src/http"
   [websocket]="src/websocket"
+  [pipe]="src/pipe"
+  [stdio]="src/stdio"
+  [process]="src/process"
 )
 
 packages=("${!PKG_MAP[@]}")
@@ -46,7 +52,7 @@ load_excludes() {
   if [ ! -f "$EXCLUDE_FILE" ]; then
     return
   fi
-  grep "^${pkg}:" "$EXCLUDE_FILE" 2>/dev/null | sed "s/^${pkg}://" | sed 's/ *#.*//' | sed 's/^ *//' | sort
+  (grep "^${pkg}:" "$EXCLUDE_FILE" 2>/dev/null || true) | sed "s/^${pkg}://" | sed 's/ *#.*//' | sed 's/^ *//' | sort
 }
 
 extract_test_names() {
