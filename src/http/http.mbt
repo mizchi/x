@@ -11,7 +11,7 @@ pub suberror HttpError {
   InvalidUrl(String)
   TimeoutError
   NotSupported
-}
+} derive(Show)
 
 ///|
 fn headers_to_json(headers : Map[String, String]) -> String {

@@ -5,10 +5,17 @@ import {
   "moonbitlang/core/json",
 }
 
+import {
+  "moonbitlang/async",
+  "moonbitlang/async/socket",
+} for "test"
+
 options(
   targets: {
     "http_js.mbt": [ "js" ],
     "http_native.mbt": [ "native" ],
+    "http_native_test.mbt": [ "native" ],
+    "http_native_wbtest.mbt": [ "native" ],
     "http_wasm.mbt": [ "wasm" ],
     "http_wasmgc.mbt": [ "wasm-gc" ],
   },

@@ -37,3 +37,11 @@ release-check: fmt info check test
 release-check-all:
     just release-check
     just target=js check
+
+# Check upstream test coverage gap
+sync-tests package="":
+    @if [ -n "{{package}}" ]; then \
+        ./scripts/sync-upstream-tests.sh {{package}}; \
+    else \
+        ./scripts/sync-upstream-tests.sh; \
+    fi
