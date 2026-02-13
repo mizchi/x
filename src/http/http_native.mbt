@@ -58,6 +58,155 @@ fn to_response(resp : @async_http.Response) -> Response {
 }
 
 ///|
+fn from_request_method(meth : RequestMethod) -> @async_http.RequestMethod {
+  match meth {
+    Get => @async_http.RequestMethod::Get
+    Head => @async_http.RequestMethod::Head
+    Post => @async_http.RequestMethod::Post
+    Put => @async_http.RequestMethod::Put
+    Delete => @async_http.RequestMethod::Delete
+    Connect => @async_http.RequestMethod::Connect
+    Options => @async_http.RequestMethod::Options
+    Trace => @async_http.RequestMethod::Trace
+    Patch => @async_http.RequestMethod::Patch
+  }
+}
+
+///|
+pub struct Client {
+  inner : @async_http.Client
+}
+
+///|
+pub async fn Client::new(
+  url : String,
+  headers? : Map[String, String],
+) -> Client raise HttpError {
+  let client = @async_http.Client::new(url, headers=headers.unwrap_or({})) catch {
+    _ => raise HttpError::InvalidUrl(url)
+  }
+  Client::{ inner: client }
+}
+
+///|
+pub fn Client::close(self : Client) -> Unit {
+  self.inner.close()
+}
+
+///|
+pub async fn Client::request(
+  self : Client,
+  meth : RequestMethod,
+  path : String,
+  extra_headers? : Map[String, String],
+) -> Unit raise HttpError {
+  self.inner.request(
+    from_request_method(meth),
+    path,
+    extra_headers=extra_headers.unwrap_or({}),
+  ) catch {
+    err => raise HttpError::NetworkError(err.to_string())
+  }
+}
+
+///|
+pub async fn Client::end_request(self : Client) -> Response raise HttpError {
+  let response = self.inner.end_request() catch {
+    err => raise HttpError::NetworkError(err.to_string())
+  }
+  to_response(response)
+}
+
+///|
+pub async fn Client::flush(self : Client) -> Unit raise HttpError {
+  self.inner.flush() catch {
+    err => raise HttpError::NetworkError(err.to_string())
+  }
+}
+
+///|
+pub async fn Client::skip_response_body(self : Client) -> Unit raise HttpError {
+  self.inner.skip_response_body() catch {
+    err => raise HttpError::NetworkError(err.to_string())
+  }
+}
+
+///|
+pub async fn Client::enter_passthrough_mode(
+  self : Client,
+) -> Unit raise HttpError {
+  self.inner.enter_passthrough_mode() catch {
+    err => raise HttpError::NetworkError(err.to_string())
+  }
+}
+
+///|
+pub async fn Client::get(
+  self : Client,
+  path : String,
+  extra_headers? : Map[String, String],
+  body? : &@io.Data,
+) -> Response raise HttpError {
+  let response = self.inner.get(
+    path,
+    extra_headers=extra_headers.unwrap_or({}),
+    body?,
+  ) catch {
+    err => raise HttpError::NetworkError(err.to_string())
+  }
+  to_response(response)
+}
+
+///|
+pub async fn Client::post(
+  self : Client,
+  path : String,
+  body : &@io.Data,
+  extra_headers? : Map[String, String],
+) -> Response raise HttpError {
+  let response = self.inner.post(
+    path,
+    body,
+    extra_headers=extra_headers.unwrap_or({}),
+  ) catch {
+    err => raise HttpError::NetworkError(err.to_string())
+  }
+  to_response(response)
+}
+
+///|
+pub async fn Client::put(
+  self : Client,
+  path : String,
+  body : &@io.Data,
+  extra_headers? : Map[String, String],
+) -> Response raise HttpError {
+  let response = self.inner.put(
+    path,
+    body,
+    extra_headers=extra_headers.unwrap_or({}),
+  ) catch {
+    err => raise HttpError::NetworkError(err.to_string())
+  }
+  to_response(response)
+}
+
+///|
+pub impl @io.Reader for Client with _get_internal_buffer(self) {
+  @io.Reader::_get_internal_buffer(self.inner)
+}
+
+///|
+pub impl @io.Reader for Client with _direct_read(self, buf, offset~, max_len~) {
+  @io.Reader::_direct_read(self.inner, buf, offset~, max_len~)
+}
+
+///|
+pub impl @io.Writer for Client with write_once(self, buf, offset~, len~) {
+  @io.Writer::write_once(self.inner, buf, offset~, len~)
+}
+
+///|
 async fn request_internal(
   url : String,
   meth : String,

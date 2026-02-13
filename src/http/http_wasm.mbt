@@ -77,6 +77,128 @@ pub fn put(
   raise HttpError::NotSupported
 }
 
+// Native-compatible Client API
+
+///|
+pub struct Client {}
+
+///|
+pub fn Client::new(
+  url : String,
+  headers? : Map[String, String],
+) -> Client raise HttpError {
+  ignore(url)
+  ignore(headers)
+  raise HttpError::NotSupported
+}
+
+///|
+pub fn Client::close(self : Client) -> Unit {
+  ignore(self)
+}
+
+///|
+pub fn Client::request(
+  self : Client,
+  meth : RequestMethod,
+  path : String,
+  extra_headers? : Map[String, String],
+) -> Unit raise HttpError {
+  ignore(self)
+  ignore(meth)
+  ignore(path)
+  ignore(extra_headers)
+  raise HttpError::NotSupported
+}
+
+///|
+pub fn Client::end_request(self : Client) -> Response raise HttpError {
+  ignore(self)
+  raise HttpError::NotSupported
+}
+
+///|
+pub fn Client::flush(self : Client) -> Unit raise HttpError {
+  ignore(self)
+  raise HttpError::NotSupported
+}
+
+///|
+pub fn Client::skip_response_body(self : Client) -> Unit raise HttpError {
+  ignore(self)
+  raise HttpError::NotSupported
+}
+
+///|
+pub fn Client::enter_passthrough_mode(self : Client) -> Unit raise HttpError {
+  ignore(self)
+  raise HttpError::NotSupported
+}
+
+///|
+pub fn Client::get(
+  self : Client,
+  path : String,
+  extra_headers? : Map[String, String],
+  body? : &@io.Data,
+) -> Response raise HttpError {
+  ignore(self)
+  ignore(path)
+  ignore(extra_headers)
+  ignore(body)
+  raise HttpError::NotSupported
+}
+
+///|
+pub fn Client::post(
+  self : Client,
+  path : String,
+  body : &@io.Data,
+  extra_headers? : Map[String, String],
+) -> Response raise HttpError {
+  ignore(self)
+  ignore(path)
+  ignore(body)
+  ignore(extra_headers)
+  raise HttpError::NotSupported
+}
+
+///|
+pub fn Client::put(
+  self : Client,
+  path : String,
+  body : &@io.Data,
+  extra_headers? : Map[String, String],
+) -> Response raise HttpError {
+  ignore(self)
+  ignore(path)
+  ignore(body)
+  ignore(extra_headers)
+  raise HttpError::NotSupported
+}
+
+///|
+pub impl @io.Reader for Client with _get_internal_buffer(self) {
+  ignore(self)
+  abort("Client reader not supported on wasm target")
+}
+
+///|
+pub impl @io.Reader for Client with _direct_read(self, _buf, offset~, max_len~) {
+  ignore(self)
+  ignore(offset)
+  ignore(max_len)
+  raise HttpError::NotSupported
+}
+
+///|
+pub impl @io.Writer for Client with write_once(self, _buf, offset~, len~) {
+  ignore(self)
+  ignore(offset)
+  ignore(len)
+  raise HttpError::NotSupported
+}
+
 // Server API
 
 ///|

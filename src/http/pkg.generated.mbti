@@ -33,6 +33,22 @@ pub(all) struct Addr {
   port : Int
 }
 
+pub struct Client {
+  inner : @moonbitlang/async/http.Client
+}
+pub fn Client::close(Self) -> Unit
+pub async fn Client::end_request(Self) -> Response raise HttpError
+pub async fn Client::enter_passthrough_mode(Self) -> Unit raise HttpError
+pub async fn Client::flush(Self) -> Unit raise HttpError
+pub async fn Client::get(Self, String, extra_headers? : Map[String, String], body? : &@io.Data) -> Response raise HttpError
+pub async fn Client::new(String, headers? : Map[String, String]) -> Self raise HttpError
+pub async fn Client::post(Self, String, &@io.Data, extra_headers? : Map[String, String]) -> Response raise HttpError
+pub async fn Client::put(Self, String, &@io.Data, extra_headers? : Map[String, String]) -> Response raise HttpError
+pub async fn Client::request(Self, RequestMethod, String, extra_headers? : Map[String, String]) -> Unit raise HttpError
+pub async fn Client::skip_response_body(Self) -> Unit raise HttpError
+pub impl @io.Reader for Client
+pub impl @io.Writer for Client
+
 pub(all) struct Request {
   meth : RequestMethod
   path : String

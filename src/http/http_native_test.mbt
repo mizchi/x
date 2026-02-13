@@ -578,6 +578,36 @@ async test "smoke: POST matches upstream" {
 }
 
 ///|
+async test "client: generic request via Client::request" {
+  @async.with_task_group(group => {
+    let server = @async_http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+    let addr = server.addr()
+    group.spawn_bg(() => {
+      defer server.close()
+      let (conn, _) = server.accept()
+      defer conn.close()
+      let req = conn.read_request()
+      guard req.meth is Patch else { fail("expected PATCH") }
+      assert_eq(req.path, "/generic")
+      let request_body = conn.read_all()
+      conn.send_response(200, "OK")
+      conn.write("seen:" + request_body.text())
+      conn.end_response()
+    })
+    let client = @http.Client::new("http://localhost:\{addr.port()}")
+    defer client.close()
+    client.request(@http.RequestMethod::Patch, "/generic", extra_headers={
+      "Content-Type": "text/plain",
+    })
+    client.write("payload")
+    let resp = client.end_request()
+    let body = client.read_all()
+    assert_eq(resp.code, 200)
+    assert_eq(body.text(), "seen:payload")
+  })
+}
+
+///|
 async test "http multi-part response" {
   // Adapted from upstream "request streaming" test
   // Server sends response in multiple writes, client receives full body
