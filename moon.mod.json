@@ -1,10 +1,12 @@
 {
   "name": "mizchi/x",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "deps": {
     "moonbitlang/async": "0.16.6",
     "moonbitlang/x": "0.4.40"
   },
+  "readme": "README.md",
+  "repository": "https://github.com/mizchi/x",
   "description": "Cross-platform IO abstraction for MoonBit with native wrappers and Node.js JS FFI implementations for process, fs, http, websocket, stdio, pipe, and sys.",
   "keywords": [
     "moonbit",
