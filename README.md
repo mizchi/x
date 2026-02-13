@@ -1,8 +1,13 @@
 # mizchi/x
 
-Cross-platform IO abstraction for [MoonBit](https://docs.moonbitlang.com).
+Node.js backend compatibility layer for `moonbitlang/async` in [MoonBit](https://docs.moonbitlang.com).
 
-Wraps `moonbitlang/async` (native) and provides JS FFI implementations so that the same API works across native, JS(Node.js), and WASM-GC(partially, it works on wasip1) targets.
+`mizchi/x` keeps native behavior by delegating to `moonbitlang/async`, and provides JS FFI implementations so the same async-style code can run on `--target js` (Node.js) with minimal changes.
+
+## Primary Goal
+
+- Run code written against `moonbitlang/async` on Node.js (`--target js`).
+- Keep native (`--target native`) semantics close by forwarding to upstream implementations.
 
 ## Dependencies
 
