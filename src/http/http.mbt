@@ -41,9 +41,9 @@ pub suberror HttpError {
 
 ///|
 fn headers_to_json(headers : Map[String, String]) -> String {
-  let entries : Array[String] = []
+  let entries : Map[String, Json] = {}
   for k, v in headers {
-    entries.push("\"" + k + "\":\"" + v + "\"")
+    entries[k] = Json::string(v)
   }
-  "{" + entries.join(",") + "}"
+  Json::object(entries).stringify()
 }

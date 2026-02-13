@@ -30,6 +30,28 @@ test "headers_to_json - multiple headers" {
 }
 
 ///|
+test "headers_to_json - escapes special characters" {
+  let headers : Map[String, String] = {
+    "X-Quote": "a\"b",
+    "X-Backslash": "x\\y",
+    "X-Newline": "line1\nline2",
+  }
+  let json = headers_to_json(headers)
+  let parsed = @json.parse(json) catch { _ => fail("invalid JSON") }
+  guard parsed is Object(map) else { fail("expected Object") }
+  guard map.get("X-Quote") is Some(String(v1)) else { fail("missing X-Quote") }
+  assert_eq(v1, "a\"b")
+  guard map.get("X-Backslash") is Some(String(v2)) else {
+    fail("missing X-Backslash")
+  }
+  assert_eq(v2, "x\\y")
+  guard map.get("X-Newline") is Some(String(v3)) else {
+    fail("missing X-Newline")
+  }
+  assert_eq(v3, "line1\nline2")
+}
+
+///|
 test "Response construction" {
   let resp = Response::{ code: 200, reason: "OK", headers: {} }
   assert_eq(resp.code, 200)

@@ -201,6 +201,8 @@ extern "js" fn js_server_new(
   #|     return rawHost;
   #|   };
   #|   const id = state.nextId++;
+  #|   const shouldLogHandlerError = typeof process !== 'undefined' &&
+  #|     process?.env?.X_HTTP_LOG_HANDLER_ERRORS === '1';
   #|   const entry = {
   #|     server,
   #|     onRequest: null,
@@ -312,6 +314,10 @@ extern "js" fn js_server_new(
   #|   };
   #|   const requestReadHighWatermark = 1024 * 1024;
   #|   const requestReadLowWatermark = requestReadHighWatermark >> 1;
+  #|   const socketReadHighWatermark = 1024 * 1024;
+  #|   const socketReadLowWatermark = socketReadHighWatermark >> 1;
+  #|   const socketReadMaxQueueBytes = 4 * 1024 * 1024;
+  #|   const connWriteDrainTimeoutMs = 5000;
   #|   const copyChunk = (chunk) => {
   #|     if (chunk instanceof Uint8Array) {
   #|       if (typeof Buffer !== 'undefined' && Buffer.isBuffer?.(chunk)) {
@@ -335,6 +341,16 @@ extern "js" fn js_server_new(
   #|     if (conn.requestReadQueueBytes > conn.requestReadLowWatermark) return;
   #|     conn.requestReadPaused = false;
   #|     try { conn.req.resume(); } catch {}
+  #|   };
+  #|   const maybeResumeSocketRead = (conn) => {
+  #|     if (!conn.socketReadPaused) return;
+  #|     if (conn.socketReadEnded || conn.closed) {
+  #|       conn.socketReadPaused = false;
+  #|       return;
+  #|     }
+  #|     if (conn.socketReadQueueBytes > conn.socketReadLowWatermark) return;
+  #|     conn.socketReadPaused = false;
+  #|     try { conn.socket?.resume?.(); } catch {}
   #|   };
   #|   const detachRequestRead = (conn) => {
   #|     const req = conn?.req;
@@ -406,12 +422,17 @@ extern "js" fn js_server_new(
   #|       socket: req?.socket,
   #|       passthrough: false,
   #|       socketReadQueue: [],
+  #|       socketReadQueueBytes: 0,
   #|       socketReadCarry: null,
   #|       socketReadWaiters: [],
   #|       socketReadAttached: false,
   #|       socketReadEnded: false,
+  #|       socketReadPaused: false,
   #|       socketReadOnData: null,
   #|       socketReadOnEnd: null,
+  #|       socketReadHighWatermark,
+  #|       socketReadLowWatermark,
+  #|       socketReadMaxQueueBytes,
   #|       requestReadQueue: [],
   #|       requestReadCarry: null,
   #|       requestReadQueueBytes: 0,
@@ -450,6 +471,9 @@ extern "js" fn js_server_new(
   #|       current.requestReadCarry = null;
   #|       current.requestReadQueueBytes = 0;
   #|       current.requestReadPaused = false;
+  #|       current.socketReadQueue = [];
+  #|       current.socketReadQueueBytes = 0;
+  #|       current.socketReadPaused = false;
   #|       current.socketReadCarry = null;
   #|       while (current.requestReadWaiters.length > 0) {
   #|         current.requestReadWaiters.shift()(new Uint8Array(0));
@@ -579,7 +603,10 @@ extern "js" fn js_server_new(
   #|             current.res.writeHead(500, entry.baseHeaders || {});
   #|             current.responseStarted = true;
   #|           }
-  #|           current.res.end(String(err));
+  #|           if (shouldLogHandlerError) {
+  #|             try { console.error?.('[x/http] request handler failed', err); } catch {}
+  #|           }
+  #|           current.res.end('internal server error');
   #|           current.responseEnded = true;
   #|         } catch {}
   #|         state.conns.delete(conn.id);
@@ -827,19 +854,19 @@ extern "js" fn js_conn_write(
   #|     return 0;
   #|   }
   #|   if (!wrote) {
-  #|     await new Promise((resolve) => {
+  #|     const drained = await new Promise((resolve) => {
   #|       if (isTargetClosed()) {
-  #|         resolve();
+  #|         resolve(false);
   #|         return;
   #|       }
   #|       let settled = false;
   #|       const onDrain = () => {
-  #|         done();
+  #|         done(true);
   #|       };
   #|       const onError = () => {
-  #|         done();
+  #|         done(false);
   #|       };
-  #|       const done = () => {
+  #|       const done = (ok) => {
   #|         if (settled) return;
   #|         settled = true;
   #|         clearTimeout(timer);
@@ -847,14 +874,20 @@ extern "js" fn js_conn_write(
   #|         target.off?.('error', onError);
   #|         target.off?.('close', onError);
   #|         target.off?.('finish', onError);
-  #|         resolve();
+  #|         resolve(ok);
   #|       };
-  #|       const timer = setTimeout(done, 1000);
+  #|       const timer = setTimeout(() => done(false), connWriteDrainTimeoutMs);
   #|       target.once?.('drain', onDrain);
   #|       target.once?.('error', onError);
   #|       target.once?.('close', onError);
   #|       target.once?.('finish', onError);
   #|     });
+  #|     if (!drained) {
+  #|       conn.closed = true;
+  #|       conn.responseEnded = true;
+  #|       try { target.destroy?.(); } catch {}
+  #|       return 0;
+  #|     }
   #|   }
   #|   const current = state?.conns.get(connId);
   #|   if (!current || current.closed || current.responseEnded || isTargetClosed()) return 0;
@@ -925,6 +958,9 @@ extern "js" fn js_conn_close(conn_id : Int) -> Unit =
   #|     try { conn.socket.off('close', conn.socketReadOnEnd); } catch {}
   #|     conn.socketReadAttached = false;
   #|   }
+  #|   conn.socketReadQueue = [];
+  #|   conn.socketReadQueueBytes = 0;
+  #|   conn.socketReadPaused = false;
   #|   conn.socketReadCarry = null;
   #|   while (conn.socketReadWaiters.length > 0) {
   #|     conn.socketReadWaiters.shift()(new Uint8Array(0));
@@ -951,15 +987,36 @@ extern "js" fn js_conn_enter_passthrough(conn_id : Int) -> Unit =
   #|   conn.passthrough = true;
   #|   conn.closed = false;
   #|   conn.responseEnded = false;
+  #|   conn.socketReadQueue = [];
+  #|   conn.socketReadQueueBytes = 0;
+  #|   conn.socketReadPaused = false;
+  #|   conn.socketReadEnded = false;
   #|   conn.socketReadCarry = null;
   #|   if (conn.socketReadAttached) return;
   #|   const onData = (chunk) => {
+  #|     if (!conn || conn.closed || conn.socketReadEnded) return;
   #|     const data = copyChunk(chunk);
   #|     const waiter = conn.socketReadWaiters.shift();
   #|     if (waiter) {
   #|       waiter(data);
   #|     } else {
   #|       conn.socketReadQueue.push(data);
+  #|       conn.socketReadQueueBytes += data.length;
+  #|       if (conn.socketReadQueueBytes > conn.socketReadMaxQueueBytes) {
+  #|         conn.socketReadQueue = [];
+  #|         conn.socketReadCarry = null;
+  #|         conn.socketReadQueueBytes = 0;
+  #|         conn.socketReadEnded = true;
+  #|         while (conn.socketReadWaiters.length > 0) {
+  #|           conn.socketReadWaiters.shift()(new Uint8Array(0));
+  #|         }
+  #|         try { conn.socket.destroy(); } catch {}
+  #|         return;
+  #|       }
+  #|       if (!conn.socketReadPaused && conn.socketReadQueueBytes > conn.socketReadHighWatermark) {
+  #|         conn.socketReadPaused = true;
+  #|         try { conn.socket.pause(); } catch {}
+  #|       }
   #|     }
   #|   };
   #|   const onEnd = () => {
@@ -1075,10 +1132,30 @@ extern "js" fn js_conn_read(
   #|       if (conn.socketReadQueue.length === 0) return null;
   #|       chunk = conn.socketReadQueue.shift();
   #|     }
+  #|     conn.socketReadQueueBytes = Math.max(0, conn.socketReadQueueBytes - chunk.length);
+  #|     maybeResumeSocketRead(conn);
   #|     if (!(maxLen > 0) || chunk.length <= maxLen) return chunk;
   #|     const head = chunk.subarray(0, maxLen);
   #|     const tail = chunk.subarray(maxLen);
-  #|     if (tail.length > 0) conn.socketReadCarry = tail;
+  #|     if (tail.length > 0) {
+  #|       conn.socketReadCarry = tail;
+  #|       conn.socketReadQueueBytes += tail.length;
+  #|       if (conn.socketReadQueueBytes > conn.socketReadMaxQueueBytes) {
+  #|         conn.socketReadCarry = null;
+  #|         conn.socketReadQueue = [];
+  #|         conn.socketReadQueueBytes = 0;
+  #|         conn.socketReadEnded = true;
+  #|         while (conn.socketReadWaiters.length > 0) {
+  #|           conn.socketReadWaiters.shift()(new Uint8Array(0));
+  #|         }
+  #|         try { conn.socket?.destroy?.(); } catch {}
+  #|         return head;
+  #|       }
+  #|       if (!conn.socketReadPaused && conn.socketReadQueueBytes > conn.socketReadHighWatermark) {
+  #|         conn.socketReadPaused = true;
+  #|         try { conn.socket?.pause?.(); } catch {}
+  #|       }
+  #|     }
   #|     return head;
   #|   };
   #|   const queued = pullChunk();
@@ -1090,7 +1167,25 @@ extern "js" fn js_conn_read(
   #|   if (!(maxLen > 0) || chunk.length <= maxLen) return chunk;
   #|   const head = chunk.subarray(0, maxLen);
   #|   const tail = chunk.subarray(maxLen);
-  #|   if (tail.length > 0) conn.socketReadCarry = tail;
+  #|   if (tail.length > 0) {
+  #|     conn.socketReadCarry = tail;
+  #|     conn.socketReadQueueBytes += tail.length;
+  #|     if (conn.socketReadQueueBytes > conn.socketReadMaxQueueBytes) {
+  #|       conn.socketReadCarry = null;
+  #|       conn.socketReadQueue = [];
+  #|       conn.socketReadQueueBytes = 0;
+  #|       conn.socketReadEnded = true;
+  #|       while (conn.socketReadWaiters.length > 0) {
+  #|         conn.socketReadWaiters.shift()(new Uint8Array(0));
+  #|       }
+  #|       try { conn.socket?.destroy?.(); } catch {}
+  #|       return head;
+  #|     }
+  #|     if (!conn.socketReadPaused && conn.socketReadQueueBytes > conn.socketReadHighWatermark) {
+  #|       conn.socketReadPaused = true;
+  #|       try { conn.socket?.pause?.(); } catch {}
+  #|     }
+  #|   }
   #|   return head;
   #| }
 
@@ -1700,6 +1795,17 @@ extern "js" fn js_client_new(
   #|         }
   #|         return false;
   #|       };
+  #|       const responseReadHighWatermark = 4 * 1024 * 1024;
+  #|       const responseReadLowWatermark = responseReadHighWatermark >> 1;
+  #|       const responseReadMaxQueueBytes = 16 * 1024 * 1024;
+  #|       const tunnelReadHighWatermark = 1024 * 1024;
+  #|       const tunnelReadLowWatermark = tunnelReadHighWatermark >> 1;
+  #|       const tunnelReadMaxQueueBytes = 4 * 1024 * 1024;
+  #|       const isAbsoluteRequestPath = (path) => {
+  #|         if (!path || path.length === 0) return false;
+  #|         if (path.startsWith('//')) return true;
+  #|         return /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(path);
+  #|       };
   #|       const toResponseObject = (nodeRes) => {
   #|         const resHeaders = {};
   #|         for (const [k, v] of Object.entries(nodeRes.headers || {})) {
@@ -1758,10 +1864,22 @@ extern "js" fn js_client_new(
   #|         }
   #|         client.tunnelSocket = null;
   #|         client.tunnelQueue = [];
+  #|         client.tunnelQueueBytes = 0;
+  #|         client.tunnelReadPaused = false;
   #|         client.tunnelWaiters = [];
   #|         client.tunnelError = null;
   #|         client.tunnelEnded = true;
   #|         client.passthrough = false;
+  #|       };
+  #|       const maybeResumeTunnel = (client) => {
+  #|         if (!client.tunnelReadPaused) return;
+  #|         if (client.tunnelEnded) {
+  #|           client.tunnelReadPaused = false;
+  #|           return;
+  #|         }
+  #|         if (client.tunnelQueueBytes > client.tunnelReadLowWatermark) return;
+  #|         client.tunnelReadPaused = false;
+  #|         try { client.tunnelSocket?.resume?.(); } catch {}
   #|       };
   #|       const attachTunnel = (client) => {
   #|         const socket = client?.tunnelSocket;
@@ -1778,6 +1896,19 @@ extern "js" fn js_client_new(
   #|             client.tunnelWaiters.shift().resolve(copied);
   #|           } else {
   #|             client.tunnelQueue.push(copied);
+  #|             client.tunnelQueueBytes += copied.length;
+  #|             if (client.tunnelQueueBytes > client.tunnelReadMaxQueueBytes) {
+  #|               client.tunnelQueue = [];
+  #|               client.tunnelQueueBytes = 0;
+  #|               client.tunnelEnded = true;
+  #|               clearTunnelWaiters(client, new Uint8Array(0));
+  #|               try { socket.destroy(); } catch {}
+  #|               return;
+  #|             }
+  #|             if (!client.tunnelReadPaused && client.tunnelQueueBytes > client.tunnelReadHighWatermark) {
+  #|               client.tunnelReadPaused = true;
+  #|               try { socket.pause(); } catch {}
+  #|             }
   #|           }
   #|         };
   #|         const onEnd = () => {
@@ -1809,13 +1940,28 @@ extern "js" fn js_client_new(
   #|       const setupResponseReader = (client, nodeRes) => {
   #|         const waiters = [];
   #|         client.responseQueue = [];
+  #|         client.responseQueueBytes = 0;
+  #|         client.responseReadPaused = false;
   #|         client.responseDone = false;
   #|         client.responseError = null;
+  #|         client.responseNodeRes = nodeRes;
   #|         client.responseWaiters = waiters;
+  #|         const maybeResumeResponse = () => {
+  #|           if (!client.responseReadPaused) return;
+  #|           if (client.responseDone) {
+  #|             client.responseReadPaused = false;
+  #|             return;
+  #|           }
+  #|           if (client.responseQueueBytes > client.responseReadLowWatermark) return;
+  #|           client.responseReadPaused = false;
+  #|           try { nodeRes.resume(); } catch {}
+  #|         };
   #|         const resolveWaitersWithData = () => {
   #|           while (waiters.length > 0 && client.responseQueue.length > 0) {
   #|             const waiter = waiters.shift();
   #|             const chunk = client.responseQueue.shift();
+  #|             client.responseQueueBytes = Math.max(0, client.responseQueueBytes - chunk.length);
+  #|             maybeResumeResponse();
   #|             waiter.resolve({ done: false, value: chunk });
   #|           }
   #|         };
@@ -1837,22 +1983,45 @@ extern "js" fn js_client_new(
   #|             : new Uint8Array(chunk.buffer, chunk.byteOffset, chunk.byteLength);
   #|           const copied = new Uint8Array(src.length);
   #|           copied.set(src);
+  #|           if (waiters.length > 0) {
+  #|             waiters.shift().resolve({ done: false, value: copied });
+  #|             return;
+  #|           }
   #|           client.responseQueue.push(copied);
+  #|           client.responseQueueBytes += copied.length;
+  #|           if (client.responseQueueBytes > client.responseReadMaxQueueBytes) {
+  #|             client.responseQueue = [];
+  #|             client.responseQueueBytes = 0;
+  #|             client.responseDone = true;
+  #|             client.responseError = new Error('response queue overflow');
+  #|             try { nodeRes.destroy(client.responseError); } catch {}
+  #|             rejectWaiters(client.responseError);
+  #|             return;
+  #|           }
+  #|           if (!client.responseReadPaused && client.responseQueueBytes > client.responseReadHighWatermark) {
+  #|             client.responseReadPaused = true;
+  #|             try { nodeRes.pause(); } catch {}
+  #|           }
   #|           resolveWaitersWithData();
   #|         });
   #|         nodeRes.on('end', () => {
   #|           client.responseDone = true;
+  #|           client.responseReadPaused = false;
   #|           resolveWaitersDone();
   #|         });
   #|         nodeRes.on('error', (err) => {
   #|           client.responseDone = true;
+  #|           client.responseReadPaused = false;
   #|           client.responseError = err;
   #|           rejectWaiters(err);
   #|         });
   #|         client.responseReader = {
   #|           read: async () => {
   #|             if (client.responseQueue.length > 0) {
-  #|               return { done: false, value: client.responseQueue.shift() };
+  #|               const queued = client.responseQueue.shift();
+  #|               client.responseQueueBytes = Math.max(0, client.responseQueueBytes - queued.length);
+  #|               maybeResumeResponse();
+  #|               return { done: false, value: queued };
   #|             }
   #|             if (client.responseError) {
   #|               const err = client.responseError;
@@ -1868,8 +2037,11 @@ extern "js" fn js_client_new(
   #|           },
   #|           cancel: async () => {
   #|             client.responseQueue = [];
+  #|             client.responseQueueBytes = 0;
   #|             client.responseDone = true;
+  #|             client.responseReadPaused = false;
   #|             client.responseError = null;
+  #|             client.responseNodeRes = null;
   #|             try { nodeRes.destroy(); } catch {}
   #|             resolveWaitersDone();
   #|           },
@@ -1909,11 +2081,15 @@ extern "js" fn js_client_new(
   #|         const base = new URL(client.baseUrl);
   #|         const method = pending.method || 'GET';
   #|         const isConnect = method === 'CONNECT';
+  #|         const rawPath = String(pending.path || '/');
+  #|         if (!isConnect && isAbsoluteRequestPath(rawPath)) {
+  #|           throw new Error('request path must be relative');
+  #|         }
   #|         const target = isConnect
   #|           ? base
-  #|           : new URL(pending.path || '/', client.baseUrl);
+  #|           : new URL(rawPath, client.baseUrl);
   #|         const requestPath = isConnect
-  #|           ? String(pending.path || '')
+  #|           ? rawPath
   #|           : ((target.pathname || '/') + (target.search || ''));
   #|         const headers = { ...(client.baseHeaders || {}), ...(pending.headers || {}) };
   #|         if (
@@ -1984,10 +2160,18 @@ extern "js" fn js_client_new(
   #|       globalThis.__xhc = {
   #|         nextId: 1,
   #|         clients: new Map(),
+  #|         responseReadHighWatermark,
+  #|         responseReadLowWatermark,
+  #|         responseReadMaxQueueBytes,
+  #|         tunnelReadHighWatermark,
+  #|         tunnelReadLowWatermark,
+  #|         tunnelReadMaxQueueBytes,
   #|         flushPendingChunks,
   #|         startPendingRequest,
   #|         attachTunnel,
   #|         resetTunnel,
+  #|         isAbsoluteRequestPath,
+  #|         maybeResumeTunnel,
   #|       };
   #|     }
   #|     const state = globalThis.__xhc;
@@ -2005,12 +2189,23 @@ extern "js" fn js_client_new(
   #|       baseHeaders,
   #|       pending: null,
   #|       responseReader: null,
+  #|       responseNodeRes: null,
   #|       responseQueue: [],
+  #|       responseQueueBytes: 0,
+  #|       responseReadPaused: false,
+  #|       responseReadHighWatermark: state.responseReadHighWatermark,
+  #|       responseReadLowWatermark: state.responseReadLowWatermark,
+  #|       responseReadMaxQueueBytes: state.responseReadMaxQueueBytes,
   #|       responseDone: true,
   #|       responseError: null,
   #|       responseWaiters: [],
   #|       tunnelSocket: null,
   #|       tunnelQueue: [],
+  #|       tunnelQueueBytes: 0,
+  #|       tunnelReadPaused: false,
+  #|       tunnelReadHighWatermark: state.tunnelReadHighWatermark,
+  #|       tunnelReadLowWatermark: state.tunnelReadLowWatermark,
+  #|       tunnelReadMaxQueueBytes: state.tunnelReadMaxQueueBytes,
   #|       tunnelWaiters: [],
   #|       tunnelError: null,
   #|       tunnelEnded: true,
@@ -2046,6 +2241,9 @@ extern "js" fn js_client_close(id : Int) -> Unit =
   #|   }
   #|   client.pending = null;
   #|   client.responseQueue = [];
+  #|   client.responseQueueBytes = 0;
+  #|   client.responseReadPaused = false;
+  #|   client.responseNodeRes = null;
   #|   if (client.responseReader) {
   #|     try { client.responseReader.cancel().catch(() => {}); } catch {}
   #|   }
@@ -2073,16 +2271,24 @@ extern "js" fn js_client_request_begin(
   #|   }
   #|   client.responseReader = null;
   #|   client.responseQueue = [];
+  #|   client.responseQueueBytes = 0;
+  #|   client.responseReadPaused = false;
+  #|   client.responseNodeRes = null;
   #|   client.responseDone = true;
   #|   client.responseError = null;
   #|   client.responseWaiters = [];
+  #|   const method = String(meth || 'GET').toUpperCase();
+  #|   const reqPath = String(path || '/');
+  #|   if (method !== 'CONNECT' && state.isAbsoluteRequestPath(reqPath)) {
+  #|     return 'request path must be relative';
+  #|   }
   #|   let headers = {};
   #|   if (extraHeadersJson && extraHeadersJson.length > 0) {
   #|     try { headers = JSON.parse(extraHeadersJson); } catch {}
   #|   }
   #|   client.pending = {
-  #|     method: meth || 'GET',
-  #|     path: path || '/',
+  #|     method,
+  #|     path: reqPath,
   #|     headers,
   #|     bodyChunks: [],
   #|     bodySize: 0,
@@ -2173,6 +2379,8 @@ extern "js" fn js_client_end_request(
   #|       try { state.resetTunnel(client, true); } catch {}
   #|       client.tunnelSocket = pending.connectSocket;
   #|       client.tunnelQueue = [];
+  #|       client.tunnelQueueBytes = 0;
+  #|       client.tunnelReadPaused = false;
   #|       client.tunnelWaiters = [];
   #|       client.tunnelError = null;
   #|       client.tunnelEnded = pending.connectSocket.destroyed ? true : false;
@@ -2180,6 +2388,7 @@ extern "js" fn js_client_end_request(
   #|       client.passthrough = false;
   #|       if (pending.connectHead && pending.connectHead.length > 0) {
   #|         client.tunnelQueue.push(pending.connectHead);
+  #|         client.tunnelQueueBytes += pending.connectHead.length;
   #|       }
   #|     }
   #|     client.pending = null;
@@ -2206,10 +2415,34 @@ extern "js" fn js_client_read(
   #|   const pull = () => {
   #|     if (client.responseQueue.length === 0) return null;
   #|     const chunk = client.responseQueue.shift();
+  #|     client.responseQueueBytes = Math.max(0, client.responseQueueBytes - chunk.length);
+  #|     if (
+  #|       client.responseReadPaused &&
+  #|       !client.responseDone &&
+  #|       client.responseQueueBytes <= client.responseReadLowWatermark
+  #|     ) {
+  #|       client.responseReadPaused = false;
+  #|       try { client.responseNodeRes?.resume?.(); } catch {}
+  #|     }
   #|     if (!(limit > 0) || chunk.length <= limit) return chunk;
   #|     const head = chunk.subarray(0, limit);
   #|     const tail = chunk.subarray(limit);
-  #|     if (tail.length > 0) client.responseQueue.unshift(tail);
+  #|     if (tail.length > 0) {
+  #|       client.responseQueue.unshift(tail);
+  #|       client.responseQueueBytes += tail.length;
+  #|       if (client.responseQueueBytes > client.responseReadMaxQueueBytes) {
+  #|         client.responseQueue = [];
+  #|         client.responseQueueBytes = 0;
+  #|         client.responseDone = true;
+  #|         client.responseError = new Error('response queue overflow');
+  #|         try { client.responseNodeRes?.destroy?.(client.responseError); } catch {}
+  #|         return head;
+  #|       }
+  #|       if (!client.responseReadPaused && client.responseQueueBytes > client.responseReadHighWatermark) {
+  #|         client.responseReadPaused = true;
+  #|         try { client.responseNodeRes?.pause?.(); } catch {}
+  #|       }
+  #|     }
   #|     return head;
   #|   };
   #|   const queued = pull();
@@ -2224,7 +2457,22 @@ extern "js" fn js_client_read(
   #|   if (!(limit > 0) || chunk.length <= limit) return chunk;
   #|   const head = chunk.subarray(0, limit);
   #|   const tail = chunk.subarray(limit);
-  #|   if (tail.length > 0) client.responseQueue.unshift(tail);
+  #|   if (tail.length > 0) {
+  #|     client.responseQueue.unshift(tail);
+  #|     client.responseQueueBytes += tail.length;
+  #|     if (client.responseQueueBytes > client.responseReadMaxQueueBytes) {
+  #|       client.responseQueue = [];
+  #|       client.responseQueueBytes = 0;
+  #|       client.responseDone = true;
+  #|       client.responseError = new Error('response queue overflow');
+  #|       try { client.responseNodeRes?.destroy?.(client.responseError); } catch {}
+  #|       return head;
+  #|     }
+  #|     if (!client.responseReadPaused && client.responseQueueBytes > client.responseReadHighWatermark) {
+  #|       client.responseReadPaused = true;
+  #|       try { client.responseNodeRes?.pause?.(); } catch {}
+  #|     }
+  #|   }
   #|   return head;
   #| }
 
@@ -2237,10 +2485,13 @@ extern "js" fn js_client_skip_response_body(
   #|   const client = state?.clients.get(id);
   #|   if (!client || client.closed) return;
   #|   client.responseQueue = [];
+  #|   client.responseQueueBytes = 0;
+  #|   client.responseReadPaused = false;
   #|   if (client.responseReader) {
   #|     try { await client.responseReader.cancel(); } catch {}
   #|   }
   #|   client.responseReader = null;
+  #|   client.responseNodeRes = null;
   #|   client.responseDone = true;
   #|   client.responseError = null;
   #|   client.responseWaiters = [];
@@ -2259,6 +2510,9 @@ extern "js" fn js_client_enter_passthrough(id : Int) -> String =
   #|   }
   #|   client.responseReader = null;
   #|   client.responseQueue = [];
+  #|   client.responseQueueBytes = 0;
+  #|   client.responseReadPaused = false;
+  #|   client.responseNodeRes = null;
   #|   client.responseDone = true;
   #|   client.responseError = null;
   #|   client.responseWaiters = [];
@@ -2282,10 +2536,26 @@ extern "js" fn js_client_tunnel_read(
   #|   const pull = () => {
   #|     if (client.tunnelQueue.length === 0) return null;
   #|     const chunk = client.tunnelQueue.shift();
+  #|     client.tunnelQueueBytes = Math.max(0, client.tunnelQueueBytes - chunk.length);
+  #|     state.maybeResumeTunnel(client);
   #|     if (!(limit > 0) || chunk.length <= limit) return chunk;
   #|     const head = chunk.subarray(0, limit);
   #|     const tail = chunk.subarray(limit);
-  #|     if (tail.length > 0) client.tunnelQueue.unshift(tail);
+  #|     if (tail.length > 0) {
+  #|       client.tunnelQueue.unshift(tail);
+  #|       client.tunnelQueueBytes += tail.length;
+  #|       if (client.tunnelQueueBytes > client.tunnelReadMaxQueueBytes) {
+  #|         client.tunnelQueue = [];
+  #|         client.tunnelQueueBytes = 0;
+  #|         client.tunnelEnded = true;
+  #|         try { client.tunnelSocket?.destroy?.(); } catch {}
+  #|         return head;
+  #|       }
+  #|       if (!client.tunnelReadPaused && client.tunnelQueueBytes > client.tunnelReadHighWatermark) {
+  #|         client.tunnelReadPaused = true;
+  #|         try { client.tunnelSocket?.pause?.(); } catch {}
+  #|       }
+  #|     }
   #|     return head;
   #|   };
   #|   const queued = pull();
@@ -2303,7 +2573,21 @@ extern "js" fn js_client_tunnel_read(
   #|   if (!(limit > 0) || chunk.length <= limit) return chunk;
   #|   const head = chunk.subarray(0, limit);
   #|   const tail = chunk.subarray(limit);
-  #|   if (tail.length > 0) client.tunnelQueue.unshift(tail);
+  #|   if (tail.length > 0) {
+  #|     client.tunnelQueue.unshift(tail);
+  #|     client.tunnelQueueBytes += tail.length;
+  #|     if (client.tunnelQueueBytes > client.tunnelReadMaxQueueBytes) {
+  #|       client.tunnelQueue = [];
+  #|       client.tunnelQueueBytes = 0;
+  #|       client.tunnelEnded = true;
+  #|       try { client.tunnelSocket?.destroy?.(); } catch {}
+  #|       return head;
+  #|     }
+  #|     if (!client.tunnelReadPaused && client.tunnelQueueBytes > client.tunnelReadHighWatermark) {
+  #|       client.tunnelReadPaused = true;
+  #|       try { client.tunnelSocket?.pause?.(); } catch {}
+  #|     }
+  #|   }
   #|   return head;
   #| }
 

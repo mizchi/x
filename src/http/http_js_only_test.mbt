@@ -344,6 +344,22 @@ async test "server(js): trust_proxy uses x-forwarded-for and x-forwarded-port" {
 }
 
 ///|
+async test "server(js): handler error response does not leak internals" {
+  @async.with_task_group(group => {
+    let server = @http.Server::new(port=0)
+    defer server.close()
+    let port = server.port()
+    group.spawn_bg(no_wait=true, allow_failure=true, () => {
+      server.run_forever((_req, _body, _conn) => abort("secret-handler-error"))
+    })
+    @async.sleep(20)
+    let (resp, body) = @http.get("http://127.0.0.1:\{port}/error")
+    assert_eq(resp.code, 500)
+    assert_eq(body.text(), "internal server error")
+  })
+}
+
+///|
 async test "bench(js): graceful close time under concurrent sse" {
   @async.with_task_group(group => {
     let clients = 24
@@ -476,6 +492,22 @@ async test "client(js): invalid url returns HttpError::InvalidUrl" {
         _ => fail("expected InvalidUrl")
       }
   }
+}
+
+///|
+async test "client(js): request rejects absolute url path" {
+  let client = @http.Client::new("http://127.0.0.1:8080")
+  defer client.close()
+  let absolute_result : Result[Unit, @http.HttpError] = try? client.request(
+    @http.RequestMethod::Get,
+    "http://203.0.113.1/pwn",
+  )
+  assert_true(absolute_result is Err(_))
+  let scheme_relative_result : Result[Unit, @http.HttpError] = try? client.request(
+    @http.RequestMethod::Get,
+    "//203.0.113.1/pwn",
+  )
+  assert_true(scheme_relative_result is Err(_))
 }
 
 ///|
