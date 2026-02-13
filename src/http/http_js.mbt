@@ -166,7 +166,6 @@ priv struct JsServerAccept {
   req_meth : String
   req_url : String
   headers_json : String
-  body : Bytes
   client_host : String
   client_port : Int
 }
@@ -311,6 +310,89 @@ extern "js" fn js_server_new(
   #|     }
   #|     return { clientHost, clientPort };
   #|   };
+  #|   const requestReadHighWatermark = 1024 * 1024;
+  #|   const requestReadLowWatermark = requestReadHighWatermark >> 1;
+  #|   const copyChunk = (chunk) => {
+  #|     const src = chunk instanceof Uint8Array
+  #|       ? chunk
+  #|       : new Uint8Array(Buffer.from(chunk));
+  #|     const copied = new Uint8Array(src.length);
+  #|     copied.set(src);
+  #|     return copied;
+  #|   };
+  #|   const resolveRequestWaiters = (conn, value) => {
+  #|     while (conn.requestReadWaiters.length > 0) {
+  #|       conn.requestReadWaiters.shift().resolve(value);
+  #|     }
+  #|   };
+  #|   const maybeResumeRequest = (conn) => {
+  #|     if (!conn.requestReadPaused) return;
+  #|     if (conn.requestReadEnded || conn.requestReadSkipped || conn.closed) {
+  #|       conn.requestReadPaused = false;
+  #|       return;
+  #|     }
+  #|     if (conn.requestReadQueueBytes > conn.requestReadLowWatermark) return;
+  #|     conn.requestReadPaused = false;
+  #|     try { conn.req.resume(); } catch {}
+  #|   };
+  #|   const detachRequestRead = (conn) => {
+  #|     const req = conn?.req;
+  #|     if (!req || !conn.requestReadAttached) return;
+  #|     if (conn.requestReadOnData) {
+  #|       try { req.off('data', conn.requestReadOnData); } catch {}
+  #|     }
+  #|     if (conn.requestReadOnEnd) {
+  #|       try { req.off('end', conn.requestReadOnEnd); } catch {}
+  #|     }
+  #|     if (conn.requestReadOnClose) {
+  #|       try { req.off('close', conn.requestReadOnClose); } catch {}
+  #|     }
+  #|     if (conn.requestReadOnError) {
+  #|       try { req.off('error', conn.requestReadOnError); } catch {}
+  #|     }
+  #|     if (conn.requestReadOnAborted) {
+  #|       try { req.off('aborted', conn.requestReadOnAborted); } catch {}
+  #|     }
+  #|     conn.requestReadAttached = false;
+  #|     conn.requestReadOnData = null;
+  #|     conn.requestReadOnEnd = null;
+  #|     conn.requestReadOnClose = null;
+  #|     conn.requestReadOnError = null;
+  #|     conn.requestReadOnAborted = null;
+  #|   };
+  #|   const finishRequestRead = (conn) => {
+  #|     if (conn.requestReadEnded) return;
+  #|     conn.requestReadEnded = true;
+  #|     conn.requestReadError = null;
+  #|     resolveRequestWaiters(conn, new Uint8Array(0));
+  #|   };
+  #|   const failRequestRead = (conn, err) => {
+  #|     if (conn.requestReadEnded) return;
+  #|     conn.requestReadEnded = true;
+  #|     conn.requestReadError = err;
+  #|     resolveRequestWaiters(conn, new Uint8Array(0));
+  #|   };
+  #|   const closeBodyTooLarge = (conn) => {
+  #|     if (!conn || conn.responseEnded || conn.closed) return;
+  #|     conn.requestReadSkipped = true;
+  #|     conn.requestReadQueue = [];
+  #|     conn.requestReadQueueBytes = 0;
+  #|     if (conn.requestReadPaused) {
+  #|       conn.requestReadPaused = false;
+  #|       try { conn.req.resume(); } catch {}
+  #|     }
+  #|     resolveRequestWaiters(conn, new Uint8Array(0));
+  #|     const currentEntry = state.servers.get(conn.serverId);
+  #|     try {
+  #|       if (!conn.responseStarted && !conn.res.headersSent) {
+  #|         conn.res.writeHead(413, currentEntry?.baseHeaders || {});
+  #|         conn.responseStarted = true;
+  #|       }
+  #|       conn.res.end('request body too large');
+  #|       conn.responseEnded = true;
+  #|     } catch {}
+  #|     conn.closed = true;
+  #|   };
   #|   const makeConn = (req, res) => {
   #|     const connId = state.nextConnId++;
   #|     const resolved = resolveClientAddr(req);
@@ -327,6 +409,22 @@ extern "js" fn js_server_new(
   #|       socketReadEnded: false,
   #|       socketReadOnData: null,
   #|       socketReadOnEnd: null,
+  #|       requestReadQueue: [],
+  #|       requestReadQueueBytes: 0,
+  #|       requestReadWaiters: [],
+  #|       requestReadAttached: false,
+  #|       requestReadEnded: false,
+  #|       requestReadSkipped: false,
+  #|       requestReadPaused: false,
+  #|       requestReadError: null,
+  #|       requestReadOnData: null,
+  #|       requestReadOnEnd: null,
+  #|       requestReadOnClose: null,
+  #|       requestReadOnError: null,
+  #|       requestReadOnAborted: null,
+  #|       requestReadHighWatermark,
+  #|       requestReadLowWatermark,
+  #|       requestBytesTotal: 0,
   #|       responseStarted: false,
   #|       responseEnded: false,
   #|       closed: false,
@@ -343,6 +441,13 @@ extern "js" fn js_server_new(
   #|         try { current.socket.off('close', current.socketReadOnEnd); } catch {}
   #|         current.socketReadAttached = false;
   #|       }
+  #|       detachRequestRead(current);
+  #|       current.requestReadQueue = [];
+  #|       current.requestReadQueueBytes = 0;
+  #|       current.requestReadPaused = false;
+  #|       while (current.requestReadWaiters.length > 0) {
+  #|         current.requestReadWaiters.shift().resolve(new Uint8Array(0));
+  #|       }
   #|       while (current.socketReadWaiters.length > 0) {
   #|         current.socketReadWaiters.shift()(new Uint8Array(0));
   #|       }
@@ -354,23 +459,60 @@ extern "js" fn js_server_new(
   #|     res.once('finish', cleanupConn);
   #|     return conn;
   #|   };
-  #|   const readRequestBody = async (req) => {
-  #|     const limit = entry.maxRequestBodyBytes;
-  #|     let total = 0;
-  #|     const chunks = [];
-  #|     for await (const chunk of req) {
-  #|       const part = chunk instanceof Uint8Array ? chunk : Buffer.from(chunk);
-  #|       total += part.length;
-  #|       if (limit > 0 && total > limit) {
+  #|   const attachRequestRead = (conn) => {
+  #|     if (!conn || conn.requestReadAttached) return;
+  #|     conn.requestReadAttached = true;
+  #|     const onData = (chunk) => {
+  #|       if (!conn || conn.requestReadEnded || conn.requestReadSkipped || conn.closed) return;
+  #|       const copied = copyChunk(chunk);
+  #|       conn.requestBytesTotal += copied.length;
+  #|       if (entry.maxRequestBodyBytes > 0 && conn.requestBytesTotal > entry.maxRequestBodyBytes) {
   #|         const err = new Error('request body too large');
   #|         err.code = 'X_BODY_TOO_LARGE';
-  #|         throw err;
+  #|         failRequestRead(conn, err);
+  #|         closeBodyTooLarge(conn);
+  #|         return;
   #|       }
-  #|       chunks.push(part);
+  #|       const waiter = conn.requestReadWaiters.shift();
+  #|       if (waiter) {
+  #|         waiter.resolve(copied);
+  #|         return;
+  #|       }
+  #|       conn.requestReadQueue.push(copied);
+  #|       conn.requestReadQueueBytes += copied.length;
+  #|       if (!conn.requestReadPaused && conn.requestReadQueueBytes > conn.requestReadHighWatermark) {
+  #|         conn.requestReadPaused = true;
+  #|         try { conn.req.pause(); } catch {}
+  #|       }
+  #|     };
+  #|     const onEnd = () => {
+  #|       finishRequestRead(conn);
+  #|     };
+  #|     const onClose = () => {
+  #|       finishRequestRead(conn);
+  #|     };
+  #|     const onError = (err) => {
+  #|       failRequestRead(conn, err || new Error('request body error'));
+  #|     };
+  #|     const onAborted = () => {
+  #|       finishRequestRead(conn);
+  #|     };
+  #|     conn.requestReadOnData = onData;
+  #|     conn.requestReadOnEnd = onEnd;
+  #|     conn.requestReadOnClose = onClose;
+  #|     conn.requestReadOnError = onError;
+  #|     conn.requestReadOnAborted = onAborted;
+  #|     conn.req.on('data', onData);
+  #|     conn.req.on('end', onEnd);
+  #|     conn.req.on('close', onClose);
+  #|     conn.req.on('error', onError);
+  #|     conn.req.on('aborted', onAborted);
+  #|     if (conn.req.complete || conn.req.destroyed) {
+  #|       finishRequestRead(conn);
+  #|     } else {
+  #|       maybeResumeRequest(conn);
+  #|       try { conn.req.resume(); } catch {}
   #|     }
-  #|     return chunks.length === 0
-  #|       ? new Uint8Array(0)
-  #|       : new Uint8Array(Buffer.concat(chunks));
   #|   };
   #|   server.on('request', async (req, res) => {
   #|     if (entry.mode !== 'run' && entry.mode !== 'accept') {
@@ -395,16 +537,15 @@ extern "js" fn js_server_new(
   #|     }
   #|     entry.inflight++;
   #|     const conn = makeConn(req, res);
+  #|     attachRequestRead(conn);
+  #|     const reqHeaders = JSON.stringify(req.headers || {});
   #|     try {
-  #|       const body = await readRequestBody(req);
-  #|       const reqHeaders = JSON.stringify(req.headers || {});
   #|       if (entry.mode === 'accept') {
   #|         const accepted = {
   #|           conn_id: conn.id,
   #|           req_meth: req.method || 'GET',
   #|           req_url: req.url || '/',
   #|           headers_json: reqHeaders,
-  #|           body,
   #|           client_host: conn.clientHost,
   #|           client_port: conn.clientPort,
   #|         };
@@ -419,24 +560,12 @@ extern "js" fn js_server_new(
   #|           req.method || 'GET',
   #|           req.url || '/',
   #|           reqHeaders,
-  #|           body,
   #|           conn.id,
   #|           conn.clientHost,
   #|           conn.clientPort,
   #|         );
   #|       }
   #|     } catch (err) {
-  #|       if (err && err.code === 'X_BODY_TOO_LARGE') {
-  #|         try {
-  #|           if (!res.headersSent) {
-  #|             res.writeHead(413, entry.baseHeaders || {});
-  #|           }
-  #|           res.end('request body too large');
-  #|         } catch {}
-  #|         const current = state.conns.get(conn.id);
-  #|         if (current) state.conns.delete(conn.id);
-  #|         return;
-  #|       }
   #|       const current = state.conns.get(conn.id);
   #|       if (current && !current.responseEnded && !current.closed) {
   #|         try {
@@ -492,7 +621,7 @@ extern "js" fn js_server_new(
 ///|
 extern "js" fn js_server_run(
   id : Int,
-  on_request : (String, String, String, Bytes, Int, String, Int) -> @js_async.Promise[
+  on_request : (String, String, String, Int, String, Int) -> @js_async.Promise[
     Unit,
   ],
   allow_failure : Bool,
@@ -760,7 +889,6 @@ extern "js" fn js_conn_end(conn_id : Int) -> Unit =
   #|   }
   #|   conn.res.end();
   #|   conn.responseEnded = true;
-  #|   state.conns.delete(connId);
   #| }
 
 ///|
@@ -769,6 +897,21 @@ extern "js" fn js_conn_close(conn_id : Int) -> Unit =
   #|   const state = globalThis.__xhttpServer;
   #|   const conn = state?.conns.get(connId);
   #|   if (!conn) return;
+  #|   if (conn.requestReadAttached && conn.req) {
+  #|     try { conn.req.off('data', conn.requestReadOnData); } catch {}
+  #|     try { conn.req.off('end', conn.requestReadOnEnd); } catch {}
+  #|     try { conn.req.off('close', conn.requestReadOnClose); } catch {}
+  #|     try { conn.req.off('error', conn.requestReadOnError); } catch {}
+  #|     try { conn.req.off('aborted', conn.requestReadOnAborted); } catch {}
+  #|     conn.requestReadAttached = false;
+  #|   }
+  #|   conn.requestReadQueue = [];
+  #|   conn.requestReadQueueBytes = 0;
+  #|   conn.requestReadPaused = false;
+  #|   conn.requestReadSkipped = true;
+  #|   while (conn.requestReadWaiters.length > 0) {
+  #|     conn.requestReadWaiters.shift().resolve(new Uint8Array(0));
+  #|   }
   #|   if (conn.socketReadAttached && conn.socket) {
   #|     try { conn.socket.off('data', conn.socketReadOnData); } catch {}
   #|     try { conn.socket.off('end', conn.socketReadOnEnd); } catch {}
@@ -823,6 +966,81 @@ extern "js" fn js_conn_enter_passthrough(conn_id : Int) -> Unit =
   #|   conn.socket.on('end', onEnd);
   #|   conn.socket.on('close', onEnd);
   #|   conn.socketReadAttached = true;
+  #| }
+
+///|
+extern "js" fn js_conn_skip_request_body(conn_id : Int) -> Unit =
+  #| (connId) => {
+  #|   const state = globalThis.__xhttpServer;
+  #|   const conn = state?.conns.get(connId);
+  #|   if (!conn) return;
+  #|   conn.requestReadSkipped = true;
+  #|   conn.requestReadQueue = [];
+  #|   conn.requestReadQueueBytes = 0;
+  #|   if (conn.requestReadPaused) {
+  #|     conn.requestReadPaused = false;
+  #|     try { conn.req.resume(); } catch {}
+  #|   }
+  #|   while (conn.requestReadWaiters.length > 0) {
+  #|     conn.requestReadWaiters.shift().resolve(new Uint8Array(0));
+  #|   }
+  #| }
+
+///|
+extern "js" fn js_conn_read_request(
+  conn_id : Int,
+  max_len : Int,
+) -> @js_async.Promise[Bytes] =
+  #| async (connId, maxLen) => {
+  #|   const state = globalThis.__xhttpServer;
+  #|   const conn = state?.conns.get(connId);
+  #|   if (!conn || conn.closed) return new Uint8Array(0);
+  #|   const pullChunk = () => {
+  #|     if (conn.requestReadQueue.length === 0) return null;
+  #|     const chunk = conn.requestReadQueue.shift();
+  #|     conn.requestReadQueueBytes = Math.max(0, conn.requestReadQueueBytes - chunk.length);
+  #|     if (
+  #|       conn.requestReadPaused &&
+  #|       !conn.requestReadEnded &&
+  #|       !conn.requestReadSkipped &&
+  #|       conn.requestReadQueueBytes <= conn.requestReadLowWatermark
+  #|     ) {
+  #|       conn.requestReadPaused = false;
+  #|       try { conn.req.resume(); } catch {}
+  #|     }
+  #|     if (!(maxLen > 0) || chunk.length <= maxLen) return chunk;
+  #|     const head = chunk.subarray(0, maxLen);
+  #|     const tail = chunk.subarray(maxLen);
+  #|     if (tail.length > 0) {
+  #|       conn.requestReadQueue.unshift(tail);
+  #|       conn.requestReadQueueBytes += tail.length;
+  #|       if (!conn.requestReadPaused && conn.requestReadQueueBytes > conn.requestReadHighWatermark) {
+  #|         conn.requestReadPaused = true;
+  #|         try { conn.req.pause(); } catch {}
+  #|       }
+  #|     }
+  #|     return head;
+  #|   };
+  #|   const queued = pullChunk();
+  #|   if (queued) return queued;
+  #|   if (conn.requestReadEnded || conn.requestReadSkipped) {
+  #|     return new Uint8Array(0);
+  #|   }
+  #|   const chunk = await new Promise((resolve, reject) => {
+  #|     conn.requestReadWaiters.push({ resolve, reject });
+  #|   });
+  #|   if (!(maxLen > 0) || chunk.length <= maxLen) return chunk;
+  #|   const head = chunk.subarray(0, maxLen);
+  #|   const tail = chunk.subarray(maxLen);
+  #|   if (tail.length > 0) {
+  #|     conn.requestReadQueue.unshift(tail);
+  #|     conn.requestReadQueueBytes += tail.length;
+  #|     if (!conn.requestReadPaused && conn.requestReadQueueBytes > conn.requestReadHighWatermark) {
+  #|       conn.requestReadPaused = true;
+  #|       try { conn.req.pause(); } catch {}
+  #|     }
+  #|   }
+  #|   return head;
   #| }
 
 ///|
@@ -893,8 +1111,7 @@ fn to_addr(host : String, port : Int) -> Addr {
 ///|
 pub struct ServerConnection {
   request : Request
-  request_body : Bytes
-  mut request_body_offset : Int
+  mut request_body_drained : Bool
   conn_id : Int
   peer_addr : Addr
   mut passthrough_mode : Bool
@@ -906,14 +1123,12 @@ pub struct ServerConnection {
 ///|
 fn new_server_connection(
   request : Request,
-  request_body : Bytes,
   conn_id : Int,
   peer_addr : Addr,
 ) -> ServerConnection {
   ServerConnection::{
     request,
-    request_body,
-    request_body_offset: 0,
+    request_body_drained: false,
     conn_id,
     peer_addr,
     passthrough_mode: false,
@@ -945,7 +1160,8 @@ pub fn ServerConnection::client_addr(self : ServerConnection) -> Addr {
 
 ///|
 pub fn ServerConnection::skip_request_body(self : ServerConnection) -> Unit {
-  self.request_body_offset = self.request_body.length()
+  js_conn_skip_request_body(self.conn_id)
+  self.request_body_drained = true
 }
 
 ///|
@@ -1028,17 +1244,22 @@ pub impl @io.Reader for ServerConnection with _direct_read(
   max_len~,
 ) {
   if self.passthrough_mode {
-    let remaining = self.request_body.length() - self.request_body_offset
-    if remaining > 0 {
-      let n = @cmp.minimum(max_len, remaining)
-      buf.blit_from_bytes(
-        offset,
-        self.request_body,
-        self.request_body_offset,
-        n,
-      )
-      self.request_body_offset = self.request_body_offset + n
-      return n
+    if !self.request_body_drained {
+      let req_controller = @js_async.AbortController::new()
+      let req_promise = js_conn_read_request(self.conn_id, max_len)
+      let req_data = @js_async.Promise::wait(
+        req_promise,
+        abort_controller=req_controller,
+      ) catch {
+        _ => Bytes::new(0)
+      }
+      let req_len = req_data.length()
+      if req_len > 0 {
+        let n = @cmp.minimum(max_len, req_len)
+        buf.blit_from_bytes(offset, req_data, 0, n)
+        return n
+      }
+      self.request_body_drained = true
     }
     let controller = @js_async.AbortController::new()
     let promise = js_conn_read(self.conn_id, max_len)
@@ -1054,18 +1275,20 @@ pub impl @io.Reader for ServerConnection with _direct_read(
       n
     }
   } else {
-    let remaining = self.request_body.length() - self.request_body_offset
-    if remaining <= 0 {
+    let req_controller = @js_async.AbortController::new()
+    let req_promise = js_conn_read_request(self.conn_id, max_len)
+    let req_data = @js_async.Promise::wait(
+      req_promise,
+      abort_controller=req_controller,
+    ) catch {
+      _ => Bytes::new(0)
+    }
+    let req_len = req_data.length()
+    if req_len <= 0 {
       0
     } else {
-      let n = @cmp.minimum(max_len, remaining)
-      buf.blit_from_bytes(
-        offset,
-        self.request_body,
-        self.request_body_offset,
-        n,
-      )
-      self.request_body_offset = self.request_body_offset + n
+      let n = @cmp.minimum(max_len, req_len)
+      buf.blit_from_bytes(offset, req_data, 0, n)
       n
     }
   }
@@ -1078,7 +1301,10 @@ pub impl @io.Writer for ServerConnection with write_once(
   offset~,
   len~,
 ) {
-  if self.closed || self.response_ended || offset >= buf.length() {
+  if self.closed || self.response_ended {
+    raise HttpError::NetworkError("connection closed")
+  }
+  if offset >= buf.length() {
     0
   } else {
     let n = @cmp.minimum(len, buf.length() - offset)
@@ -1088,7 +1314,10 @@ pub impl @io.Writer for ServerConnection with write_once(
       let controller = @js_async.AbortController::new()
       let promise = js_conn_write(self.conn_id, buf, offset, n)
       let wrote = @js_async.Promise::wait(promise, abort_controller=controller) catch {
-        _ => return 0
+        _ => raise HttpError::NetworkError("connection closed")
+      }
+      if wrote <= 0 {
+        raise HttpError::NetworkError("connection closed")
       }
       self.response_started = !self.passthrough_mode
       wrote
@@ -1163,12 +1392,7 @@ pub async fn Server::accept(
     headers: parse_headers_json(result.headers_json),
   }
   let peer_addr = to_addr(result.client_host, result.client_port)
-  let conn = new_server_connection(
-    request,
-    result.body,
-    result.conn_id,
-    peer_addr,
-  )
+  let conn = new_server_connection(request, result.conn_id, peer_addr)
   (conn, peer_addr)
 }
 
@@ -1183,7 +1407,6 @@ pub async fn Server::run_forever(
     req_meth : String,
     req_url : String,
     headers_json : String,
-    body : Bytes,
     conn_id : Int,
     client_host : String,
     client_port : Int,
@@ -1196,7 +1419,6 @@ pub async fn Server::run_forever(
       }
       let conn = new_server_connection(
         request,
-        body,
         conn_id,
         to_addr(client_host, client_port),
       )
@@ -1375,4 +1597,908 @@ pub async fn put(
   headers? : Map[String, String],
 ) -> (Response, &@io.Data) raise HttpError {
   request_internal_js(url, "PUT", headers.unwrap_or({}), body)
+}
+
+// Native-compatible Client API
+
+///|
+priv struct JsClientNewResult {
+  id : Int
+  error : String
+}
+
+///|
+priv struct JsClientResponse {
+  code : Int
+  reason : String
+  headers_json : String
+}
+
+///|
+extern "js" fn js_client_new(
+  url : String,
+  headers_json : String,
+) -> JsClientNewResult =
+  #| (url, headersJson) => {
+  #|   try {
+  #|     if (!globalThis.__xhc) {
+  #|       const hasHeader = (headers, key) => {
+  #|         if (!headers) return false;
+  #|         if (headers[key] != null) return true;
+  #|         const low = key.toLowerCase();
+  #|         const up = key.toUpperCase();
+  #|         if (headers[low] != null || headers[up] != null) return true;
+  #|         for (const k of Object.keys(headers)) {
+  #|           if (k.toLowerCase() === low) return true;
+  #|         }
+  #|         return false;
+  #|       };
+  #|       const toResponseObject = (nodeRes) => {
+  #|         const resHeaders = {};
+  #|         for (const [k, v] of Object.entries(nodeRes.headers || {})) {
+  #|           if (Array.isArray(v)) {
+  #|             resHeaders[k] = v.join(', ');
+  #|           } else if (typeof v === 'string') {
+  #|             resHeaders[k] = v;
+  #|           } else if (v != null) {
+  #|             resHeaders[k] = String(v);
+  #|           }
+  #|         }
+  #|         return {
+  #|           code: Number(nodeRes.statusCode || 0),
+  #|           reason: String(nodeRes.statusMessage || ''),
+  #|           headers_json: JSON.stringify(resHeaders),
+  #|         };
+  #|       };
+  #|       const clearTunnelWaiters = (client, value) => {
+  #|         const waiters = client.tunnelWaiters || [];
+  #|         while (waiters.length > 0) {
+  #|           waiters.shift().resolve(value);
+  #|         }
+  #|       };
+  #|       const rejectTunnelWaiters = (client, err) => {
+  #|         const waiters = client.tunnelWaiters || [];
+  #|         while (waiters.length > 0) {
+  #|           waiters.shift().reject(err);
+  #|         }
+  #|       };
+  #|       const detachTunnelHandlers = (client) => {
+  #|         const socket = client?.tunnelSocket;
+  #|         if (!socket) return;
+  #|         if (client.tunnelOnData) {
+  #|           try { socket.off('data', client.tunnelOnData); } catch {}
+  #|         }
+  #|         if (client.tunnelOnEnd) {
+  #|           try { socket.off('end', client.tunnelOnEnd); } catch {}
+  #|         }
+  #|         if (client.tunnelOnClose) {
+  #|           try { socket.off('close', client.tunnelOnClose); } catch {}
+  #|         }
+  #|         if (client.tunnelOnError) {
+  #|           try { socket.off('error', client.tunnelOnError); } catch {}
+  #|         }
+  #|         client.tunnelOnData = null;
+  #|         client.tunnelOnEnd = null;
+  #|         client.tunnelOnClose = null;
+  #|         client.tunnelOnError = null;
+  #|         client.tunnelAttached = false;
+  #|       };
+  #|       const resetTunnel = (client, destroySocket) => {
+  #|         const socket = client?.tunnelSocket;
+  #|         detachTunnelHandlers(client);
+  #|         if (socket && destroySocket && !socket.destroyed) {
+  #|           try { socket.destroy(); } catch {}
+  #|         }
+  #|         client.tunnelSocket = null;
+  #|         client.tunnelQueue = [];
+  #|         client.tunnelWaiters = [];
+  #|         client.tunnelError = null;
+  #|         client.tunnelEnded = true;
+  #|         client.passthrough = false;
+  #|       };
+  #|       const attachTunnel = (client) => {
+  #|         const socket = client?.tunnelSocket;
+  #|         if (!socket) return;
+  #|         if (client.tunnelAttached) return;
+  #|         client.tunnelAttached = true;
+  #|         const onData = (chunk) => {
+  #|           const src = chunk instanceof Uint8Array
+  #|             ? chunk
+  #|             : new Uint8Array(chunk.buffer, chunk.byteOffset, chunk.byteLength);
+  #|           const copied = new Uint8Array(src.length);
+  #|           copied.set(src);
+  #|           if (client.tunnelWaiters.length > 0) {
+  #|             client.tunnelWaiters.shift().resolve(copied);
+  #|           } else {
+  #|             client.tunnelQueue.push(copied);
+  #|           }
+  #|         };
+  #|         const onEnd = () => {
+  #|           client.tunnelEnded = true;
+  #|           clearTunnelWaiters(client, new Uint8Array(0));
+  #|         };
+  #|         const onClose = () => {
+  #|           client.tunnelEnded = true;
+  #|           clearTunnelWaiters(client, new Uint8Array(0));
+  #|         };
+  #|         const onError = (err) => {
+  #|           client.tunnelEnded = true;
+  #|           client.tunnelError = err;
+  #|           rejectTunnelWaiters(client, err);
+  #|         };
+  #|         client.tunnelOnData = onData;
+  #|         client.tunnelOnEnd = onEnd;
+  #|         client.tunnelOnClose = onClose;
+  #|         client.tunnelOnError = onError;
+  #|         try { socket.resume(); } catch {}
+  #|         socket.on('data', onData);
+  #|         socket.on('end', onEnd);
+  #|         socket.on('close', onClose);
+  #|         socket.on('error', onError);
+  #|         if (socket.destroyed) {
+  #|           client.tunnelEnded = true;
+  #|         }
+  #|       };
+  #|       const setupResponseReader = (client, nodeRes) => {
+  #|         const waiters = [];
+  #|         client.responseQueue = [];
+  #|         client.responseDone = false;
+  #|         client.responseError = null;
+  #|         client.responseWaiters = waiters;
+  #|         const resolveWaitersWithData = () => {
+  #|           while (waiters.length > 0 && client.responseQueue.length > 0) {
+  #|             const waiter = waiters.shift();
+  #|             const chunk = client.responseQueue.shift();
+  #|             waiter.resolve({ done: false, value: chunk });
+  #|           }
+  #|         };
+  #|         const resolveWaitersDone = () => {
+  #|           while (waiters.length > 0) {
+  #|             const waiter = waiters.shift();
+  #|             waiter.resolve({ done: true, value: new Uint8Array(0) });
+  #|           }
+  #|         };
+  #|         const rejectWaiters = (err) => {
+  #|           while (waiters.length > 0) {
+  #|             const waiter = waiters.shift();
+  #|             waiter.reject(err);
+  #|           }
+  #|         };
+  #|         nodeRes.on('data', (chunk) => {
+  #|           const src = chunk instanceof Uint8Array
+  #|             ? chunk
+  #|             : new Uint8Array(chunk.buffer, chunk.byteOffset, chunk.byteLength);
+  #|           const copied = new Uint8Array(src.length);
+  #|           copied.set(src);
+  #|           client.responseQueue.push(copied);
+  #|           resolveWaitersWithData();
+  #|         });
+  #|         nodeRes.on('end', () => {
+  #|           client.responseDone = true;
+  #|           resolveWaitersDone();
+  #|         });
+  #|         nodeRes.on('error', (err) => {
+  #|           client.responseDone = true;
+  #|           client.responseError = err;
+  #|           rejectWaiters(err);
+  #|         });
+  #|         client.responseReader = {
+  #|           read: async () => {
+  #|             if (client.responseQueue.length > 0) {
+  #|               return { done: false, value: client.responseQueue.shift() };
+  #|             }
+  #|             if (client.responseError) {
+  #|               const err = client.responseError;
+  #|               client.responseError = null;
+  #|               throw err;
+  #|             }
+  #|             if (client.responseDone) {
+  #|               return { done: true, value: new Uint8Array(0) };
+  #|             }
+  #|             return await new Promise((resolve, reject) => {
+  #|               waiters.push({ resolve, reject });
+  #|             });
+  #|           },
+  #|           cancel: async () => {
+  #|             client.responseQueue = [];
+  #|             client.responseDone = true;
+  #|             client.responseError = null;
+  #|             try { nodeRes.destroy(); } catch {}
+  #|             resolveWaitersDone();
+  #|           },
+  #|         };
+  #|         return toResponseObject(nodeRes);
+  #|       };
+  #|       const flushPendingChunks = async (pending) => {
+  #|         const req = pending?.request;
+  #|         if (!req) return;
+  #|         while (pending.bodyChunks.length > 0) {
+  #|           const chunk = pending.bodyChunks.shift();
+  #|           if (!chunk || chunk.length <= 0) continue;
+  #|           const written = req.write(chunk);
+  #|           pending.bodySize = Math.max(0, pending.bodySize - chunk.length);
+  #|           if (!written) {
+  #|             await new Promise((resolve, reject) => {
+  #|               const onDrain = () => {
+  #|                 cleanup();
+  #|                 resolve();
+  #|               };
+  #|               const onError = (err) => {
+  #|                 cleanup();
+  #|                 reject(err);
+  #|               };
+  #|               const cleanup = () => {
+  #|                 try { req.off('drain', onDrain); } catch {}
+  #|                 try { req.off('error', onError); } catch {}
+  #|               };
+  #|               req.once('drain', onDrain);
+  #|               req.once('error', onError);
+  #|             });
+  #|           }
+  #|         }
+  #|       };
+  #|       const startPendingRequest = async (client, pending, withContentLength) => {
+  #|         if (pending.started) return;
+  #|         const base = new URL(client.baseUrl);
+  #|         const method = pending.method || 'GET';
+  #|         const isConnect = method === 'CONNECT';
+  #|         const target = isConnect
+  #|           ? base
+  #|           : new URL(pending.path || '/', client.baseUrl);
+  #|         const requestPath = isConnect
+  #|           ? String(pending.path || '')
+  #|           : ((target.pathname || '/') + (target.search || ''));
+  #|         const headers = { ...(client.baseHeaders || {}), ...(pending.headers || {}) };
+  #|         if (
+  #|           withContentLength &&
+  #|           pending.bodySize > 0 &&
+  #|           !hasHeader(headers, 'content-length') &&
+  #|           !hasHeader(headers, 'transfer-encoding')
+  #|         ) {
+  #|           headers['content-length'] = String(pending.bodySize);
+  #|         }
+  #|         let resolveResponse = null;
+  #|         let rejectResponse = null;
+  #|         pending.responsePromise = new Promise((resolve, reject) => {
+  #|           resolveResponse = resolve;
+  #|           rejectResponse = reject;
+  #|         });
+  #|         // Avoid unhandled rejection when caller closes before awaiting end_request.
+  #|         pending.responsePromise.catch(() => {});
+  #|         pending.resolveResponse = resolveResponse;
+  #|         pending.rejectResponse = rejectResponse;
+  #|         pending.responseResolved = false;
+  #|         const transport =
+  #|           target.protocol === 'https:' ? await import('node:https') : await import('node:http');
+  #|         const options = {
+  #|           protocol: target.protocol,
+  #|           hostname: target.hostname,
+  #|           port: target.port
+  #|             ? Number(target.port)
+  #|             : (target.protocol === 'https:' ? 443 : 80),
+  #|           method,
+  #|           path: requestPath,
+  #|           headers,
+  #|         };
+  #|         const nodeReq = transport.request(options, (nodeRes) => {
+  #|           pending.response = nodeRes;
+  #|           const response = setupResponseReader(client, nodeRes);
+  #|           if (!pending.responseResolved) {
+  #|             pending.responseResolved = true;
+  #|             pending.resolveResponse(response);
+  #|           }
+  #|         });
+  #|         nodeReq.on('connect', (nodeRes, socket, head) => {
+  #|           const copiedHead =
+  #|             head && head.length > 0 ? new Uint8Array(head) : new Uint8Array(0);
+  #|           pending.connectSocket = socket;
+  #|           pending.connectHead = copiedHead;
+  #|           if (!pending.responseResolved) {
+  #|             pending.responseResolved = true;
+  #|             pending.resolveResponse(toResponseObject(nodeRes));
+  #|           }
+  #|         });
+  #|         nodeReq.on('error', (err) => {
+  #|           if (!pending.responseResolved && pending.rejectResponse) {
+  #|             pending.responseResolved = true;
+  #|             pending.rejectResponse(err);
+  #|           } else {
+  #|             client.responseDone = true;
+  #|             client.responseError = err;
+  #|             const waiters = client.responseWaiters || [];
+  #|             while (waiters.length > 0) {
+  #|               waiters.shift().reject(err);
+  #|             }
+  #|           }
+  #|         });
+  #|         pending.request = nodeReq;
+  #|         pending.started = true;
+  #|       };
+  #|       globalThis.__xhc = {
+  #|         nextId: 1,
+  #|         clients: new Map(),
+  #|         flushPendingChunks,
+  #|         startPendingRequest,
+  #|         attachTunnel,
+  #|         resetTunnel,
+  #|       };
+  #|     }
+  #|     const state = globalThis.__xhc;
+  #|     const parsed = new URL(url);
+  #|     if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+  #|       throw new Error(`unsupported protocol: ${parsed.protocol}`);
+  #|     }
+  #|     if ((parsed.pathname && parsed.pathname !== '/') || parsed.search || parsed.hash) {
+  #|       throw new Error('client url must not include path/query/hash');
+  #|     }
+  #|     const id = state.nextId++;
+  #|     const baseHeaders = JSON.parse(headersJson || '{}');
+  #|     state.clients.set(id, {
+  #|       baseUrl: parsed.origin,
+  #|       baseHeaders,
+  #|       pending: null,
+  #|       responseReader: null,
+  #|       responseQueue: [],
+  #|       responseDone: true,
+  #|       responseError: null,
+  #|       responseWaiters: [],
+  #|       tunnelSocket: null,
+  #|       tunnelQueue: [],
+  #|       tunnelWaiters: [],
+  #|       tunnelError: null,
+  #|       tunnelEnded: true,
+  #|       tunnelOnData: null,
+  #|       tunnelOnEnd: null,
+  #|       tunnelOnClose: null,
+  #|       tunnelOnError: null,
+  #|       tunnelAttached: false,
+  #|       passthrough: false,
+  #|       closed: false,
+  #|     });
+  #|     return { id, error: '' };
+  #|   } catch (err) {
+  #|     return { id: 0, error: String(err?.message || err || 'invalid url') };
+  #|   }
+  #| }
+
+///|
+extern "js" fn js_client_close(id : Int) -> Unit =
+  #| (id) => {
+  #|   const state = globalThis.__xhc;
+  #|   const client = state?.clients.get(id);
+  #|   if (!client) return;
+  #|   client.closed = true;
+  #|   try { state.resetTunnel(client, true); } catch {}
+  #|   const pending = client.pending;
+  #|   if (pending?.request) {
+  #|     try { pending.request.destroy(); } catch {}
+  #|   }
+  #|   if (!pending?.responseResolved && pending?.rejectResponse) {
+  #|     pending.responseResolved = true;
+  #|     try { pending.rejectResponse(new Error('client closed')); } catch {}
+  #|   }
+  #|   client.pending = null;
+  #|   client.responseQueue = [];
+  #|   if (client.responseReader) {
+  #|     try { client.responseReader.cancel().catch(() => {}); } catch {}
+  #|   }
+  #|   client.responseWaiters = [];
+  #|   client.responseError = null;
+  #|   state.clients.delete(id);
+  #| }
+
+///|
+extern "js" fn js_client_request_begin(
+  id : Int,
+  meth : String,
+  path : String,
+  extra_headers_json : String,
+) -> String =
+  #| (id, meth, path, extraHeadersJson) => {
+  #|   const state = globalThis.__xhc;
+  #|   const client = state?.clients.get(id);
+  #|   if (!client || client.closed) return 'Client not found';
+  #|   if (client.passthrough) return 'client is in passthrough mode';
+  #|   if (client.tunnelSocket) return 'client has active tunnel socket';
+  #|   if (client.pending) return 'request already started';
+  #|   if (client.responseReader) {
+  #|     try { client.responseReader.cancel().catch(() => {}); } catch {}
+  #|   }
+  #|   client.responseReader = null;
+  #|   client.responseQueue = [];
+  #|   client.responseDone = true;
+  #|   client.responseError = null;
+  #|   client.responseWaiters = [];
+  #|   let headers = {};
+  #|   if (extraHeadersJson && extraHeadersJson.length > 0) {
+  #|     try { headers = JSON.parse(extraHeadersJson); } catch {}
+  #|   }
+  #|   client.pending = {
+  #|     method: meth || 'GET',
+  #|     path: path || '/',
+  #|     headers,
+  #|     bodyChunks: [],
+  #|     bodySize: 0,
+  #|     started: false,
+  #|     ended: false,
+  #|     request: null,
+  #|     response: null,
+  #|     responsePromise: null,
+  #|     resolveResponse: null,
+  #|     rejectResponse: null,
+  #|     responseResolved: false,
+  #|     connectSocket: null,
+  #|     connectHead: null,
+  #|   };
+  #|   return '';
+  #| }
+
+///|
+extern "js" fn js_client_request_append_body(
+  id : Int,
+  data : Bytes,
+  offset : Int,
+  len : Int,
+) -> Int =
+  #| (id, data, offset, len) => {
+  #|   const state = globalThis.__xhc;
+  #|   const client = state?.clients.get(id);
+  #|   if (!client || client.closed) return 0;
+  #|   const req = client.pending;
+  #|   if (!req || req.ended) return 0;
+  #|   const start = Math.max(0, offset | 0);
+  #|   const maxLen = Math.max(0, len | 0);
+  #|   const end = Math.min(data.length, start + maxLen);
+  #|   if (end <= start) return 0;
+  #|   const part = data.subarray(start, end);
+  #|   const copied = new Uint8Array(part.length);
+  #|   copied.set(part);
+  #|   req.bodyChunks.push(copied);
+  #|   req.bodySize += copied.length;
+  #|   return copied.length;
+  #| }
+
+///|
+extern "js" fn js_client_request_flush(id : Int) -> @js_async.Promise[String] =
+  #| async (id) => {
+  #|   const state = globalThis.__xhc;
+  #|   const client = state?.clients.get(id);
+  #|   if (!client || client.closed) return 'Client not found';
+  #|   if (client.passthrough) return 'client is in passthrough mode';
+  #|   const pending = client.pending;
+  #|   if (!pending) return 'no pending request';
+  #|   if (pending.ended) return 'request already ended';
+  #|   try {
+  #|     if (!pending.started && pending.bodySize <= 0) {
+  #|       return '';
+  #|     }
+  #|     if (!pending.started) {
+  #|       await state.startPendingRequest(client, pending, false);
+  #|     }
+  #|     await state.flushPendingChunks(pending);
+  #|     return '';
+  #|   } catch (err) {
+  #|     return String(err?.message || err || 'network error');
+  #|   }
+  #| }
+
+///|
+extern "js" fn js_client_end_request(
+  id : Int,
+) -> @js_async.Promise[JsClientResponse] =
+  #| async (id) => {
+  #|   const state = globalThis.__xhc;
+  #|   const client = state?.clients.get(id);
+  #|   if (!client || client.closed) throw new Error('Client not found');
+  #|   if (client.passthrough) throw new Error('client is in passthrough mode');
+  #|   const pending = client.pending;
+  #|   if (!pending) throw new Error('no pending request');
+  #|   if (pending.ended) throw new Error('request already ended');
+  #|   try {
+  #|     if (!pending.started) {
+  #|       await state.startPendingRequest(client, pending, true);
+  #|     }
+  #|     await state.flushPendingChunks(pending);
+  #|     pending.ended = true;
+  #|     pending.request.end();
+  #|     const response = await pending.responsePromise;
+  #|     if (pending.connectSocket) {
+  #|       try { state.resetTunnel(client, true); } catch {}
+  #|       client.tunnelSocket = pending.connectSocket;
+  #|       client.tunnelQueue = [];
+  #|       client.tunnelWaiters = [];
+  #|       client.tunnelError = null;
+  #|       client.tunnelEnded = pending.connectSocket.destroyed ? true : false;
+  #|       client.tunnelAttached = false;
+  #|       client.passthrough = false;
+  #|       if (pending.connectHead && pending.connectHead.length > 0) {
+  #|         client.tunnelQueue.push(pending.connectHead);
+  #|       }
+  #|     }
+  #|     client.pending = null;
+  #|     return response;
+  #|   } catch (err) {
+  #|     if (pending.request) {
+  #|       try { pending.request.destroy(); } catch {}
+  #|     }
+  #|     client.pending = null;
+  #|     throw err;
+  #|   }
+  #| }
+
+///|
+extern "js" fn js_client_read(
+  id : Int,
+  max_len : Int,
+) -> @js_async.Promise[Bytes] =
+  #| async (id, maxLen) => {
+  #|   const state = globalThis.__xhc;
+  #|   const client = state?.clients.get(id);
+  #|   if (!client || client.closed) return new Uint8Array(0);
+  #|   const limit = Math.max(0, Number(maxLen || 0));
+  #|   const pull = () => {
+  #|     if (client.responseQueue.length === 0) return null;
+  #|     const chunk = client.responseQueue.shift();
+  #|     if (!(limit > 0) || chunk.length <= limit) return chunk;
+  #|     const head = chunk.subarray(0, limit);
+  #|     const tail = chunk.subarray(limit);
+  #|     if (tail.length > 0) client.responseQueue.unshift(tail);
+  #|     return head;
+  #|   };
+  #|   const queued = pull();
+  #|   if (queued) return queued;
+  #|   if (client.responseDone || !client.responseReader) return new Uint8Array(0);
+  #|   const { done, value } = await client.responseReader.read();
+  #|   if (done) {
+  #|     client.responseDone = true;
+  #|     return new Uint8Array(0);
+  #|   }
+  #|   const chunk = value instanceof Uint8Array ? value : new Uint8Array(value);
+  #|   if (!(limit > 0) || chunk.length <= limit) return chunk;
+  #|   const head = chunk.subarray(0, limit);
+  #|   const tail = chunk.subarray(limit);
+  #|   if (tail.length > 0) client.responseQueue.unshift(tail);
+  #|   return head;
+  #| }
+
+///|
+extern "js" fn js_client_skip_response_body(
+  id : Int,
+) -> @js_async.Promise[Unit] =
+  #| async (id) => {
+  #|   const state = globalThis.__xhc;
+  #|   const client = state?.clients.get(id);
+  #|   if (!client || client.closed) return;
+  #|   client.responseQueue = [];
+  #|   if (client.responseReader) {
+  #|     try { await client.responseReader.cancel(); } catch {}
+  #|   }
+  #|   client.responseReader = null;
+  #|   client.responseDone = true;
+  #|   client.responseError = null;
+  #|   client.responseWaiters = [];
+  #| }
+
+///|
+extern "js" fn js_client_enter_passthrough(id : Int) -> String =
+  #| (id) => {
+  #|   const state = globalThis.__xhc;
+  #|   const client = state?.clients.get(id);
+  #|   if (!client || client.closed) return 'Client not found';
+  #|   if (client.pending) return 'request not completed';
+  #|   if (!client.tunnelSocket) return 'no tunnel available';
+  #|   if (client.responseReader) {
+  #|     try { client.responseReader.cancel().catch(() => {}); } catch {}
+  #|   }
+  #|   client.responseReader = null;
+  #|   client.responseQueue = [];
+  #|   client.responseDone = true;
+  #|   client.responseError = null;
+  #|   client.responseWaiters = [];
+  #|   state.attachTunnel(client);
+  #|   client.passthrough = true;
+  #|   return '';
+  #| }
+
+///|
+extern "js" fn js_client_tunnel_read(
+  id : Int,
+  max_len : Int,
+) -> @js_async.Promise[Bytes] =
+  #| async (id, maxLen) => {
+  #|   const state = globalThis.__xhc;
+  #|   const client = state?.clients.get(id);
+  #|   if (!client || client.closed || !client.passthrough) return new Uint8Array(0);
+  #|   if (!client.tunnelSocket) return new Uint8Array(0);
+  #|   state.attachTunnel(client);
+  #|   const limit = Math.max(0, Number(maxLen || 0));
+  #|   const pull = () => {
+  #|     if (client.tunnelQueue.length === 0) return null;
+  #|     const chunk = client.tunnelQueue.shift();
+  #|     if (!(limit > 0) || chunk.length <= limit) return chunk;
+  #|     const head = chunk.subarray(0, limit);
+  #|     const tail = chunk.subarray(limit);
+  #|     if (tail.length > 0) client.tunnelQueue.unshift(tail);
+  #|     return head;
+  #|   };
+  #|   const queued = pull();
+  #|   if (queued) return queued;
+  #|   if (client.tunnelError) {
+  #|     const err = client.tunnelError;
+  #|     client.tunnelError = null;
+  #|     throw err;
+  #|   }
+  #|   if (client.tunnelEnded) return new Uint8Array(0);
+  #|   const chunk = await new Promise((resolve, reject) => {
+  #|     client.tunnelWaiters.push({ resolve, reject });
+  #|   });
+  #|   if (!chunk || chunk.length <= 0) return new Uint8Array(0);
+  #|   if (!(limit > 0) || chunk.length <= limit) return chunk;
+  #|   const head = chunk.subarray(0, limit);
+  #|   const tail = chunk.subarray(limit);
+  #|   if (tail.length > 0) client.tunnelQueue.unshift(tail);
+  #|   return head;
+  #| }
+
+///|
+extern "js" fn js_client_tunnel_write(
+  id : Int,
+  data : Bytes,
+  offset : Int,
+  len : Int,
+) -> Int =
+  #| (id, data, offset, len) => {
+  #|   const state = globalThis.__xhc;
+  #|   const client = state?.clients.get(id);
+  #|   if (!client || client.closed || !client.passthrough) return 0;
+  #|   const socket = client.tunnelSocket;
+  #|   if (!socket || socket.destroyed) return 0;
+  #|   const start = Math.max(0, offset | 0);
+  #|   const maxLen = Math.max(0, len | 0);
+  #|   const end = Math.min(data.length, start + maxLen);
+  #|   if (end <= start) return 0;
+  #|   const part = data.subarray(start, end);
+  #|   try {
+  #|     socket.write(part);
+  #|     return part.length;
+  #|   } catch {
+  #|     return 0;
+  #|   }
+  #| }
+
+///|
+fn request_method_to_string(meth : RequestMethod) -> String {
+  match meth {
+    Get => "GET"
+    Head => "HEAD"
+    Post => "POST"
+    Put => "PUT"
+    Delete => "DELETE"
+    Connect => "CONNECT"
+    Options => "OPTIONS"
+    Trace => "TRACE"
+    Patch => "PATCH"
+  }
+}
+
+///|
+pub struct Client {
+  id : Int
+  mut closed : Bool
+  mut passthrough_mode : Bool
+}
+
+///|
+pub async fn Client::new(
+  url : String,
+  headers? : Map[String, String],
+) -> Client raise HttpError {
+  let result = js_client_new(url, headers_to_json(headers.unwrap_or({})))
+  if result.error != "" {
+    raise HttpError::InvalidUrl(url)
+  }
+  Client::{ id: result.id, closed: false, passthrough_mode: false }
+}
+
+///|
+pub fn Client::close(self : Client) -> Unit {
+  if self.closed {
+    return
+  }
+  js_client_close(self.id)
+  self.closed = true
+  self.passthrough_mode = false
+}
+
+///|
+pub async fn Client::request(
+  self : Client,
+  meth : RequestMethod,
+  path : String,
+  extra_headers? : Map[String, String],
+) -> Unit raise HttpError {
+  if self.closed {
+    raise HttpError::NetworkError("client closed")
+  }
+  if self.passthrough_mode {
+    raise HttpError::NetworkError("client is in passthrough mode")
+  }
+  let err = js_client_request_begin(
+    self.id,
+    request_method_to_string(meth),
+    path,
+    headers_to_json(extra_headers.unwrap_or({})),
+  )
+  if err != "" {
+    raise HttpError::NetworkError(err)
+  }
+}
+
+///|
+pub async fn Client::end_request(self : Client) -> Response raise HttpError {
+  if self.closed {
+    raise HttpError::NetworkError("client closed")
+  }
+  if self.passthrough_mode {
+    raise HttpError::NetworkError("client is in passthrough mode")
+  }
+  let controller = @js_async.AbortController::new()
+  let promise = js_client_end_request(self.id)
+  let result = @js_async.Promise::wait(promise, abort_controller=controller) catch {
+    err => raise HttpError::NetworkError(err.to_string())
+  }
+  Response::{
+    code: result.code,
+    reason: result.reason,
+    headers: parse_headers_json(result.headers_json),
+  }
+}
+
+///|
+pub async fn Client::flush(self : Client) -> Unit raise HttpError {
+  if self.closed {
+    raise HttpError::NetworkError("client closed")
+  }
+  if self.passthrough_mode {
+    raise HttpError::NetworkError("client is in passthrough mode")
+  }
+  let controller = @js_async.AbortController::new()
+  let promise = js_client_request_flush(self.id)
+  let err = @js_async.Promise::wait(promise, abort_controller=controller) catch {
+    e => raise HttpError::NetworkError(e.to_string())
+  }
+  if err != "" {
+    raise HttpError::NetworkError(err)
+  }
+}
+
+///|
+pub async fn Client::skip_response_body(self : Client) -> Unit raise HttpError {
+  if self.closed {
+    return
+  }
+  if self.passthrough_mode {
+    raise HttpError::NetworkError("client is in passthrough mode")
+  }
+  let controller = @js_async.AbortController::new()
+  let promise = js_client_skip_response_body(self.id)
+  @js_async.Promise::wait(promise, abort_controller=controller) catch {
+    err => raise HttpError::NetworkError(err.to_string())
+  }
+}
+
+///|
+pub async fn Client::enter_passthrough_mode(
+  self : Client,
+) -> Unit raise HttpError {
+  if self.closed {
+    raise HttpError::NetworkError("client closed")
+  }
+  if self.passthrough_mode {
+    return
+  }
+  let err = js_client_enter_passthrough(self.id)
+  if err != "" {
+    raise HttpError::NetworkError(err)
+  }
+  self.passthrough_mode = true
+}
+
+///|
+pub async fn Client::get(
+  self : Client,
+  path : String,
+  extra_headers? : Map[String, String],
+  body? : &@io.Data,
+) -> Response raise HttpError {
+  self.request(Get, path, extra_headers=extra_headers.unwrap_or({}))
+  match body {
+    Some(data) =>
+      ignore(
+        self.write(data) catch {
+          err => raise HttpError::NetworkError(err.to_string())
+        },
+      )
+    None => ()
+  }
+  self.end_request()
+}
+
+///|
+pub async fn Client::post(
+  self : Client,
+  path : String,
+  body : &@io.Data,
+  extra_headers? : Map[String, String],
+) -> Response raise HttpError {
+  self.request(Post, path, extra_headers=extra_headers.unwrap_or({}))
+  ignore(
+    self.write(body) catch {
+      err => raise HttpError::NetworkError(err.to_string())
+    },
+  )
+  self.end_request()
+}
+
+///|
+pub async fn Client::put(
+  self : Client,
+  path : String,
+  body : &@io.Data,
+  extra_headers? : Map[String, String],
+) -> Response raise HttpError {
+  self.request(Put, path, extra_headers=extra_headers.unwrap_or({}))
+  ignore(
+    self.write(body) catch {
+      err => raise HttpError::NetworkError(err.to_string())
+    },
+  )
+  self.end_request()
+}
+
+///|
+pub impl @io.Reader for Client with _get_internal_buffer(self) {
+  ignore(self)
+  @io.ReaderBuffer::new()
+}
+
+///|
+pub impl @io.Reader for Client with _direct_read(self, _buf, offset~, max_len~) {
+  if self.closed {
+    0
+  } else {
+    let controller = @js_async.AbortController::new()
+    let promise = if self.passthrough_mode {
+      js_client_tunnel_read(self.id, max_len)
+    } else {
+      js_client_read(self.id, max_len)
+    }
+    let data = @js_async.Promise::wait(promise, abort_controller=controller) catch {
+      _ => return 0
+    }
+    let len = data.length()
+    if len <= 0 {
+      0
+    } else {
+      let n = @cmp.minimum(max_len, len)
+      _buf.blit_from_bytes(offset, data, 0, n)
+      n
+    }
+  }
+}
+
+///|
+pub impl @io.Writer for Client with write_once(self, _buf, offset~, len~) {
+  if self.closed || offset >= _buf.length() {
+    0
+  } else {
+    let n = @cmp.minimum(len, _buf.length() - offset)
+    if n <= 0 {
+      0
+    } else if self.passthrough_mode {
+      js_client_tunnel_write(self.id, _buf, offset, n)
+    } else {
+      js_client_request_append_body(self.id, _buf, offset, n)
+    }
+  }
 }
