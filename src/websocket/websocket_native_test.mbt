@@ -448,9 +448,7 @@ async test "websocket unicode text" {
     let client = @websocket.Conn::connect("ws://localhost:\{addr.port()}")
     defer client.close()
     let test_strings = [
-      "\u{3053}\u{3093}\u{306B}\u{3061}\u{306F}",
-      "\u{1F600}\u{1F680}\u{2764}",
-      "hello \u{4E16}\u{754C}",
+      "\u{3053}\u{3093}\u{306B}\u{3061}\u{306F}", "\u{1F600}\u{1F680}\u{2764}", "hello \u{4E16}\u{754C}",
     ]
     for s in test_strings {
       client.send_text(s)
@@ -491,9 +489,7 @@ async test "websocket empty binary" {
     let empty = Bytes::new(0)
     client.send_binary(empty[:])
     let msg = client.recv()
-    guard msg is @websocket.Binary(received) else {
-      fail("expected Binary")
-    }
+    guard msg is @websocket.Binary(received) else { fail("expected Binary") }
     assert_eq(received.length(), 0)
     client.send_close()
   })
@@ -529,9 +525,7 @@ async test "websocket large binary" {
     let data = Bytes::makei(size, fn(i) { (i % 256).to_byte() })
     client.send_binary(data[:])
     let msg = client.recv()
-    guard msg is @websocket.Binary(received) else {
-      fail("expected Binary")
-    }
+    guard msg is @websocket.Binary(received) else { fail("expected Binary") }
     assert_eq(received.length(), size)
     assert_eq(received[0], b'\x00')
     assert_eq(received[255], b'\xFF')
@@ -581,7 +575,8 @@ async test "websocket close with custom code" {
       let ws = @async_ws.from_http_server(request, conn)
       defer ws.close()
       try ws.recv() catch {
-        @async_ws.ConnectionClosed(code, _) => inspect(code, content="Other(4000)")
+        @async_ws.ConnectionClosed(code, _) =>
+          inspect(code, content="Other(4000)")
         err => raise err
       } noraise {
         _ => ()
@@ -607,9 +602,7 @@ async test "websocket invalid handshake" {
       ignore(conn.read_request())
     })
     try {
-      let client = @websocket.Conn::connect(
-        "ws://localhost:\{addr.port()}",
-      )
+      let client = @websocket.Conn::connect("ws://localhost:\{addr.port()}")
       client.close()
       fail("expected InvalidHandshake error")
     } catch {

@@ -53,7 +53,12 @@ extern "js" fn js_stdin_read(max_len : Int) -> @js_async.Promise[Bytes] =
   #| }
 
 ///|
-extern "js" fn js_write(target : Int, data : Bytes, offset : Int, len : Int) -> Unit =
+extern "js" fn js_write(
+  target : Int,
+  data : Bytes,
+  offset : Int,
+  len : Int,
+) -> Unit =
   #| (target, data, offset, len) => {
   #|   const slice = data.subarray(offset, offset + len);
   #|   (target === 1 ? process.stdout : process.stderr).write(slice);

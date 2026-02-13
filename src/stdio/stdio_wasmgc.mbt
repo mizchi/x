@@ -35,10 +35,10 @@ pub impl @io.Writer for Output with write_once(self, buf, offset~, len~) {
 }
 
 ///|
-pub let stdin : Input = Input::{}
+pub let stdin : Input = Input::{  }
 
 ///|
-pub let stdout : Output = Output::{}
+pub let stdout : Output = Output::{  }
 
 ///|
-pub let stderr : Output = Output::{}
+pub let stderr : Output = Output::{  }

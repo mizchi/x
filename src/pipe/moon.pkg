@@ -10,10 +10,10 @@ import {
 
 options(
   targets: {
-    "pipe_native.mbt": [ "native" ],
     "pipe_js.mbt": [ "js" ],
+    "pipe_native.mbt": [ "native" ],
+    "pipe_test.mbt": [ "native", "js" ],
     "pipe_wasm.mbt": [ "wasm" ],
     "pipe_wasmgc.mbt": [ "wasm-gc" ],
-    "pipe_test.mbt": [ "native", "js" ],
   },
 )

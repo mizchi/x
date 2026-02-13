@@ -16,13 +16,10 @@ priv struct MergedResult {
 priv type JsPromise[T]
 
 ///|
-fn[T, U] JsPromise::cast(self : JsPromise[T]) -> @js_async.Promise[U] =
-  "%identity"
+fn[T, U] JsPromise::cast(self : JsPromise[T]) -> @js_async.Promise[U] = "%identity"
 
 ///|
-fn env_to_arrays(
-  env : Map[String, String],
-) -> (Array[String], Array[String]) {
+fn env_to_arrays(env : Map[String, String]) -> (Array[String], Array[String]) {
   let keys : Array[String] = []
   let values : Array[String] = []
   for k, v in env {

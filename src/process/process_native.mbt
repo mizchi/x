@@ -17,5 +17,11 @@ async fn collect_output_merged_internal(
   extra_env? : Map[String, String] = {},
   inherit_env? : Bool = true,
 ) -> (Int, &@async_io.Data) {
-  @async_process.collect_output_merged(cmd, args, cwd?, extra_env~, inherit_env~)
+  @async_process.collect_output_merged(
+    cmd,
+    args,
+    cwd?,
+    extra_env~,
+    inherit_env~,
+  )
 }

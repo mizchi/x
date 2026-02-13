@@ -10,11 +10,11 @@ import {
 
 options(
   targets: {
-    "stdio_native.mbt": [ "native" ],
     "stdio_js.mbt": [ "js" ],
+    "stdio_js_test.mbt": [ "js" ],
+    "stdio_native.mbt": [ "native" ],
+    "stdio_native_test.mbt": [ "native" ],
     "stdio_wasm.mbt": [ "wasm" ],
     "stdio_wasmgc.mbt": [ "wasm-gc" ],
-    "stdio_native_test.mbt": [ "native" ],
-    "stdio_js_test.mbt": [ "js" ],
   },
 )
