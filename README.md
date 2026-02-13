@@ -178,4 +178,4 @@ BASE_URL=http://127.0.0.1:18080 BODY_SIZE=16384 k6 run scripts/k6/http_discard.j
 
 ## License
 
-MIT
+Apache-2.0
