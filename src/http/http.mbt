@@ -40,6 +40,18 @@ pub suberror HttpError {
 } derive(Show)
 
 ///|
+fn classify_http_error(message : String) -> HttpError {
+  let lower = message.to_lower()
+  if lower.contains("timeout") {
+    TimeoutError
+  } else if lower.contains("not supported") || lower.contains("unsupported") {
+    NotSupported
+  } else {
+    NetworkError(message)
+  }
+}
+
+///|
 fn headers_to_json(headers : Map[String, String]) -> String {
   let entries : Map[String, Json] = {}
   for k, v in headers {

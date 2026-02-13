@@ -8,6 +8,8 @@ import {
   "moonbitlang/core/encoding/utf8",
 } for "test"
 
+warnings = "-0029-0024"
+
 options(
   targets: {
     "pipe_js.mbt": [ "js" ],

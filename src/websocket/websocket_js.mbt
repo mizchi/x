@@ -59,19 +59,52 @@ extern "js" fn js_ws_recv(id : Int) -> JsPromise[JsWsMessage] =
   #| }
 
 ///|
-extern "js" fn js_ws_send_text(id : Int, text : String) -> Unit =
-  #| (id, text) => { globalThis.__xws.conns.get(id).ws.send(text); }
+extern "js" fn js_ws_send_text(id : Int, text : String) -> JsPromise[Unit] =
+  #| async (id, text) => {
+  #|   const c = globalThis.__xws?.conns?.get(id);
+  #|   if (!c || c.closed || c.ws.readyState !== 1) throw new Error('Connection not open');
+  #|   c.ws.send(text);
+  #| }
 
 ///|
-extern "js" fn js_ws_send_binary(id : Int, data : Bytes) -> Unit =
-  #| (id, data) => { globalThis.__xws.conns.get(id).ws.send(data); }
+extern "js" fn js_ws_send_binary(id : Int, data : Bytes) -> JsPromise[Unit] =
+  #| async (id, data) => {
+  #|   const c = globalThis.__xws?.conns?.get(id);
+  #|   if (!c || c.closed || c.ws.readyState !== 1) throw new Error('Connection not open');
+  #|   c.ws.send(data);
+  #| }
 
 ///|
-extern "js" fn js_ws_close(id : Int, code : Int, reason : String) -> Unit =
-  #| (id, code, reason) => {
+extern "js" fn js_ws_close(
+  id : Int,
+  code : Int,
+  reason : String,
+) -> JsPromise[Unit] =
+  #| async (id, code, reason) => {
   #|   const s = globalThis.__xws;
   #|   const c = s.conns.get(id);
-  #|   if (c) { c.ws.close(code, reason); s.conns.delete(id); }
+  #|   if (!c || c.closed) throw new Error('Connection not open');
+  #|   c.ws.close(code, reason);
+  #|   s.conns.delete(id);
+  #| }
+
+///|
+extern "js" fn js_ws_force_close(id : Int, code : Int, reason : String) -> Unit =
+  #| (id, code, reason) => {
+  #|   const s = globalThis.__xws;
+  #|   const c = s?.conns?.get(id);
+  #|   if (c) {
+  #|     try { c.ws.close(code, reason); } catch {}
+  #|     s.conns.delete(id);
+  #|   }
+  #| }
+
+///|
+extern "js" fn js_ws_ping(id : Int) -> JsPromise[Unit] =
+  #| async (id) => {
+  #|   const c = globalThis.__xws?.conns?.get(id);
+  #|   if (!c || c.closed || c.ws.readyState !== 1) throw new Error('Connection not open');
+  #|   // Browser WebSocket API does not support control ping frames.
   #| }
 
 // Public API
@@ -123,7 +156,10 @@ pub async fn Conn::send_text(
   self : Conn,
   text : StringView,
 ) -> Unit raise WebSocketError {
-  js_ws_send_text(self.id, text.to_string())
+  let promise = js_ws_send_text(self.id, text.to_string())
+  @js_async.run_promise(fn(_signal) { promise.cast() }) catch {
+    err => raise WebSocketError::ProtocolError(err.to_string())
+  }
 }
 
 ///|
@@ -132,7 +168,10 @@ pub async fn Conn::send_binary(
   data : BytesView,
 ) -> Unit raise WebSocketError {
   let bytes = Bytes::makei(data.length(), fn(i) { data[i] })
-  js_ws_send_binary(self.id, bytes)
+  let promise = js_ws_send_binary(self.id, bytes)
+  @js_async.run_promise(fn(_signal) { promise.cast() }) catch {
+    err => raise WebSocketError::ProtocolError(err.to_string())
+  }
 }
 
 ///|
@@ -145,12 +184,15 @@ pub async fn Conn::send_close(
     Some(cc) => close_code_to_int(cc)
     None => 1000
   }
-  js_ws_close(self.id, c, reason.unwrap_or(""))
+  let promise = js_ws_close(self.id, c, reason.unwrap_or(""))
+  @js_async.run_promise(fn(_signal) { promise.cast() }) catch {
+    err => raise WebSocketError::ProtocolError(err.to_string())
+  }
 }
 
 ///|
 pub fn Conn::close(self : Conn) -> Unit {
-  js_ws_close(self.id, 1000, "")
+  js_ws_force_close(self.id, 1000, "")
 }
 
 ///|
@@ -158,7 +200,9 @@ pub async fn Conn::ping(
   self : Conn,
   msg? : BytesView,
 ) -> Unit raise WebSocketError {
-  // Browser WebSocket API does not support ping frames directly
   ignore(msg)
-  ignore(self)
+  let promise = js_ws_ping(self.id)
+  @js_async.run_promise(fn(_signal) { promise.cast() }) catch {
+    err => raise WebSocketError::ProtocolError(err.to_string())
+  }
 }

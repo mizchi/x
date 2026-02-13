@@ -65,3 +65,5 @@ fn close_code_to_int(code : CloseCode) -> Int {
     Other(n) => n.to_int()
   }
 }
+
+///|

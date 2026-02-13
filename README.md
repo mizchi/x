@@ -9,6 +9,11 @@ Node.js backend compatibility layer for `moonbitlang/async` in [MoonBit](https:/
 - Run code written against `moonbitlang/async` on Node.js (`--target js`).
 - Keep native (`--target native`) semantics close by forwarding to upstream implementations.
 
+## Related Package
+
+- `mizchi/x`: API is aligned with `moonbitlang/async` contracts (native-compatible surface).
+- `mizchi/js/node`: API is aligned with raw Node.js/JavaScript style APIs.
+
 ## Dependencies
 
 | Dependency | Version |

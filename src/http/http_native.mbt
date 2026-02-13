@@ -105,14 +105,14 @@ pub async fn Client::request(
     path,
     extra_headers=extra_headers.unwrap_or({}),
   ) catch {
-    err => raise HttpError::NetworkError(err.to_string())
+    err => raise classify_http_error(err.to_string())
   }
 }
 
 ///|
 pub async fn Client::end_request(self : Client) -> Response raise HttpError {
   let response = self.inner.end_request() catch {
-    err => raise HttpError::NetworkError(err.to_string())
+    err => raise classify_http_error(err.to_string())
   }
   to_response(response)
 }
@@ -120,14 +120,14 @@ pub async fn Client::end_request(self : Client) -> Response raise HttpError {
 ///|
 pub async fn Client::flush(self : Client) -> Unit raise HttpError {
   self.inner.flush() catch {
-    err => raise HttpError::NetworkError(err.to_string())
+    err => raise classify_http_error(err.to_string())
   }
 }
 
 ///|
 pub async fn Client::skip_response_body(self : Client) -> Unit raise HttpError {
   self.inner.skip_response_body() catch {
-    err => raise HttpError::NetworkError(err.to_string())
+    err => raise classify_http_error(err.to_string())
   }
 }
 
@@ -136,7 +136,7 @@ pub async fn Client::enter_passthrough_mode(
   self : Client,
 ) -> Unit raise HttpError {
   self.inner.enter_passthrough_mode() catch {
-    err => raise HttpError::NetworkError(err.to_string())
+    err => raise classify_http_error(err.to_string())
   }
 }
 
@@ -152,7 +152,7 @@ pub async fn Client::get(
     extra_headers=extra_headers.unwrap_or({}),
     body?,
   ) catch {
-    err => raise HttpError::NetworkError(err.to_string())
+    err => raise classify_http_error(err.to_string())
   }
   to_response(response)
 }
@@ -169,7 +169,7 @@ pub async fn Client::post(
     body,
     extra_headers=extra_headers.unwrap_or({}),
   ) catch {
-    err => raise HttpError::NetworkError(err.to_string())
+    err => raise classify_http_error(err.to_string())
   }
   to_response(response)
 }
@@ -186,7 +186,7 @@ pub async fn Client::put(
     body,
     extra_headers=extra_headers.unwrap_or({}),
   ) catch {
-    err => raise HttpError::NetworkError(err.to_string())
+    err => raise classify_http_error(err.to_string())
   }
   to_response(response)
 }
@@ -227,13 +227,13 @@ async fn request_internal(
   } catch {
     err => {
       client.close()
-      raise HttpError::NetworkError(err.to_string())
+      raise classify_http_error(err.to_string())
     }
   }
   let body_data : &@io.Data = @io.Reader::read_all(client) catch {
     err => {
       client.close()
-      raise HttpError::NetworkError(err.to_string())
+      raise classify_http_error(err.to_string())
     }
   }
   client.close()
@@ -268,7 +268,7 @@ async fn stream_request_internal(
   } catch {
     err => {
       client.close()
-      raise HttpError::NetworkError(err.to_string())
+      raise classify_http_error(err.to_string())
     }
   }
   (to_response(resp), Stream::{ inner: client })
@@ -304,14 +304,14 @@ pub async fn put_stream(
 ///|
 pub async fn Stream::read_some(self : Stream) -> Bytes? raise HttpError {
   self.inner.read_some() catch {
-    err => raise HttpError::NetworkError(err.to_string())
+    err => raise classify_http_error(err.to_string())
   }
 }
 
 ///|
 pub async fn Stream::read_all(self : Stream) -> Bytes raise HttpError {
   let data : &@io.Data = @io.Reader::read_all(self.inner) catch {
-    err => raise HttpError::NetworkError(err.to_string())
+    err => raise classify_http_error(err.to_string())
   }
   data.binary()
 }
@@ -422,7 +422,7 @@ pub fn Server::new(
     reuse_addr?,
     headers=headers.unwrap_or({}),
   ) catch {
-    err => raise HttpError::NetworkError(err.to_string())
+    err => raise classify_http_error(err.to_string())
   }
   Server::{ inner: server }
 }
@@ -447,7 +447,13 @@ pub async fn Server::close_graceful(
   self : Server,
   timeout_ms? : Int,
 ) -> Unit raise HttpError {
-  ignore(timeout_ms)
+  let timeout = timeout_ms.unwrap_or(30000)
+  if timeout < 0 {
+    raise HttpError::NetworkError("timeout_ms must be >= 0")
+  }
+  @async.sleep(0) catch {
+    err => raise classify_http_error(err.to_string())
+  }
   self.close()
 }
 
@@ -456,7 +462,7 @@ pub async fn Server::accept(
   self : Server,
 ) -> (ServerConnection, Addr) raise HttpError {
   let (conn, addr) = self.inner.accept() catch {
-    err => raise HttpError::NetworkError(err.to_string())
+    err => raise classify_http_error(err.to_string())
   }
   (ServerConnection::{ inner: conn }, to_addr(addr))
 }
@@ -476,7 +482,7 @@ pub async fn Server::run_forever(
     allow_failure?,
     max_connections?,
   ) catch {
-    err => raise HttpError::NetworkError(err.to_string())
+    err => raise classify_http_error(err.to_string())
   }
 }
 
@@ -495,7 +501,7 @@ pub async fn ServerConnection::read_request(
   self : ServerConnection,
 ) -> Request raise HttpError {
   let req = self.inner.read_request() catch {
-    err => raise HttpError::NetworkError(err.to_string())
+    err => raise classify_http_error(err.to_string())
   }
   to_request(req)
 }
@@ -505,7 +511,7 @@ pub async fn ServerConnection::skip_request_body(
   self : ServerConnection,
 ) -> Unit raise HttpError {
   self.inner.skip_request_body() catch {
-    err => raise HttpError::NetworkError(err.to_string())
+    err => raise classify_http_error(err.to_string())
   }
 }
 
@@ -521,7 +527,7 @@ pub async fn ServerConnection::send_response(
     reason,
     extra_headers=extra_headers.unwrap_or({}),
   ) catch {
-    err => raise HttpError::NetworkError(err.to_string())
+    err => raise classify_http_error(err.to_string())
   }
 }
 
@@ -530,7 +536,7 @@ pub async fn ServerConnection::flush(
   self : ServerConnection,
 ) -> Unit raise HttpError {
   self.inner.flush() catch {
-    err => raise HttpError::NetworkError(err.to_string())
+    err => raise classify_http_error(err.to_string())
   }
 }
 
@@ -539,7 +545,7 @@ pub async fn ServerConnection::end_response(
   self : ServerConnection,
 ) -> Unit raise HttpError {
   self.inner.end_response() catch {
-    err => raise HttpError::NetworkError(err.to_string())
+    err => raise classify_http_error(err.to_string())
   }
 }
 
@@ -548,7 +554,7 @@ pub async fn ServerConnection::enter_passthrough_mode(
   self : ServerConnection,
 ) -> Unit raise HttpError {
   self.inner.enter_passthrough_mode() catch {
-    err => raise HttpError::NetworkError(err.to_string())
+    err => raise classify_http_error(err.to_string())
   }
 }
 

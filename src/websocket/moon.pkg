@@ -10,6 +10,8 @@ import {
   "moonbitlang/async/socket",
 } for "test"
 
+warnings = "-0029-0001"
+
 options(
   targets: {
     "websocket_js.mbt": [ "js" ],

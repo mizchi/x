@@ -8,6 +8,8 @@ import {
   "moonbitlang/async",
 } for "test"
 
+warnings = "-0029"
+
 options(
   targets: {
     "process_js.mbt": [ "js" ],

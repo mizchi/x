@@ -1524,7 +1524,7 @@ pub async fn Server::new(
     trust_proxy.unwrap_or(false),
   )
   let result = @js_async.Promise::wait(promise, abort_controller=controller) catch {
-    err => raise HttpError::NetworkError(err.to_string())
+    err => raise classify_http_error(err.to_string())
   }
   Server::{ id: result.id, port: result.port, addr: to_addr(h, result.port) }
 }
@@ -1546,7 +1546,7 @@ pub async fn Server::accept(
   let controller = @js_async.AbortController::new()
   let promise = js_server_accept(self.id)
   let result = @js_async.Promise::wait(promise, abort_controller=controller) catch {
-    err => raise HttpError::NetworkError(err.to_string())
+    err => raise classify_http_error(err.to_string())
   }
   let request = Request::{
     meth: parse_request_method(result.req_meth),
@@ -1598,7 +1598,7 @@ pub async fn Server::run_forever(
     max_connections.unwrap_or(0),
   )
   @js_async.Promise::wait(promise, abort_controller=controller) catch {
-    err => raise HttpError::NetworkError(err.to_string())
+    err => raise classify_http_error(err.to_string())
   }
 }
 
@@ -1615,7 +1615,7 @@ pub async fn Server::close_graceful(
   let controller = @js_async.AbortController::new()
   let promise = js_server_close_graceful(self.id, timeout_ms.unwrap_or(30000))
   @js_async.Promise::wait(promise, abort_controller=controller) catch {
-    err => raise HttpError::NetworkError(err.to_string())
+    err => raise classify_http_error(err.to_string())
   }
 }
 
@@ -1631,7 +1631,7 @@ async fn stream_request_internal_js(
   let controller = @js_async.AbortController::new()
   let promise = js_fetch_stream(url, meth, hjson, body_str)
   let result = @js_async.Promise::wait(promise, abort_controller=controller) catch {
-    err => raise HttpError::NetworkError(err.to_string())
+    err => raise classify_http_error(err.to_string())
   }
   let resp = Response::{
     code: result.code,
@@ -1673,7 +1673,7 @@ pub async fn Stream::read_some(self : Stream) -> Bytes? raise HttpError {
   let controller = @js_async.AbortController::new()
   let promise = js_stream_read(self.id)
   let chunk = @js_async.Promise::wait(promise, abort_controller=controller) catch {
-    err => raise HttpError::NetworkError(err.to_string())
+    err => raise classify_http_error(err.to_string())
   }
   if chunk.done {
     None
@@ -1729,7 +1729,7 @@ async fn request_internal_js(
     promise,
     abort_controller=controller,
   ) catch {
-    err => raise HttpError::NetworkError(err.to_string())
+    err => raise classify_http_error(err.to_string())
   }
   parse_response_json(result_json)
 }
@@ -1780,8 +1780,8 @@ priv struct JsClientResponse {
 extern "js" fn js_client_new(
   url : String,
   headers_json : String,
-) -> JsClientNewResult =
-  #| (url, headersJson) => {
+) -> @js_async.Promise[JsClientNewResult] =
+  #| async (url, headersJson) => {
   #|   try {
   #|     if (!globalThis.__xhc) {
   #|       const hasHeader = (headers, key) => {
@@ -2258,8 +2258,8 @@ extern "js" fn js_client_request_begin(
   meth : String,
   path : String,
   extra_headers_json : String,
-) -> String =
-  #| (id, meth, path, extraHeadersJson) => {
+) -> @js_async.Promise[String] =
+  #| async (id, meth, path, extraHeadersJson) => {
   #|   const state = globalThis.__xhc;
   #|   const client = state?.clients.get(id);
   #|   if (!client || client.closed) return 'Client not found';
@@ -2498,8 +2498,10 @@ extern "js" fn js_client_skip_response_body(
   #| }
 
 ///|
-extern "js" fn js_client_enter_passthrough(id : Int) -> String =
-  #| (id) => {
+extern "js" fn js_client_enter_passthrough(
+  id : Int,
+) -> @js_async.Promise[String] =
+  #| async (id) => {
   #|   const state = globalThis.__xhc;
   #|   const client = state?.clients.get(id);
   #|   if (!client || client.closed) return 'Client not found';
@@ -2644,7 +2646,11 @@ pub async fn Client::new(
   url : String,
   headers? : Map[String, String],
 ) -> Client raise HttpError {
-  let result = js_client_new(url, headers_to_json(headers.unwrap_or({})))
+  let controller = @js_async.AbortController::new()
+  let promise = js_client_new(url, headers_to_json(headers.unwrap_or({})))
+  let result = @js_async.Promise::wait(promise, abort_controller=controller) catch {
+    err => raise classify_http_error(err.to_string())
+  }
   if result.error != "" {
     raise HttpError::InvalidUrl(url)
   }
@@ -2674,14 +2680,18 @@ pub async fn Client::request(
   if self.passthrough_mode {
     raise HttpError::NetworkError("client is in passthrough mode")
   }
-  let err = js_client_request_begin(
+  let controller = @js_async.AbortController::new()
+  let promise = js_client_request_begin(
     self.id,
     request_method_to_string(meth),
     path,
     headers_to_json(extra_headers.unwrap_or({})),
   )
+  let err = @js_async.Promise::wait(promise, abort_controller=controller) catch {
+    e => raise classify_http_error(e.to_string())
+  }
   if err != "" {
-    raise HttpError::NetworkError(err)
+    raise classify_http_error(err)
   }
 }
 
@@ -2696,7 +2706,7 @@ pub async fn Client::end_request(self : Client) -> Response raise HttpError {
   let controller = @js_async.AbortController::new()
   let promise = js_client_end_request(self.id)
   let result = @js_async.Promise::wait(promise, abort_controller=controller) catch {
-    err => raise HttpError::NetworkError(err.to_string())
+    err => raise classify_http_error(err.to_string())
   }
   Response::{
     code: result.code,
@@ -2716,10 +2726,10 @@ pub async fn Client::flush(self : Client) -> Unit raise HttpError {
   let controller = @js_async.AbortController::new()
   let promise = js_client_request_flush(self.id)
   let err = @js_async.Promise::wait(promise, abort_controller=controller) catch {
-    e => raise HttpError::NetworkError(e.to_string())
+    e => raise classify_http_error(e.to_string())
   }
   if err != "" {
-    raise HttpError::NetworkError(err)
+    raise classify_http_error(err)
   }
 }
 
@@ -2734,7 +2744,7 @@ pub async fn Client::skip_response_body(self : Client) -> Unit raise HttpError {
   let controller = @js_async.AbortController::new()
   let promise = js_client_skip_response_body(self.id)
   @js_async.Promise::wait(promise, abort_controller=controller) catch {
-    err => raise HttpError::NetworkError(err.to_string())
+    err => raise classify_http_error(err.to_string())
   }
 }
 
@@ -2748,9 +2758,13 @@ pub async fn Client::enter_passthrough_mode(
   if self.passthrough_mode {
     return
   }
-  let err = js_client_enter_passthrough(self.id)
+  let controller = @js_async.AbortController::new()
+  let promise = js_client_enter_passthrough(self.id)
+  let err = @js_async.Promise::wait(promise, abort_controller=controller) catch {
+    e => raise classify_http_error(e.to_string())
+  }
   if err != "" {
-    raise HttpError::NetworkError(err)
+    raise classify_http_error(err)
   }
   self.passthrough_mode = true
 }
@@ -2767,7 +2781,7 @@ pub async fn Client::get(
     Some(data) =>
       ignore(
         self.write(data) catch {
-          err => raise HttpError::NetworkError(err.to_string())
+          err => raise classify_http_error(err.to_string())
         },
       )
     None => ()
@@ -2785,7 +2799,7 @@ pub async fn Client::post(
   self.request(Post, path, extra_headers=extra_headers.unwrap_or({}))
   ignore(
     self.write(body) catch {
-      err => raise HttpError::NetworkError(err.to_string())
+      err => raise classify_http_error(err.to_string())
     },
   )
   self.end_request()
@@ -2801,7 +2815,7 @@ pub async fn Client::put(
   self.request(Put, path, extra_headers=extra_headers.unwrap_or({}))
   ignore(
     self.write(body) catch {
-      err => raise HttpError::NetworkError(err.to_string())
+      err => raise classify_http_error(err.to_string())
     },
   )
   self.end_request()
