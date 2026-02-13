@@ -45,3 +45,7 @@ sync-tests package="":
     else \
         ./scripts/sync-upstream-tests.sh; \
     fi
+
+# Run HTTP comparison benchmark (ping / consume / discard) via k6
+bench-http port="18080" vus="128" duration="20s" body_size="16384":
+    PORT={{port}} VUS={{vus}} DURATION={{duration}} BODY_SIZE={{body_size}} ./scripts/k6/run_http_bench.sh
