@@ -181,8 +181,9 @@ extern "js" fn js_server_new(
   keep_alive_timeout_ms : Int,
   headers_timeout_ms : Int,
   accept_queue_limit : Int,
+  trust_proxy : Bool,
 ) -> @js_async.Promise[JsServeStart] =
-  #| async (host, port, headersJson, maxRequestBodyBytes, requestTimeoutMs, keepAliveTimeoutMs, headersTimeoutMs, acceptQueueLimit) => {
+  #| async (host, port, headersJson, maxRequestBodyBytes, requestTimeoutMs, keepAliveTimeoutMs, headersTimeoutMs, acceptQueueLimit, trustProxy) => {
   #|   const http = await import('node:http');
   #|   if (!globalThis.__xhttpServer) {
   #|     globalThis.__xhttpServer = {
@@ -209,6 +210,7 @@ extern "js" fn js_server_new(
   #|     inflight: 0,
   #|     maxRequestBodyBytes: Math.max(0, Number(maxRequestBodyBytes || 0)),
   #|     acceptQueueLimit: Math.max(1, Number(acceptQueueLimit || 128)),
+  #|     trustProxy: !!trustProxy,
   #|     baseHeaders,
   #|     mode: 'idle',
   #|     runWaiters: [],
@@ -236,8 +238,82 @@ extern "js" fn js_server_new(
   #|       try { socket.destroy(); } catch {}
   #|     }
   #|   });
+  #|   const firstHeaderValue = (value) => {
+  #|     if (Array.isArray(value)) {
+  #|       return value.length > 0 ? String(value[0]) : '';
+  #|     }
+  #|     if (typeof value === 'string') return value;
+  #|     if (value == null) return '';
+  #|     return String(value);
+  #|   };
+  #|   const parseForwardedIp = (value) => {
+  #|     const raw = firstHeaderValue(value);
+  #|     if (!raw) return '';
+  #|     let host = raw.split(',')[0].trim();
+  #|     if (!host) return '';
+  #|     if (host.startsWith('"') && host.endsWith('"') && host.length >= 2) {
+  #|       host = host.slice(1, -1);
+  #|     }
+  #|     if (host.startsWith('[')) {
+  #|       const end = host.indexOf(']');
+  #|       if (end > 0) return host.slice(1, end);
+  #|     }
+  #|     const lastColon = host.lastIndexOf(':');
+  #|     if (lastColon > 0 && host.indexOf(':') === lastColon) {
+  #|       const maybePort = Number.parseInt(host.slice(lastColon + 1), 10);
+  #|       if (Number.isFinite(maybePort)) {
+  #|         host = host.slice(0, lastColon);
+  #|       }
+  #|     }
+  #|     return host;
+  #|   };
+  #|   const parseForwardedPort = (value) => {
+  #|     const raw = firstHeaderValue(value);
+  #|     if (!raw) return 0;
+  #|     const first = raw.split(',')[0].trim();
+  #|     const parsed = Number.parseInt(first, 10);
+  #|     if (!Number.isFinite(parsed) || parsed <= 0 || parsed > 65535) return 0;
+  #|     return parsed;
+  #|   };
+  #|   const parsePortFromHost = (value) => {
+  #|     const raw = firstHeaderValue(value);
+  #|     if (!raw) return 0;
+  #|     const host = raw.split(',')[0].trim();
+  #|     if (!host) return 0;
+  #|     if (host.startsWith('[')) {
+  #|       const end = host.indexOf(']');
+  #|       if (end > 0 && host.length > end + 2 && host[end + 1] === ':') {
+  #|         return parseForwardedPort(host.slice(end + 2));
+  #|       }
+  #|       return 0;
+  #|     }
+  #|     const lastColon = host.lastIndexOf(':');
+  #|     if (lastColon <= 0 || host.indexOf(':') !== lastColon) return 0;
+  #|     return parseForwardedPort(host.slice(lastColon + 1));
+  #|   };
+  #|   const resolveClientAddr = (req) => {
+  #|     const headers = req?.headers || {};
+  #|     let clientHost = normalizeClientHost(req?.socket?.remoteAddress || '');
+  #|     let clientPort = Number(req?.socket?.remotePort || 0);
+  #|     if (!entry.trustProxy) {
+  #|       return { clientHost, clientPort };
+  #|     }
+  #|     const forwardedHost = parseForwardedIp(headers['x-forwarded-for']);
+  #|     if (forwardedHost && forwardedHost.toLowerCase() !== 'unknown') {
+  #|       clientHost = normalizeClientHost(forwardedHost);
+  #|     }
+  #|     const forwardedPort = parseForwardedPort(headers['x-forwarded-port']);
+  #|     if (forwardedPort > 0) {
+  #|       clientPort = forwardedPort;
+  #|     } else {
+  #|       const hostPort = parsePortFromHost(headers['x-forwarded-host']);
+  #|       if (hostPort > 0) clientPort = hostPort;
+  #|     }
+  #|     return { clientHost, clientPort };
+  #|   };
   #|   const makeConn = (req, res) => {
   #|     const connId = state.nextConnId++;
+  #|     const resolved = resolveClientAddr(req);
   #|     const conn = {
   #|       id: connId,
   #|       serverId: id,
@@ -254,8 +330,8 @@ extern "js" fn js_server_new(
   #|       responseStarted: false,
   #|       responseEnded: false,
   #|       closed: false,
-  #|       clientHost: normalizeClientHost(req?.socket?.remoteAddress || ''),
-  #|       clientPort: Number(req?.socket?.remotePort || 0),
+  #|       clientHost: resolved.clientHost,
+  #|       clientPort: resolved.clientPort,
   #|     };
   #|     state.conns.set(connId, conn);
   #|     const cleanupConn = () => {
@@ -1039,6 +1115,7 @@ pub async fn Server::new(
   keep_alive_timeout_ms? : Int,
   headers_timeout_ms? : Int,
   accept_queue_limit? : Int,
+  trust_proxy? : Bool,
 ) -> Server raise HttpError {
   ignore(dual_stack)
   ignore(reuse_addr)
@@ -1053,6 +1130,7 @@ pub async fn Server::new(
     keep_alive_timeout_ms.unwrap_or(0),
     headers_timeout_ms.unwrap_or(0),
     accept_queue_limit.unwrap_or(128),
+    trust_proxy.unwrap_or(false),
   )
   let result = @js_async.Promise::wait(promise, abort_controller=controller) catch {
     err => raise HttpError::NetworkError(err.to_string())

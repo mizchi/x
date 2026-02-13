@@ -254,12 +254,14 @@ pub fn Server::new(
   keep_alive_timeout_ms? : Int,
   headers_timeout_ms? : Int,
   accept_queue_limit? : Int,
+  trust_proxy? : Bool,
 ) -> Server raise HttpError {
   ignore(max_request_body_bytes)
   ignore(request_timeout_ms)
   ignore(keep_alive_timeout_ms)
   ignore(headers_timeout_ms)
   ignore(accept_queue_limit)
+  ignore(trust_proxy)
   let h = host.unwrap_or("127.0.0.1")
   let p = port.unwrap_or(3000)
   let addr = @socket.Addr::parse("\{h}:\{p}") catch {

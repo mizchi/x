@@ -68,7 +68,7 @@ pub async fn Server::accept(Self) -> (ServerConnection, Addr) raise HttpError
 pub fn Server::addr(Self) -> Addr
 pub fn Server::close(Self) -> Unit
 pub async fn Server::close_graceful(Self, timeout_ms? : Int) -> Unit raise HttpError
-pub fn Server::new(host? : String, port? : Int, headers? : Map[String, String], dual_stack? : Bool, reuse_addr? : Bool, max_request_body_bytes? : Int, request_timeout_ms? : Int, keep_alive_timeout_ms? : Int, headers_timeout_ms? : Int, accept_queue_limit? : Int) -> Self raise HttpError
+pub fn Server::new(host? : String, port? : Int, headers? : Map[String, String], dual_stack? : Bool, reuse_addr? : Bool, max_request_body_bytes? : Int, request_timeout_ms? : Int, keep_alive_timeout_ms? : Int, headers_timeout_ms? : Int, accept_queue_limit? : Int, trust_proxy? : Bool) -> Self raise HttpError
 pub fn Server::port(Self) -> Int
 pub async fn Server::run_forever(Self, async (Request, &@io.Reader, ServerConnection) -> Unit, allow_failure? : Bool, max_connections? : Int) -> Unit raise HttpError
 

@@ -97,6 +97,7 @@ pub fn Server::new(
   keep_alive_timeout_ms? : Int,
   headers_timeout_ms? : Int,
   accept_queue_limit? : Int,
+  trust_proxy? : Bool,
 ) -> Server raise HttpError {
   ignore(host)
   ignore(port)
@@ -108,6 +109,7 @@ pub fn Server::new(
   ignore(keep_alive_timeout_ms)
   ignore(headers_timeout_ms)
   ignore(accept_queue_limit)
+  ignore(trust_proxy)
   raise HttpError::NotSupported
 }
 

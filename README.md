@@ -2,7 +2,7 @@
 
 Cross-platform IO abstraction for [MoonBit](https://docs.moonbitlang.com).
 
-Wraps `moonbitlang/async` (native) and provides JS FFI implementations so that the same API works across native, JS, and WASM-GC targets.
+Wraps `moonbitlang/async` (native) and provides JS FFI implementations so that the same API works across native, JS(Node.js), and WASM-GC(partially, it works on wasip1) targets.
 
 ## Dependencies
 
@@ -39,24 +39,48 @@ Wraps `moonbitlang/async` (native) and provides JS FFI implementations so that t
 - **stub** — Compiles but aborts at runtime with "not supported" message.
 - **WASI P1** — Partial implementation using WASI Preview 1 syscalls.
 
-## Test Coverage
-
-| Package | Tests | Targets tested |
-|---|---|---|
-| `process` | 15 | native, js |
-| `http` | 38 | native |
-| `websocket` | 24 | native |
-| `fs` | 4 | native |
-| `pipe` | 3 | native, js |
-| `stdio` | 3 | native |
-| `sys` | 0 | — |
-| **Total** | **87** | |
-
 ## Upstream Compatibility
 
 Compatibility with `moonbitlang/async` 0.16.6 / `moonbitlang/x` 0.4.40.
 
 The wrapper re-exports upstream types and APIs with matching signatures. On native, each function delegates directly to the upstream implementation. On JS, equivalent behavior is provided via `extern "js"` FFI (Node.js).
+
+#### http (`moonbitlang/async/http`)
+
+Upstream tests: 20 | Covered: 2 | Skipped: 18
+
+| Upstream test | Status | Notes |
+|---|---|---|
+| `http request` | Covered | |
+| `https request` | Covered | |
+| Other 18 tests | Skip | Internal parser/sender/proxy tests |
+
+#### websocket (`moonbitlang/async/websocket`)
+
+Upstream tests: 24 | Covered: 0 | Skipped: 24
+
+All upstream tests are internal (frame handling, ping/pong, UTF-8 validation) and not applicable to the wrapper's high-level API. The wrapper has 24 independent tests covering its own API.
+
+#### pipe (`moonbitlang/async/pipe`)
+
+Upstream tests: 3 | Covered: 3 | Skipped: 0
+
+All upstream pipe tests are fully covered.
+
+#### stdio (`moonbitlang/async/stdio`)
+
+Upstream tests: 3 | Covered: 0 | Skipped: 3
+
+All upstream tests require process piping/redirect features (`@process.run` with redirect options).
+
+## Quick Start
+
+```bash
+just           # check + test
+just fmt       # format code
+just check     # type check
+just test      # run tests
+```
 
 ### Upstream test coverage by package
 
@@ -97,41 +121,32 @@ Upstream tests: 28 | Covered: 10 | Skipped: 18
 | `do not kill orphan children on hard cancel` | Skip | requires custom test program + Windows |
 | `windows command line arg escape` | Skip | Windows-specific |
 
-#### http (`moonbitlang/async/http`)
+## HTTP Server Operations (Node.js)
 
-Upstream tests: 20 | Covered: 2 | Skipped: 18
+### Reverse proxy / TLS termination
 
-| Upstream test | Status | Notes |
-|---|---|---|
-| `http request` | Covered | |
-| `https request` | Covered | |
-| Other 18 tests | Skip | Internal parser/sender/proxy tests |
+When running `@http.Server` behind a reverse proxy (Nginx/Caddy/ALB), terminate TLS at the proxy and forward plain HTTP to the MoonBit process.
 
-#### websocket (`moonbitlang/async/websocket`)
+- Enable proxy-aware client address resolution with:
+  - `@http.Server::new(..., trust_proxy=true)`
+- Current JS behavior:
+  - `client_addr()` uses `x-forwarded-for` (first hop) and `x-forwarded-port`
+  - falls back to `x-forwarded-host` port when `x-forwarded-port` is absent
 
-Upstream tests: 24 | Covered: 0 | Skipped: 24
+Security note: set `trust_proxy=true` only when requests are guaranteed to come from trusted proxy hops.
 
-All upstream tests are internal (frame handling, ping/pong, UTF-8 validation) and not applicable to the wrapper's high-level API. The wrapper has 24 independent tests covering its own API.
+### SSE shutdown benchmark
 
-#### pipe (`moonbitlang/async/pipe`)
-
-Upstream tests: 3 | Covered: 3 | Skipped: 0
-
-All upstream pipe tests are fully covered.
-
-#### stdio (`moonbitlang/async/stdio`)
-
-Upstream tests: 3 | Covered: 0 | Skipped: 3
-
-All upstream tests require process piping/redirect features (`@process.run` with redirect options).
-
-## Quick Start
+Run this JS-only benchmark test to check concurrent SSE shutdown behavior:
 
 ```bash
-just           # check + test
-just fmt       # format code
-just check     # type check
-just test      # run tests
+moon test --target js src/http --filter 'bench(js): graceful close time under concurrent sse'
+```
+
+The test prints a measurement line like:
+
+```text
+bench(js): sse_clients=24 graceful_close_ms=1507
 ```
 
 ## License
