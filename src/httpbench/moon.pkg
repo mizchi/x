@@ -1,0 +1,9 @@
+import {
+  "mizchi/x/http" @http,
+  "moonbitlang/async",
+}
+
+options(
+  "is-main": true,
+  targets: { "main.mbt": [ "js" ] },
+)

@@ -149,6 +149,29 @@ The test prints a measurement line like:
 bench(js): sse_clients=24 graceful_close_ms=1507
 ```
 
+### k6 benchmark (Node.js target)
+
+Use the dedicated benchmark server package and k6 scenarios:
+
+```bash
+./scripts/k6/run_http_bench.sh
+```
+
+Environment variables:
+
+- `PORT` (default `18080`)
+- `VUS` (default `128`)
+- `DURATION` (default `20s`)
+- `BODY_SIZE` (default `16384`) for `POST /consume`
+
+Individual scenarios:
+
+```bash
+BASE_URL=http://127.0.0.1:18080 k6 run scripts/k6/http_ping.js
+BASE_URL=http://127.0.0.1:18080 BODY_SIZE=16384 k6 run scripts/k6/http_consume.js
+BASE_URL=http://127.0.0.1:18080 BODY_SIZE=16384 k6 run scripts/k6/http_discard.js
+```
+
 ## License
 
 MIT

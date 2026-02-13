@@ -313,16 +313,17 @@ extern "js" fn js_server_new(
   #|   const requestReadHighWatermark = 1024 * 1024;
   #|   const requestReadLowWatermark = requestReadHighWatermark >> 1;
   #|   const copyChunk = (chunk) => {
-  #|     const src = chunk instanceof Uint8Array
-  #|       ? chunk
-  #|       : new Uint8Array(Buffer.from(chunk));
-  #|     const copied = new Uint8Array(src.length);
-  #|     copied.set(src);
-  #|     return copied;
+  #|     if (chunk instanceof Uint8Array) {
+  #|       if (typeof Buffer !== 'undefined' && Buffer.isBuffer?.(chunk)) {
+  #|         return new Uint8Array(chunk.buffer, chunk.byteOffset, chunk.byteLength);
+  #|       }
+  #|       return chunk;
+  #|     }
+  #|     return new Uint8Array(Buffer.from(chunk));
   #|   };
   #|   const resolveRequestWaiters = (conn, value) => {
   #|     while (conn.requestReadWaiters.length > 0) {
-  #|       conn.requestReadWaiters.shift().resolve(value);
+  #|       conn.requestReadWaiters.shift()(value);
   #|     }
   #|   };
   #|   const maybeResumeRequest = (conn) => {
@@ -376,6 +377,7 @@ extern "js" fn js_server_new(
   #|     if (!conn || conn.responseEnded || conn.closed) return;
   #|     conn.requestReadSkipped = true;
   #|     conn.requestReadQueue = [];
+  #|     conn.requestReadCarry = null;
   #|     conn.requestReadQueueBytes = 0;
   #|     if (conn.requestReadPaused) {
   #|       conn.requestReadPaused = false;
@@ -404,12 +406,14 @@ extern "js" fn js_server_new(
   #|       socket: req?.socket,
   #|       passthrough: false,
   #|       socketReadQueue: [],
+  #|       socketReadCarry: null,
   #|       socketReadWaiters: [],
   #|       socketReadAttached: false,
   #|       socketReadEnded: false,
   #|       socketReadOnData: null,
   #|       socketReadOnEnd: null,
   #|       requestReadQueue: [],
+  #|       requestReadCarry: null,
   #|       requestReadQueueBytes: 0,
   #|       requestReadWaiters: [],
   #|       requestReadAttached: false,
@@ -443,10 +447,12 @@ extern "js" fn js_server_new(
   #|       }
   #|       detachRequestRead(current);
   #|       current.requestReadQueue = [];
+  #|       current.requestReadCarry = null;
   #|       current.requestReadQueueBytes = 0;
   #|       current.requestReadPaused = false;
+  #|       current.socketReadCarry = null;
   #|       while (current.requestReadWaiters.length > 0) {
-  #|         current.requestReadWaiters.shift().resolve(new Uint8Array(0));
+  #|         current.requestReadWaiters.shift()(new Uint8Array(0));
   #|       }
   #|       while (current.socketReadWaiters.length > 0) {
   #|         current.socketReadWaiters.shift()(new Uint8Array(0));
@@ -475,7 +481,7 @@ extern "js" fn js_server_new(
   #|       }
   #|       const waiter = conn.requestReadWaiters.shift();
   #|       if (waiter) {
-  #|         waiter.resolve(copied);
+  #|         waiter(copied);
   #|         return;
   #|       }
   #|       conn.requestReadQueue.push(copied);
@@ -906,11 +912,12 @@ extern "js" fn js_conn_close(conn_id : Int) -> Unit =
   #|     conn.requestReadAttached = false;
   #|   }
   #|   conn.requestReadQueue = [];
+  #|   conn.requestReadCarry = null;
   #|   conn.requestReadQueueBytes = 0;
   #|   conn.requestReadPaused = false;
   #|   conn.requestReadSkipped = true;
   #|   while (conn.requestReadWaiters.length > 0) {
-  #|     conn.requestReadWaiters.shift().resolve(new Uint8Array(0));
+  #|     conn.requestReadWaiters.shift()(new Uint8Array(0));
   #|   }
   #|   if (conn.socketReadAttached && conn.socket) {
   #|     try { conn.socket.off('data', conn.socketReadOnData); } catch {}
@@ -918,6 +925,7 @@ extern "js" fn js_conn_close(conn_id : Int) -> Unit =
   #|     try { conn.socket.off('close', conn.socketReadOnEnd); } catch {}
   #|     conn.socketReadAttached = false;
   #|   }
+  #|   conn.socketReadCarry = null;
   #|   while (conn.socketReadWaiters.length > 0) {
   #|     conn.socketReadWaiters.shift()(new Uint8Array(0));
   #|   }
@@ -943,9 +951,10 @@ extern "js" fn js_conn_enter_passthrough(conn_id : Int) -> Unit =
   #|   conn.passthrough = true;
   #|   conn.closed = false;
   #|   conn.responseEnded = false;
+  #|   conn.socketReadCarry = null;
   #|   if (conn.socketReadAttached) return;
   #|   const onData = (chunk) => {
-  #|     const data = chunk instanceof Uint8Array ? new Uint8Array(chunk) : new Uint8Array(Buffer.from(chunk));
+  #|     const data = copyChunk(chunk);
   #|     const waiter = conn.socketReadWaiters.shift();
   #|     if (waiter) {
   #|       waiter(data);
@@ -976,13 +985,14 @@ extern "js" fn js_conn_skip_request_body(conn_id : Int) -> Unit =
   #|   if (!conn) return;
   #|   conn.requestReadSkipped = true;
   #|   conn.requestReadQueue = [];
+  #|   conn.requestReadCarry = null;
   #|   conn.requestReadQueueBytes = 0;
   #|   if (conn.requestReadPaused) {
   #|     conn.requestReadPaused = false;
   #|     try { conn.req.resume(); } catch {}
   #|   }
   #|   while (conn.requestReadWaiters.length > 0) {
-  #|     conn.requestReadWaiters.shift().resolve(new Uint8Array(0));
+  #|     conn.requestReadWaiters.shift()(new Uint8Array(0));
   #|   }
   #| }
 
@@ -996,8 +1006,13 @@ extern "js" fn js_conn_read_request(
   #|   const conn = state?.conns.get(connId);
   #|   if (!conn || conn.closed) return new Uint8Array(0);
   #|   const pullChunk = () => {
-  #|     if (conn.requestReadQueue.length === 0) return null;
-  #|     const chunk = conn.requestReadQueue.shift();
+  #|     let chunk = conn.requestReadCarry;
+  #|     if (chunk) {
+  #|       conn.requestReadCarry = null;
+  #|     } else {
+  #|       if (conn.requestReadQueue.length === 0) return null;
+  #|       chunk = conn.requestReadQueue.shift();
+  #|     }
   #|     conn.requestReadQueueBytes = Math.max(0, conn.requestReadQueueBytes - chunk.length);
   #|     if (
   #|       conn.requestReadPaused &&
@@ -1012,7 +1027,7 @@ extern "js" fn js_conn_read_request(
   #|     const head = chunk.subarray(0, maxLen);
   #|     const tail = chunk.subarray(maxLen);
   #|     if (tail.length > 0) {
-  #|       conn.requestReadQueue.unshift(tail);
+  #|       conn.requestReadCarry = tail;
   #|       conn.requestReadQueueBytes += tail.length;
   #|       if (!conn.requestReadPaused && conn.requestReadQueueBytes > conn.requestReadHighWatermark) {
   #|         conn.requestReadPaused = true;
@@ -1026,14 +1041,14 @@ extern "js" fn js_conn_read_request(
   #|   if (conn.requestReadEnded || conn.requestReadSkipped) {
   #|     return new Uint8Array(0);
   #|   }
-  #|   const chunk = await new Promise((resolve, reject) => {
-  #|     conn.requestReadWaiters.push({ resolve, reject });
+  #|   const chunk = await new Promise((resolve) => {
+  #|     conn.requestReadWaiters.push(resolve);
   #|   });
   #|   if (!(maxLen > 0) || chunk.length <= maxLen) return chunk;
   #|   const head = chunk.subarray(0, maxLen);
   #|   const tail = chunk.subarray(maxLen);
   #|   if (tail.length > 0) {
-  #|     conn.requestReadQueue.unshift(tail);
+  #|     conn.requestReadCarry = tail;
   #|     conn.requestReadQueueBytes += tail.length;
   #|     if (!conn.requestReadPaused && conn.requestReadQueueBytes > conn.requestReadHighWatermark) {
   #|       conn.requestReadPaused = true;
@@ -1053,12 +1068,17 @@ extern "js" fn js_conn_read(
   #|   const conn = state?.conns.get(connId);
   #|   if (!conn || conn.closed || !conn.passthrough) return new Uint8Array(0);
   #|   const pullChunk = () => {
-  #|     if (conn.socketReadQueue.length === 0) return null;
-  #|     const chunk = conn.socketReadQueue.shift();
+  #|     let chunk = conn.socketReadCarry;
+  #|     if (chunk) {
+  #|       conn.socketReadCarry = null;
+  #|     } else {
+  #|       if (conn.socketReadQueue.length === 0) return null;
+  #|       chunk = conn.socketReadQueue.shift();
+  #|     }
   #|     if (!(maxLen > 0) || chunk.length <= maxLen) return chunk;
   #|     const head = chunk.subarray(0, maxLen);
   #|     const tail = chunk.subarray(maxLen);
-  #|     if (tail.length > 0) conn.socketReadQueue.unshift(tail);
+  #|     if (tail.length > 0) conn.socketReadCarry = tail;
   #|     return head;
   #|   };
   #|   const queued = pullChunk();
@@ -1070,7 +1090,7 @@ extern "js" fn js_conn_read(
   #|   if (!(maxLen > 0) || chunk.length <= maxLen) return chunk;
   #|   const head = chunk.subarray(0, maxLen);
   #|   const tail = chunk.subarray(maxLen);
-  #|   if (tail.length > 0) conn.socketReadQueue.unshift(tail);
+  #|   if (tail.length > 0) conn.socketReadCarry = tail;
   #|   return head;
   #| }
 
@@ -1114,6 +1134,8 @@ pub struct ServerConnection {
   mut request_body_drained : Bool
   conn_id : Int
   peer_addr : Addr
+  mut read_carry : Bytes
+  mut read_carry_offset : Int
   mut passthrough_mode : Bool
   mut response_started : Bool
   mut response_ended : Bool
@@ -1131,6 +1153,8 @@ fn new_server_connection(
     request_body_drained: false,
     conn_id,
     peer_addr,
+    read_carry: Bytes::new(0),
+    read_carry_offset: 0,
     passthrough_mode: false,
     response_started: false,
     response_ended: false,
@@ -1139,10 +1163,43 @@ fn new_server_connection(
 }
 
 ///|
+fn read_prefetch_len(max_len : Int) -> Int {
+  let min_prefetch = 16 * 1024
+  let max_prefetch = 64 * 1024
+  if max_len <= 0 {
+    min_prefetch
+  } else if max_len < min_prefetch {
+    min_prefetch
+  } else if max_len > max_prefetch {
+    max_prefetch
+  } else {
+    max_len
+  }
+}
+
+///|
+fn ServerConnection::set_read_carry(
+  self : ServerConnection,
+  data : Bytes,
+  offset : Int,
+) -> Unit {
+  let rest = data.length() - offset
+  if rest <= 0 {
+    self.read_carry = Bytes::new(0)
+    self.read_carry_offset = 0
+    return
+  }
+  self.read_carry = data
+  self.read_carry_offset = offset
+}
+
+///|
 pub fn ServerConnection::close(self : ServerConnection) -> Unit {
   if self.closed {
     return
   }
+  self.read_carry = Bytes::new(0)
+  self.read_carry_offset = 0
   js_conn_close(self.conn_id)
   self.response_ended = true
   self.closed = true
@@ -1160,6 +1217,8 @@ pub fn ServerConnection::client_addr(self : ServerConnection) -> Addr {
 
 ///|
 pub fn ServerConnection::skip_request_body(self : ServerConnection) -> Unit {
+  self.read_carry = Bytes::new(0)
+  self.read_carry_offset = 0
   js_conn_skip_request_body(self.conn_id)
   self.request_body_drained = true
 }
@@ -1243,44 +1302,52 @@ pub impl @io.Reader for ServerConnection with _direct_read(
   offset~,
   max_len~,
 ) {
+  if max_len <= 0 {
+    return 0
+  }
+  let carry_len = self.read_carry.length() - self.read_carry_offset
+  if carry_len > 0 {
+    let n = @cmp.minimum(max_len, carry_len)
+    buf.blit_from_bytes(offset, self.read_carry, self.read_carry_offset, n)
+    self.read_carry_offset += n
+    if self.read_carry_offset >= self.read_carry.length() {
+      self.read_carry = Bytes::new(0)
+      self.read_carry_offset = 0
+    }
+    return n
+  }
   if self.passthrough_mode {
     if !self.request_body_drained {
-      let req_controller = @js_async.AbortController::new()
-      let req_promise = js_conn_read_request(self.conn_id, max_len)
-      let req_data = @js_async.Promise::wait(
-        req_promise,
-        abort_controller=req_controller,
-      ) catch {
+      let req_prefetch_len = read_prefetch_len(max_len)
+      let req_promise = js_conn_read_request(self.conn_id, req_prefetch_len)
+      let req_data = @js_async.Promise::wait(req_promise) catch {
         _ => Bytes::new(0)
       }
       let req_len = req_data.length()
       if req_len > 0 {
         let n = @cmp.minimum(max_len, req_len)
         buf.blit_from_bytes(offset, req_data, 0, n)
+        self.set_read_carry(req_data, n)
         return n
       }
       self.request_body_drained = true
     }
-    let controller = @js_async.AbortController::new()
-    let promise = js_conn_read(self.conn_id, max_len)
-    let data = @js_async.Promise::wait(promise, abort_controller=controller) catch {
-      _ => return 0
-    }
+    let prefetch_len = read_prefetch_len(max_len)
+    let promise = js_conn_read(self.conn_id, prefetch_len)
+    let data = @js_async.Promise::wait(promise) catch { _ => return 0 }
     let len = data.length()
     if len <= 0 {
       0
     } else {
       let n = @cmp.minimum(max_len, len)
       buf.blit_from_bytes(offset, data, 0, n)
+      self.set_read_carry(data, n)
       n
     }
   } else {
-    let req_controller = @js_async.AbortController::new()
-    let req_promise = js_conn_read_request(self.conn_id, max_len)
-    let req_data = @js_async.Promise::wait(
-      req_promise,
-      abort_controller=req_controller,
-    ) catch {
+    let req_prefetch_len = read_prefetch_len(max_len)
+    let req_promise = js_conn_read_request(self.conn_id, req_prefetch_len)
+    let req_data = @js_async.Promise::wait(req_promise) catch {
       _ => Bytes::new(0)
     }
     let req_len = req_data.length()
@@ -1289,6 +1356,7 @@ pub impl @io.Reader for ServerConnection with _direct_read(
     } else {
       let n = @cmp.minimum(max_len, req_len)
       buf.blit_from_bytes(offset, req_data, 0, n)
+      self.set_read_carry(req_data, n)
       n
     }
   }
@@ -1311,9 +1379,8 @@ pub impl @io.Writer for ServerConnection with write_once(
     if n <= 0 {
       0
     } else {
-      let controller = @js_async.AbortController::new()
       let promise = js_conn_write(self.conn_id, buf, offset, n)
-      let wrote = @js_async.Promise::wait(promise, abort_controller=controller) catch {
+      let wrote = @js_async.Promise::wait(promise) catch {
         _ => raise HttpError::NetworkError("connection closed")
       }
       if wrote <= 0 {
