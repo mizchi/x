@@ -1,10 +1,34 @@
 ///|
-extern "js" fn js_env_port() -> Int =
-  #| () => {
-  #|   const raw = Number(process?.env?.PORT || 18080);
-  #|   if (!Number.isFinite(raw) || raw <= 0 || raw > 65535) return 18080;
-  #|   return raw | 0;
-  #| }
+fn parse_port(raw : String) -> Int? {
+  if raw.length() == 0 {
+    None
+  } else {
+    let mut value = 0
+    for i = 0; i < raw.length(); i = i + 1 {
+      let code = raw[i].to_int()
+      if code < '0'.to_int() || code > '9'.to_int() {
+        return None
+      }
+      value = value * 10 + (code - '0'.to_int())
+      if value > 65535 {
+        return None
+      }
+    }
+    Some(value)
+  }
+}
+
+///|
+fn env_port() -> Int {
+  match @sys.get_env_var("PORT") {
+    Some(raw) =>
+      match parse_port(raw) {
+        Some(port) => if port > 0 { port } else { 18080 }
+        None => 18080
+      }
+    None => 18080
+  }
+}
 
 ///|
 fn is_path(req_path : String, expected : String) -> Bool {
@@ -13,7 +37,7 @@ fn is_path(req_path : String, expected : String) -> Bool {
 
 ///|
 async fn main {
-  let port = js_env_port()
+  let port = env_port()
   let server = @http.Server::new(
     port~,
     request_timeout_ms=0,
@@ -56,7 +80,7 @@ async fn main {
       conn.write("not found")
       conn.end_response()
     },
-    allow_failure=false,
+    allow_failure=true,
   ) catch {
     err => abort("httpbench run failed: \{err.to_string()}")
   }

@@ -149,9 +149,10 @@ The test prints a measurement line like:
 bench(js): sse_clients=24 graceful_close_ms=1507
 ```
 
-### k6 benchmark (Node.js target)
+### k6 benchmark (default: JS vs Native)
 
-Use the dedicated benchmark server package and k6 scenarios:
+Use the dedicated benchmark server package and k6 scenarios.
+By default, this runs both `js` and `native` targets and prints a comparison summary.
 
 ```bash
 ./scripts/k6/run_http_bench.sh
@@ -163,6 +164,9 @@ Environment variables:
 - `VUS` (default `128`)
 - `DURATION` (default `20s`)
 - `BODY_SIZE` (default `16384`) for `POST /consume`
+- `TARGETS` (default `"js native"`)
+  - e.g. `TARGETS=js` to run JS only
+  - e.g. `TARGETS=native` to run Native only
 
 Individual scenarios:
 
