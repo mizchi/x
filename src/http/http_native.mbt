@@ -200,3 +200,228 @@ pub async fn put(
 ) -> (Response, &@io.Data) raise HttpError {
   request_internal(url, "PUT", headers.unwrap_or({}), body)
 }
+
+// Server API
+
+///|
+pub struct Server {
+  inner : @async_http.Server
+}
+
+///|
+pub struct ServerConnection {
+  inner : @async_http.ServerConnection
+}
+
+///|
+fn to_request_method(meth : @async_http.RequestMethod) -> RequestMethod {
+  match meth {
+    Get => RequestMethod::Get
+    Head => RequestMethod::Head
+    Post => RequestMethod::Post
+    Put => RequestMethod::Put
+    Delete => RequestMethod::Delete
+    Connect => RequestMethod::Connect
+    Options => RequestMethod::Options
+    Trace => RequestMethod::Trace
+    Patch => RequestMethod::Patch
+  }
+}
+
+///|
+fn to_request(req : @async_http.Request) -> Request {
+  let headers : Map[String, String] = {}
+  for k, v in req.headers {
+    headers[k.to_lower()] = v
+  }
+  Request::{ meth: to_request_method(req.meth), path: req.path, headers }
+}
+
+///|
+fn to_addr(addr : @socket.Addr) -> Addr {
+  Addr::{ text: addr.to_string(), port: addr.port() }
+}
+
+///|
+pub fn Server::new(
+  host? : String,
+  port? : Int,
+  headers? : Map[String, String],
+  dual_stack? : Bool,
+  reuse_addr? : Bool,
+  max_request_body_bytes? : Int,
+  request_timeout_ms? : Int,
+  keep_alive_timeout_ms? : Int,
+  headers_timeout_ms? : Int,
+  accept_queue_limit? : Int,
+) -> Server raise HttpError {
+  ignore(max_request_body_bytes)
+  ignore(request_timeout_ms)
+  ignore(keep_alive_timeout_ms)
+  ignore(headers_timeout_ms)
+  ignore(accept_queue_limit)
+  let h = host.unwrap_or("127.0.0.1")
+  let p = port.unwrap_or(3000)
+  let addr = @socket.Addr::parse("\{h}:\{p}") catch {
+    _ => raise HttpError::InvalidUrl("\{h}:\{p}")
+  }
+  let server = @async_http.Server::new(
+    addr,
+    dual_stack?,
+    reuse_addr?,
+    headers=headers.unwrap_or({}),
+  ) catch {
+    err => raise HttpError::NetworkError(err.to_string())
+  }
+  Server::{ inner: server }
+}
+
+///|
+pub fn Server::port(self : Server) -> Int {
+  self.inner.addr().port()
+}
+
+///|
+pub fn Server::addr(self : Server) -> Addr {
+  to_addr(self.inner.addr())
+}
+
+///|
+pub fn Server::close(self : Server) -> Unit {
+  self.inner.close()
+}
+
+///|
+pub async fn Server::close_graceful(
+  self : Server,
+  timeout_ms? : Int,
+) -> Unit raise HttpError {
+  ignore(timeout_ms)
+  self.close()
+}
+
+///|
+pub async fn Server::accept(
+  self : Server,
+) -> (ServerConnection, Addr) raise HttpError {
+  let (conn, addr) = self.inner.accept() catch {
+    err => raise HttpError::NetworkError(err.to_string())
+  }
+  (ServerConnection::{ inner: conn }, to_addr(addr))
+}
+
+///|
+pub async fn Server::run_forever(
+  self : Server,
+  f : async (Request, &@io.Reader, ServerConnection) -> Unit,
+  allow_failure? : Bool,
+  max_connections? : Int,
+) -> Unit raise HttpError {
+  self.inner.run_forever(
+    (req, body, conn) => {
+      let wrapped = ServerConnection::{ inner: conn }
+      f(to_request(req), body, wrapped)
+    },
+    allow_failure?,
+    max_connections?,
+  ) catch {
+    err => raise HttpError::NetworkError(err.to_string())
+  }
+}
+
+///|
+pub fn ServerConnection::close(self : ServerConnection) -> Unit {
+  self.inner.close()
+}
+
+///|
+pub fn ServerConnection::client_addr(self : ServerConnection) -> Addr {
+  to_addr(self.inner.client_addr())
+}
+
+///|
+pub async fn ServerConnection::read_request(
+  self : ServerConnection,
+) -> Request raise HttpError {
+  let req = self.inner.read_request() catch {
+    err => raise HttpError::NetworkError(err.to_string())
+  }
+  to_request(req)
+}
+
+///|
+pub async fn ServerConnection::skip_request_body(
+  self : ServerConnection,
+) -> Unit raise HttpError {
+  self.inner.skip_request_body() catch {
+    err => raise HttpError::NetworkError(err.to_string())
+  }
+}
+
+///|
+pub async fn ServerConnection::send_response(
+  self : ServerConnection,
+  code : Int,
+  reason : String,
+  extra_headers? : Map[String, String],
+) -> Unit raise HttpError {
+  self.inner.send_response(
+    code,
+    reason,
+    extra_headers=extra_headers.unwrap_or({}),
+  ) catch {
+    err => raise HttpError::NetworkError(err.to_string())
+  }
+}
+
+///|
+pub async fn ServerConnection::flush(
+  self : ServerConnection,
+) -> Unit raise HttpError {
+  self.inner.flush() catch {
+    err => raise HttpError::NetworkError(err.to_string())
+  }
+}
+
+///|
+pub async fn ServerConnection::end_response(
+  self : ServerConnection,
+) -> Unit raise HttpError {
+  self.inner.end_response() catch {
+    err => raise HttpError::NetworkError(err.to_string())
+  }
+}
+
+///|
+pub async fn ServerConnection::enter_passthrough_mode(
+  self : ServerConnection,
+) -> Unit raise HttpError {
+  self.inner.enter_passthrough_mode() catch {
+    err => raise HttpError::NetworkError(err.to_string())
+  }
+}
+
+///|
+pub impl @io.Reader for ServerConnection with _get_internal_buffer(self) {
+  @io.Reader::_get_internal_buffer(self.inner)
+}
+
+///|
+pub impl @io.Reader for ServerConnection with _direct_read(
+  self,
+  buf,
+  offset~,
+  max_len~,
+) {
+  @io.Reader::_direct_read(self.inner, buf, offset~, max_len~)
+}
+
+///|
+pub impl @io.Writer for ServerConnection with write_once(
+  self,
+  buf,
+  offset~,
+  len~,
+) {
+  @io.Writer::write_once(self.inner, buf, offset~, len~)
+}

@@ -6,6 +6,32 @@ pub(all) struct Response {
 }
 
 ///|
+pub(all) struct Addr {
+  text : String
+  port : Int
+}
+
+///|
+pub(all) enum RequestMethod {
+  Get
+  Head
+  Post
+  Put
+  Delete
+  Connect
+  Options
+  Trace
+  Patch
+} derive(Show, Eq, Compare, Hash)
+
+///|
+pub(all) struct Request {
+  meth : RequestMethod
+  path : String
+  headers : Map[String, String]
+}
+
+///|
 pub suberror HttpError {
   NetworkError(String)
   InvalidUrl(String)

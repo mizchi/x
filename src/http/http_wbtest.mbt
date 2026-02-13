@@ -9,10 +9,7 @@ test "headers_to_json - empty" {
 test "headers_to_json - single header" {
   let headers : Map[String, String] = { "Content-Type": "application/json" }
   let json = headers_to_json(headers)
-  inspect(
-    json,
-    content="{\"Content-Type\":\"application/json\"}",
-  )
+  inspect(json, content="{\"Content-Type\":\"application/json\"}")
 }
 
 ///|

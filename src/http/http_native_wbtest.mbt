@@ -1,11 +1,17 @@
 ///|
 test "extract_host_url - http with path" {
-  assert_eq(extract_host_url("http://www.example.org/path/to"), "http://www.example.org")
+  assert_eq(
+    extract_host_url("http://www.example.org/path/to"),
+    "http://www.example.org",
+  )
 }
 
 ///|
 test "extract_host_url - http without path" {
-  assert_eq(extract_host_url("http://www.example.org"), "http://www.example.org")
+  assert_eq(
+    extract_host_url("http://www.example.org"),
+    "http://www.example.org",
+  )
 }
 
 ///|
@@ -57,10 +63,7 @@ test "extract_path_from_url - with query" {
 
 ///|
 test "extract_path_from_url - with port" {
-  assert_eq(
-    extract_path_from_url("http://www.example.org:10042/path"),
-    "/path",
-  )
+  assert_eq(extract_path_from_url("http://www.example.org:10042/path"), "/path")
 }
 
 ///|

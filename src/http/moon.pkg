@@ -2,17 +2,20 @@ import {
   "moonbitlang/async/http" @async_http,
   "moonbitlang/async/io",
   "moonbitlang/async/js_async",
+  "moonbitlang/async/socket",
+  "moonbitlang/core/cmp",
   "moonbitlang/core/json",
 }
 
 import {
   "moonbitlang/async",
-  "moonbitlang/async/socket",
 } for "test"
 
 options(
   targets: {
     "http_js.mbt": [ "js" ],
+    "http_js_only_test.mbt": [ "js" ],
+    "http_js_test.mbt": [ "native", "js" ],
     "http_native.mbt": [ "native" ],
     "http_native_test.mbt": [ "native" ],
     "http_native_wbtest.mbt": [ "native" ],
