@@ -1,13 +1,13 @@
 {
   "name": "mizchi/x",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "deps": {
-    "moonbitlang/async": "0.16.6",
+    "moonbitlang/async": "0.16.7",
     "moonbitlang/x": "0.4.40"
   },
   "readme": "README.md",
   "repository": "https://github.com/mizchi/x",
-  "description": "Node.js backend compatibility layer for moonbitlang/async in MoonBit, with native delegation and JS FFI implementations for process, fs, http, websocket, stdio, pipe, and sys.",
+  "license": "Apache-2.0",
   "keywords": [
     "moonbit",
     "async",
@@ -20,7 +20,7 @@
     "websocket",
     "wasi"
   ],
+  "description": "Node.js backend compatibility layer for moonbitlang/async in MoonBit, with native delegation and JS FFI implementations for process, fs, http, websocket, stdio, pipe, and sys.",
   "source": "src",
-  "license": "Apache-2.0",
   "preferred-target": "native"
 }
