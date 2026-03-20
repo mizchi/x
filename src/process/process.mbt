@@ -17,6 +17,19 @@ pub async fn run(
 }
 
 ///|
+/// Run a command with inherited stdio (stdout/stderr go to terminal).
+/// Unlike `run()`, this does NOT capture output — it passes through to parent.
+pub async fn run_inherit(
+  cmd : StringView,
+  args : ArrayView[String],
+  cwd? : StringView,
+  extra_env? : Map[String, String] = {},
+  inherit_env? : Bool = true,
+) -> Int {
+  run_inherit_internal(cmd, args, cwd?, extra_env~, inherit_env~)
+}
+
+///|
 pub async fn collect_output(
   cmd : StringView,
   args : ArrayView[String],

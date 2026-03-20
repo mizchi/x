@@ -97,6 +97,54 @@ extern "js" fn spawn_and_collect_merged(
   #| }
 
 ///|
+extern "js" fn spawn_inherit(
+  cmd : String,
+  args : Array[String],
+  cwd : String?,
+  env_keys : Array[String],
+  env_values : Array[String],
+  inherit_env : Bool,
+) -> JsPromise[Int] =
+  #| async (cmd, args, cwd, envKeys, envValues, inheritEnv) => {
+  #|   const { spawn, execFileSync } = await import('node:child_process');
+  #|   const path = await import('node:path');
+  #|   let resolvedCmd = cmd;
+  #|   if (!inheritEnv && !path.isAbsolute(cmd) && !cmd.includes('/')) {
+  #|     try { resolvedCmd = execFileSync('/usr/bin/which', [cmd], { encoding: 'utf8' }).trim(); } catch {}
+  #|   }
+  #|   return new Promise((resolve, reject) => {
+  #|     const options = { stdio: 'inherit' };
+  #|     if (cwd !== undefined) options.cwd = cwd;
+  #|     const extraEnv = {};
+  #|     for (let i = 0; i < envKeys.length; i++) extraEnv[envKeys[i]] = envValues[i];
+  #|     options.env = inheritEnv ? { ...process.env, ...extraEnv } : extraEnv;
+  #|     const child = spawn(resolvedCmd, args, options);
+  #|     child.on('error', (err) => reject(err));
+  #|     child.on('close', (code) => resolve(code ?? 0));
+  #|   });
+  #| }
+
+///|
+async fn run_inherit_internal(
+  cmd : StringView,
+  args : ArrayView[String],
+  cwd? : StringView,
+  extra_env? : Map[String, String] = {},
+  inherit_env? : Bool = true,
+) -> Int {
+  let (env_keys, env_values) = env_to_arrays(extra_env)
+  let promise = spawn_inherit(
+    cmd.to_string(),
+    Array::from_iter(args.iter().map(fn(s) { s })),
+    cwd.map(fn(c) { c.to_string() }),
+    env_keys,
+    env_values,
+    inherit_env,
+  )
+  @js_async.run_promise(fn(_signal) { promise.cast() })
+}
+
+///|
 async fn collect_output_internal(
   cmd : StringView,
   args : ArrayView[String],
