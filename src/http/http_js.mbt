@@ -1686,7 +1686,7 @@ pub async fn Stream::read_some(self : Stream) -> Bytes? raise HttpError {
 pub async fn Stream::read_all(self : Stream) -> Bytes raise HttpError {
   let chunks : Array[Bytes] = []
   let mut total = 0
-  for {
+  for ;; {
     match self.read_some() {
       Some(chunk) => {
         chunks.push(chunk)

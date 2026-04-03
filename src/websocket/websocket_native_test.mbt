@@ -10,7 +10,7 @@ async test "websocket text echo" {
       let request = conn.read_request()
       let ws = @async_ws.from_http_server(request, conn)
       defer ws.close()
-      for {
+      for ;; {
         let msg = ws.recv() catch {
           @async_ws.ConnectionClosed(_) => break
           err => raise err
@@ -44,7 +44,7 @@ async test "websocket binary echo" {
       let request = conn.read_request()
       let ws = @async_ws.from_http_server(request, conn)
       defer ws.close()
-      for {
+      for ;; {
         let msg = ws.recv() catch {
           @async_ws.ConnectionClosed(_) => break
           err => raise err
@@ -85,7 +85,7 @@ async test "websocket multiple messages" {
       let request = conn.read_request()
       let ws = @async_ws.from_http_server(request, conn)
       defer ws.close()
-      for {
+      for ;; {
         let msg = ws.recv() catch {
           @async_ws.ConnectionClosed(_) => break
           err => raise err
@@ -127,7 +127,7 @@ async test "smoke: text echo matches upstream" {
         let (conn, _) = server.accept()
         let request = conn.read_request()
         let ws = @async_ws.from_http_server(request, conn)
-        for {
+        for ;; {
           let msg = ws.recv() catch {
             @async_ws.ConnectionClosed(_) => break
             err => raise err
@@ -177,7 +177,7 @@ async test "smoke: binary echo matches upstream" {
         let (conn, _) = server.accept()
         let request = conn.read_request()
         let ws = @async_ws.from_http_server(request, conn)
-        for {
+        for ;; {
           let msg = ws.recv() catch {
             @async_ws.ConnectionClosed(_) => break
             err => raise err
@@ -280,7 +280,7 @@ async test "smoke: multiple messages match upstream" {
         let (conn, _) = server.accept()
         let request = conn.read_request()
         let ws = @async_ws.from_http_server(request, conn)
-        for {
+        for ;; {
           let msg = ws.recv() catch {
             @async_ws.ConnectionClosed(_) => break
             err => raise err
@@ -337,7 +337,7 @@ async test "smoke: mixed text and binary match upstream" {
         let (conn, _) = server.accept()
         let request = conn.read_request()
         let ws = @async_ws.from_http_server(request, conn)
-        for {
+        for ;; {
           let msg = ws.recv() catch {
             @async_ws.ConnectionClosed(_) => break
             err => raise err
@@ -399,7 +399,7 @@ async test "websocket empty string" {
       let request = conn.read_request()
       let ws = @async_ws.from_http_server(request, conn)
       defer ws.close()
-      for {
+      for ;; {
         let msg = ws.recv() catch {
           @async_ws.ConnectionClosed(_) => break
           err => raise err
@@ -433,7 +433,7 @@ async test "websocket unicode text" {
       let request = conn.read_request()
       let ws = @async_ws.from_http_server(request, conn)
       defer ws.close()
-      for {
+      for ;; {
         let msg = ws.recv() catch {
           @async_ws.ConnectionClosed(_) => break
           err => raise err
@@ -472,7 +472,7 @@ async test "websocket empty binary" {
       let request = conn.read_request()
       let ws = @async_ws.from_http_server(request, conn)
       defer ws.close()
-      for {
+      for ;; {
         let msg = ws.recv() catch {
           @async_ws.ConnectionClosed(_) => break
           err => raise err
@@ -507,7 +507,7 @@ async test "websocket large binary" {
       let request = conn.read_request()
       let ws = @async_ws.from_http_server(request, conn)
       defer ws.close()
-      for {
+      for ;; {
         let msg = ws.recv() catch {
           @async_ws.ConnectionClosed(_) => break
           err => raise err

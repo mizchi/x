@@ -23,7 +23,7 @@ async test "stream: GET read_some" {
     defer stream.close()
     assert_eq(resp.code, 200)
     let buf = StringBuilder::new()
-    for {
+    for ;; {
       match stream.read_some() {
         Some(chunk) =>
           for i = 0; i < chunk.length(); i = i + 1 {
@@ -123,7 +123,7 @@ async test "stream: SSE-like chunked response" {
     )
     // Read all chunks and verify complete SSE data
     let buf = StringBuilder::new()
-    for {
+    for ;; {
       match stream.read_some() {
         Some(chunk) =>
           for i = 0; i < chunk.length(); i = i + 1 {
@@ -200,7 +200,7 @@ async test "stream: OpenAI-like POST SSE" {
     // Parse SSE events from stream
     let events : Array[String] = []
     let buf = StringBuilder::new()
-    for {
+    for ;; {
       match stream.read_some() {
         Some(chunk) =>
           for i = 0; i < chunk.length(); i = i + 1 {
@@ -292,7 +292,7 @@ async test "smoke: stream matches upstream get_stream" {
     )
     defer wrapper_stream.close()
     let wrapper_buf = StringBuilder::new()
-    for {
+    for ;; {
       match wrapper_stream.read_some() {
         Some(chunk) =>
           for i = 0; i < chunk.length(); i = i + 1 {
