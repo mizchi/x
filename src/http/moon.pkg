@@ -5,6 +5,7 @@ import {
   "moonbitlang/async/js_async",
   "moonbitlang/async/socket",
   "moonbitlang/core/cmp",
+  "moonbitlang/core/debug",
   "moonbitlang/core/json",
 }
 

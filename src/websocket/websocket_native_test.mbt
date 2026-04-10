@@ -2,7 +2,7 @@
 async test "websocket text echo" {
   @async.with_task_group(group => {
     let server = @http_server.Server::new(@socket.Addr::parse("127.0.0.1:0"))
-    let addr = server.addr()
+    let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
       let (conn, _) = server.accept()
@@ -36,7 +36,7 @@ async test "websocket text echo" {
 async test "websocket binary echo" {
   @async.with_task_group(group => {
     let server = @http_server.Server::new(@socket.Addr::parse("127.0.0.1:0"))
-    let addr = server.addr()
+    let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
       let (conn, _) = server.accept()
@@ -77,7 +77,7 @@ async test "websocket binary echo" {
 async test "websocket multiple messages" {
   @async.with_task_group(group => {
     let server = @http_server.Server::new(@socket.Addr::parse("127.0.0.1:0"))
-    let addr = server.addr()
+    let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
       let (conn, _) = server.accept()
@@ -119,7 +119,7 @@ async test "websocket multiple messages" {
 async test "smoke: text echo matches upstream" {
   @async.with_task_group(group => {
     let server = @http_server.Server::new(@socket.Addr::parse("127.0.0.1:0"))
-    let addr = server.addr()
+    let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
       // Accept two connections sequentially
@@ -170,7 +170,7 @@ async test "smoke: text echo matches upstream" {
 async test "smoke: binary echo matches upstream" {
   @async.with_task_group(group => {
     let server = @http_server.Server::new(@socket.Addr::parse("127.0.0.1:0"))
-    let addr = server.addr()
+    let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
       for i = 0; i < 2; i = i + 1 {
@@ -222,7 +222,7 @@ async test "smoke: binary echo matches upstream" {
 async test "smoke: close code matches upstream" {
   @async.with_task_group(group => {
     let server = @http_server.Server::new(@socket.Addr::parse("127.0.0.1:0"))
-    let addr = server.addr()
+    let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
       // Server sends close with GoingAway code to each client
@@ -250,7 +250,7 @@ async test "smoke: close code matches upstream" {
       ignore(upstream.recv())
       ""
     } catch {
-      @async_ws.ConnectionClosed(code, _) => code.to_string()
+      @async_ws.ConnectionClosed(code, _) => @debug.to_string(code)
       _ => "error"
     }
     // Wrapper: receive close code
@@ -273,7 +273,7 @@ async test "smoke: close code matches upstream" {
 async test "smoke: multiple messages match upstream" {
   @async.with_task_group(group => {
     let server = @http_server.Server::new(@socket.Addr::parse("127.0.0.1:0"))
-    let addr = server.addr()
+    let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
       for i = 0; i < 2; i = i + 1 {
@@ -330,7 +330,7 @@ async test "smoke: multiple messages match upstream" {
 async test "smoke: mixed text and binary match upstream" {
   @async.with_task_group(group => {
     let server = @http_server.Server::new(@socket.Addr::parse("127.0.0.1:0"))
-    let addr = server.addr()
+    let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
       for i = 0; i < 2; i = i + 1 {
@@ -391,7 +391,7 @@ async test "smoke: mixed text and binary match upstream" {
 async test "websocket empty string" {
   @async.with_task_group(group => {
     let server = @http_server.Server::new(@socket.Addr::parse("127.0.0.1:0"))
-    let addr = server.addr()
+    let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
       let (conn, _) = server.accept()
@@ -425,7 +425,7 @@ async test "websocket empty string" {
 async test "websocket unicode text" {
   @async.with_task_group(group => {
     let server = @http_server.Server::new(@socket.Addr::parse("127.0.0.1:0"))
-    let addr = server.addr()
+    let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
       let (conn, _) = server.accept()
@@ -464,7 +464,7 @@ async test "websocket unicode text" {
 async test "websocket empty binary" {
   @async.with_task_group(group => {
     let server = @http_server.Server::new(@socket.Addr::parse("127.0.0.1:0"))
-    let addr = server.addr()
+    let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
       let (conn, _) = server.accept()
@@ -499,7 +499,7 @@ async test "websocket empty binary" {
 async test "websocket large binary" {
   @async.with_task_group(group => {
     let server = @http_server.Server::new(@socket.Addr::parse("127.0.0.1:0"))
-    let addr = server.addr()
+    let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
       let (conn, _) = server.accept()
@@ -538,7 +538,7 @@ async test "websocket large binary" {
 async test "websocket close with reason" {
   @async.with_task_group(group => {
     let server = @http_server.Server::new(@socket.Addr::parse("127.0.0.1:0"))
-    let addr = server.addr()
+    let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
       let (conn, _) = server.accept()
@@ -548,7 +548,7 @@ async test "websocket close with reason" {
       defer ws.close()
       try ws.recv() catch {
         @async_ws.ConnectionClosed(code, reason) => {
-          inspect(code, content="Normal")
+          inspect(@debug.to_string(code), content="Normal")
           inspect(reason, content="Some(\"goodbye\")")
         }
         err => raise err
@@ -566,7 +566,7 @@ async test "websocket close with reason" {
 async test "websocket close with custom code" {
   @async.with_task_group(group => {
     let server = @http_server.Server::new(@socket.Addr::parse("127.0.0.1:0"))
-    let addr = server.addr()
+    let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
       let (conn, _) = server.accept()
@@ -576,7 +576,7 @@ async test "websocket close with custom code" {
       defer ws.close()
       try ws.recv() catch {
         @async_ws.ConnectionClosed(code, _) =>
-          inspect(code, content="Other(4000)")
+          inspect(@debug.to_string(code), content="Other(4000)")
         err => raise err
       } noraise {
         _ => ()
@@ -593,7 +593,7 @@ async test "websocket invalid handshake" {
   // Connecting to a non-WebSocket HTTP endpoint should raise InvalidHandshake
   @async.with_task_group(group => {
     let server = @http_server.Server::new(@socket.Addr::parse("127.0.0.1:0"))
-    let addr = server.addr()
+    let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
       let (conn, _) = server.accept()
@@ -616,7 +616,7 @@ async test "websocket invalid handshake" {
 async test "websocket server-initiated close" {
   @async.with_task_group(group => {
     let server = @http_server.Server::new(@socket.Addr::parse("127.0.0.1:0"))
-    let addr = server.addr()
+    let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
       let (conn, _) = server.accept()
@@ -657,7 +657,7 @@ async test "websocket server-initiated close" {
 async test "websocket close with code" {
   @async.with_task_group(group => {
     let server = @http_server.Server::new(@socket.Addr::parse("127.0.0.1:0"))
-    let addr = server.addr()
+    let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
       let (conn, _) = server.accept()
@@ -666,7 +666,8 @@ async test "websocket close with code" {
       let ws = @async_ws.from_http_server(request, conn)
       defer ws.close()
       try ws.recv() catch {
-        @async_ws.ConnectionClosed(code, _) => inspect(code, content="Normal")
+        @async_ws.ConnectionClosed(code, _) =>
+          inspect(@debug.to_string(code), content="Normal")
         err => raise err
       } noraise {
         _ => ()

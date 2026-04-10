@@ -22,7 +22,12 @@ pub(all) enum RequestMethod {
   Options
   Trace
   Patch
-} derive(Show, Eq, Compare, Hash)
+} derive(Eq, Compare, Hash, @debug.Debug)
+
+///|
+pub impl Show for RequestMethod with output(self, logger) {
+  logger.write_string(@debug.to_string(self))
+}
 
 ///|
 pub(all) struct Request {
@@ -37,7 +42,12 @@ pub suberror HttpError {
   InvalidUrl(String)
   TimeoutError
   NotSupported
-} derive(Show)
+} derive(@debug.Debug)
+
+///|
+pub impl Show for HttpError with output(self, logger) {
+  logger.write_string(@debug.to_string(self))
+}
 
 ///|
 fn classify_http_error(message : String) -> HttpError {

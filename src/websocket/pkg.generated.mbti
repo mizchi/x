@@ -1,6 +1,10 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "mizchi/x/websocket"
 
+import {
+  "moonbitlang/core/debug",
+}
+
 // Values
 
 // Errors
@@ -8,7 +12,7 @@ pub suberror WebSocketError {
   ConnectionClosed(CloseCode, String?)
   InvalidHandshake(String)
   ProtocolError(String)
-}
+} derive(@debug.Debug)
 pub impl Show for WebSocketError
 
 // Types and methods
@@ -24,8 +28,7 @@ pub(all) enum CloseCode {
   MissingExtension
   InternalError
   Other(UInt16)
-}
-pub impl Eq for CloseCode
+} derive(Eq, @debug.Debug)
 pub impl Show for CloseCode
 
 pub struct Conn {
@@ -47,7 +50,7 @@ pub(all) enum Message {
 pub(all) enum MessageKind {
   Binary
   Text
-}
+} derive(@debug.Debug)
 pub impl Show for MessageKind
 
 // Type aliases

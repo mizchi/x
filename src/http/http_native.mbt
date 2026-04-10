@@ -17,9 +17,7 @@ fn extract_host_url(url : String) -> String {
   if path_start == -1 {
     url
   } else {
-    url[:path_start].to_string() catch {
-      _ => url
-    }
+    url[:path_start].to_string()
   }
 }
 
@@ -42,9 +40,7 @@ fn extract_path_from_url(url : String) -> String {
   if path_start == -1 {
     "/"
   } else {
-    url[path_start:].to_string() catch {
-      _ => "/"
-    }
+    url[path_start:].to_string()
   }
 }
 
@@ -392,7 +388,7 @@ fn to_addr(addr : @socket.Addr) -> Addr {
 }
 
 ///|
-pub fn Server::new(
+pub async fn Server::new(
   host? : String,
   port? : Int,
   headers? : Map[String, String],
@@ -429,12 +425,12 @@ pub fn Server::new(
 
 ///|
 pub fn Server::port(self : Server) -> Int {
-  self.inner.addr().port()
+  self.inner.addr.port()
 }
 
 ///|
 pub fn Server::addr(self : Server) -> Addr {
-  to_addr(self.inner.addr())
+  to_addr(self.inner.addr)
 }
 
 ///|

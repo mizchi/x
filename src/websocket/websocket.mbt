@@ -2,7 +2,12 @@
 pub(all) enum MessageKind {
   Binary
   Text
-} derive(Show)
+} derive(@debug.Debug)
+
+///|
+pub impl Show for MessageKind with output(self, logger) {
+  logger.write_string(@debug.to_string(self))
+}
 
 ///|
 pub(all) enum CloseCode {
@@ -17,14 +22,24 @@ pub(all) enum CloseCode {
   MissingExtension
   InternalError
   Other(UInt16)
-} derive(Show, Eq)
+} derive(Eq, @debug.Debug)
+
+///|
+pub impl Show for CloseCode with output(self, logger) {
+  logger.write_string(@debug.to_string(self))
+}
 
 ///|
 pub suberror WebSocketError {
   ConnectionClosed(CloseCode, String?)
   InvalidHandshake(String)
   ProtocolError(String)
-} derive(Show)
+} derive(@debug.Debug)
+
+///|
+pub impl Show for WebSocketError with output(self, logger) {
+  logger.write_string(@debug.to_string(self))
+}
 
 ///|
 pub(all) enum Message {

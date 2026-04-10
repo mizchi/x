@@ -4,7 +4,7 @@
 async test "stream: GET read_some" {
   @async.with_task_group(group => {
     let server = @async_http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
-    let addr = server.addr()
+    let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
       let (conn, _) = server.accept()
@@ -40,7 +40,7 @@ async test "stream: GET read_some" {
 async test "stream: GET read_all" {
   @async.with_task_group(group => {
     let server = @async_http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
-    let addr = server.addr()
+    let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
       let (conn, _) = server.accept()
@@ -64,7 +64,7 @@ async test "stream: GET read_all" {
 async test "stream: POST with body" {
   @async.with_task_group(group => {
     let server = @async_http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
-    let addr = server.addr()
+    let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
       let (conn, _) = server.accept()
@@ -95,7 +95,7 @@ async test "stream: POST with body" {
 async test "stream: SSE-like chunked response" {
   @async.with_task_group(group => {
     let server = @async_http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
-    let addr = server.addr()
+    let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
       let (conn, _) = server.accept()
@@ -145,7 +145,7 @@ async test "stream: OpenAI-like POST SSE" {
   // POST with JSON body + Authorization header → SSE response
   @async.with_task_group(group => {
     let server = @async_http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
-    let addr = server.addr()
+    let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
       let (conn, _) = server.accept()
@@ -229,7 +229,7 @@ async test "stream: OpenAI-like POST SSE" {
 async test "stream: response headers available before body" {
   @async.with_task_group(group => {
     let server = @async_http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
-    let addr = server.addr()
+    let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
       let (conn, _) = server.accept()
@@ -259,7 +259,7 @@ async test "stream: response headers available before body" {
 async test "smoke: stream matches upstream get_stream" {
   @async.with_task_group(group => {
     let server = @async_http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
-    let addr = server.addr()
+    let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
       for i = 0; i < 2; i = i + 1 {
@@ -314,7 +314,7 @@ async test "smoke: stream matches upstream get_stream" {
 async test "http GET" {
   @async.with_task_group(group => {
     let server = @async_http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
-    let addr = server.addr()
+    let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
       let (conn, _) = server.accept()
@@ -337,7 +337,7 @@ async test "http GET" {
 async test "http POST with body" {
   @async.with_task_group(group => {
     let server = @async_http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
-    let addr = server.addr()
+    let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
       let (conn, _) = server.accept()
@@ -364,7 +364,7 @@ async test "http POST with body" {
 async test "http PUT with body" {
   @async.with_task_group(group => {
     let server = @async_http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
-    let addr = server.addr()
+    let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
       let (conn, _) = server.accept()
@@ -390,7 +390,7 @@ async test "http PUT with body" {
 async test "http GET with custom headers" {
   @async.with_task_group(group => {
     let server = @async_http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
-    let addr = server.addr()
+    let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
       let (conn, _) = server.accept()
@@ -416,7 +416,7 @@ async test "http GET with custom headers" {
 async test "http response headers" {
   @async.with_task_group(group => {
     let server = @async_http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
-    let addr = server.addr()
+    let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
       let (conn, _) = server.accept()
@@ -442,7 +442,7 @@ async test "http response headers" {
 async test "http 404 response" {
   @async.with_task_group(group => {
     let server = @async_http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
-    let addr = server.addr()
+    let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
       let (conn, _) = server.accept()
@@ -464,7 +464,7 @@ async test "http 404 response" {
 async test "http empty body" {
   @async.with_task_group(group => {
     let server = @async_http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
-    let addr = server.addr()
+    let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
       let (conn, _) = server.accept()
@@ -484,7 +484,7 @@ async test "http empty body" {
 async test "http unicode body" {
   @async.with_task_group(group => {
     let server = @async_http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
-    let addr = server.addr()
+    let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
       let (conn, _) = server.accept()
@@ -508,7 +508,7 @@ async test "http unicode body" {
 async test "smoke: GET matches upstream" {
   @async.with_task_group(group => {
     let server = @async_http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
-    let addr = server.addr()
+    let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
       // Handle two requests: upstream then wrapper
@@ -543,7 +543,7 @@ async test "smoke: GET matches upstream" {
 async test "smoke: POST matches upstream" {
   @async.with_task_group(group => {
     let server = @async_http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
-    let addr = server.addr()
+    let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
       for i = 0; i < 2; i = i + 1 {
@@ -581,7 +581,7 @@ async test "smoke: POST matches upstream" {
 async test "client: generic request via Client::request" {
   @async.with_task_group(group => {
     let server = @async_http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
-    let addr = server.addr()
+    let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
       let (conn, _) = server.accept()
@@ -613,7 +613,7 @@ async test "http multi-part response" {
   // Server sends response in multiple writes, client receives full body
   @async.with_task_group(group => {
     let server = @async_http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
-    let addr = server.addr()
+    let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
       let (conn, _) = server.accept()
@@ -637,7 +637,7 @@ async test "http POST echo - request method and path" {
   // Adapted from upstream "request streaming": server echoes method+path
   @async.with_task_group(group => {
     let server = @async_http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
-    let addr = server.addr()
+    let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
       for i = 0; i < 3; i = i + 1 {
@@ -646,7 +646,7 @@ async test "http POST echo - request method and path" {
         let body = conn.read_all()
         conn.send_response(200, "OK")
         conn.write(
-          req.meth.to_string() + " " + req.path + " body=" + body.text(),
+          @debug.to_string(req.meth) + " " + req.path + " body=" + body.text(),
         )
         conn.end_response()
         conn.close()
@@ -672,7 +672,7 @@ async test "http multiple sequential requests" {
   // Adapted from upstream "request streaming": multiple requests on same server
   @async.with_task_group(group => {
     let server = @async_http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
-    let addr = server.addr()
+    let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
       for i = 0; i < 5; i = i + 1 {
@@ -712,7 +712,7 @@ async test "http request" {
 async test "smoke: response headers match upstream" {
   @async.with_task_group(group => {
     let server = @async_http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
-    let addr = server.addr()
+    let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
       for i = 0; i < 2; i = i + 1 {

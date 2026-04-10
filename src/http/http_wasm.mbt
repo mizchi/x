@@ -208,7 +208,7 @@ pub struct Server {}
 pub struct ServerConnection {}
 
 ///|
-pub fn Server::new(
+pub async fn Server::new(
   host? : String,
   port? : Int,
   headers? : Map[String, String],
