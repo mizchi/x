@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install MoonBit CLI
+        run: |
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
+          echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
+
+      - name: Moon version
+        run: moon version --all
+
+      - name: Moon update
+        run: moon update
+
+      - name: Check format
+        run: moon fmt --check
+
+      - name: Check generated interfaces are up to date
+        run: |
+          moon info
+          if ! git diff --exit-code -- '**/pkg.generated.mbti'; then
+            echo "::error::pkg.generated.mbti is out of date. Run 'moon info' and commit the changes."
+            exit 1
+          fi
+
+  test:
+    name: Test (${{ matrix.os }}, ${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        target: [native, js]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        if: matrix.target == 'js'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Install MoonBit CLI
+        run: |
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
+          echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
+
+      - name: Moon version
+        run: moon version --all
+
+      - name: Moon update
+        run: moon update
+
+      - name: Moon check
+        run: moon check --deny-warn --target ${{ matrix.target }}
+
+      - name: Moon test
+        run: moon test --target ${{ matrix.target }}
