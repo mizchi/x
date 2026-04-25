@@ -11,7 +11,12 @@ pub async fn write_file(
   content : &@io.Data,
   create? : Int,
 ) -> Unit raise IOError {
-  @async_fs.write_file(path, content, create=create.unwrap_or(0o644)) catch {
+  @async_fs.write_file(
+    path,
+    content,
+    create_mode=CreateOrTruncate,
+    permission=create.unwrap_or(0o644),
+  ) catch {
     err => raise IOError::IOError(err.to_string())
   }
 }
