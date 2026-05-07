@@ -38,8 +38,13 @@ pub async fn mkdir(
 }
 
 ///|
-pub async fn readdir(path : StringView) -> Array[String] raise IOError {
-  @async_fs.readdir(path) catch {
+pub async fn readdir(
+  path : StringView,
+  include_hidden? : Bool,
+  include_special? : Bool,
+  sort? : Bool,
+) -> Array[String] raise IOError {
+  @async_fs.readdir(path, include_hidden?, include_special?, sort?) catch {
     err => raise IOError::IOError(err.to_string())
   }
 }
@@ -54,6 +59,53 @@ pub async fn remove(path : StringView) -> Unit raise IOError {
 ///|
 pub async fn rmdir(path : StringView, recursive? : Bool) -> Unit raise IOError {
   @async_fs.rmdir(path, recursive?) catch {
+    err => raise IOError::IOError(err.to_string())
+  }
+}
+
+///|
+fn from_async_kind(k : @async_fs.FileKind) -> FileKind {
+  match k {
+    Unknown => Unknown
+    Regular => Regular
+    Directory => Directory
+    SymLink => SymLink
+    Socket => Socket
+    Pipe => Pipe
+    BlockDevice => BlockDevice
+    CharDevice => CharDevice
+  }
+}
+
+///|
+pub async fn kind(
+  path : StringView,
+  follow_symlink? : Bool,
+) -> FileKind raise IOError {
+  let k = try {
+    match follow_symlink {
+      None => @async_fs.kind(path)
+      Some(b) => @async_fs.kind(path, follow_symlink=b)
+    }
+  } catch {
+    err => raise IOError::IOError(err.to_string())
+  }
+  from_async_kind(k)
+}
+
+///|
+pub async fn realpath(path : StringView) -> String raise IOError {
+  @async_fs.realpath(path) catch {
+    err => raise IOError::IOError(err.to_string())
+  }
+}
+
+///|
+pub async fn symlink(
+  target~ : StringView,
+  link_path : StringView,
+) -> Unit raise IOError {
+  @async_fs.symlink(target~, link_path) catch {
     err => raise IOError::IOError(err.to_string())
   }
 }

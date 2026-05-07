@@ -38,10 +38,25 @@ extern "js" fn js_mkdir(path : String, recursive : Bool) -> JsPromise[Unit] =
   #| }
 
 ///|
-extern "js" fn js_readdir(path : String) -> JsPromise[Array[String]] =
-  #| async (path) => {
+extern "js" fn js_readdir(
+  path : String,
+  include_hidden : Bool,
+  include_special : Bool,
+  sort : Bool,
+) -> JsPromise[Array[String]] =
+  #| async (path, includeHidden, includeSpecial, sort) => {
   #|   const fs = await import('node:fs/promises');
-  #|   return await fs.readdir(path);
+  #|   let entries = await fs.readdir(path);
+  #|   if (!includeSpecial) {
+  #|     entries = entries.filter(n => n !== '.' && n !== '..');
+  #|   }
+  #|   if (!includeHidden) {
+  #|     entries = entries.filter(n => !n.startsWith('.'));
+  #|   }
+  #|   if (sort) {
+  #|     entries.sort();
+  #|   }
+  #|   return entries;
   #| }
 
 ///|
@@ -102,8 +117,20 @@ pub async fn mkdir(
 }
 
 ///|
-pub async fn readdir(path : StringView) -> Array[String] raise IOError {
-  run_js_promise(js_readdir(path.to_string()))
+pub async fn readdir(
+  path : StringView,
+  include_hidden? : Bool,
+  include_special? : Bool,
+  sort? : Bool,
+) -> Array[String] raise IOError {
+  run_js_promise(
+    js_readdir(
+      path.to_string(),
+      include_hidden.unwrap_or(false),
+      include_special.unwrap_or(false),
+      sort.unwrap_or(false),
+    ),
+  )
 }
 
 ///|
@@ -114,4 +141,69 @@ pub async fn remove(path : StringView) -> Unit raise IOError {
 ///|
 pub async fn rmdir(path : StringView, recursive? : Bool) -> Unit raise IOError {
   run_js_promise(js_rmdir(path.to_string(), recursive.unwrap_or(false)))
+}
+
+///|
+extern "js" fn js_kind(path : String, follow_symlink : Bool) -> JsPromise[Int] =
+  #| async (path, followSymlink) => {
+  #|   const fs = await import('node:fs/promises');
+  #|   const stat = followSymlink ? await fs.stat(path) : await fs.lstat(path);
+  #|   if (stat.isFile()) return 1;
+  #|   if (stat.isDirectory()) return 2;
+  #|   if (stat.isSymbolicLink()) return 3;
+  #|   if (stat.isSocket()) return 4;
+  #|   if (stat.isFIFO()) return 5;
+  #|   if (stat.isBlockDevice()) return 6;
+  #|   if (stat.isCharacterDevice()) return 7;
+  #|   return 0;
+  #| }
+
+///|
+extern "js" fn js_realpath(path : String) -> JsPromise[String] =
+  #| async (path) => {
+  #|   const fs = await import('node:fs/promises');
+  #|   return await fs.realpath(path);
+  #| }
+
+///|
+pub async fn kind(
+  path : StringView,
+  follow_symlink? : Bool,
+) -> FileKind raise IOError {
+  let i : Int = run_js_promise(
+    js_kind(path.to_string(), follow_symlink.unwrap_or(true)),
+  )
+  match i {
+    1 => Regular
+    2 => Directory
+    3 => SymLink
+    4 => Socket
+    5 => Pipe
+    6 => BlockDevice
+    7 => CharDevice
+    _ => Unknown
+  }
+}
+
+///|
+pub async fn realpath(path : StringView) -> String raise IOError {
+  run_js_promise(js_realpath(path.to_string()))
+}
+
+///|
+extern "js" fn js_symlink(
+  target : String,
+  link_path : String,
+) -> JsPromise[Unit] =
+  #| async (target, linkPath) => {
+  #|   const fs = await import('node:fs/promises');
+  #|   await fs.symlink(target, linkPath);
+  #| }
+
+///|
+pub async fn symlink(
+  target~ : StringView,
+  link_path : StringView,
+) -> Unit raise IOError {
+  run_js_promise(js_symlink(target.to_string(), link_path.to_string()))
 }

@@ -266,7 +266,15 @@ pub fn mkdir(
 }
 
 ///|
-pub fn readdir(path : StringView) -> Array[String] raise IOError {
+pub fn readdir(
+  path : StringView,
+  include_hidden? : Bool,
+  include_special? : Bool,
+  sort? : Bool,
+) -> Array[String] raise IOError {
+  ignore(include_hidden)
+  ignore(include_special)
+  ignore(sort)
   let fd = wasi_open(
     path,
     wasi_oflags_directory,
@@ -325,4 +333,27 @@ pub fn rmdir(path : StringView, recursive? : Bool) -> Unit raise IOError {
   if err != 0 {
     raise IOError::IOError("WASI rmdir error: " + err.to_string())
   }
+}
+
+///|
+pub fn kind(
+  _path : StringView,
+  follow_symlink? : Bool,
+) -> FileKind raise IOError {
+  ignore(follow_symlink)
+  raise IOError::IOError("kind is not supported on wasm target")
+}
+
+///|
+pub fn realpath(_path : StringView) -> String raise IOError {
+  raise IOError::IOError("realpath is not supported on wasm target")
+}
+
+///|
+pub fn symlink(
+  target~ : StringView,
+  _link_path : StringView,
+) -> Unit raise IOError {
+  ignore(target)
+  raise IOError::IOError("symlink is not supported on wasm target")
 }
