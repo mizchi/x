@@ -134,9 +134,9 @@ async fn run_inherit_internal(
 ) -> Int {
   let (env_keys, env_values) = env_to_arrays(extra_env)
   let promise = spawn_inherit(
-    cmd.to_string(),
+    cmd.to_owned(),
     Array::from_iter(args.iter().map(fn(s) { s })),
-    cwd.map(fn(c) { c.to_string() }),
+    cwd.map(fn(c) { c.to_owned() }),
     env_keys,
     env_values,
     inherit_env,
@@ -154,9 +154,9 @@ async fn collect_output_internal(
 ) -> (Int, &@async_io.Data, &@async_io.Data) {
   let (env_keys, env_values) = env_to_arrays(extra_env)
   let promise = spawn_and_collect(
-    cmd.to_string(),
+    cmd.to_owned(),
     Array::from_iter(args.iter().map(fn(s) { s })),
-    cwd.map(fn(c) { c.to_string() }),
+    cwd.map(fn(c) { c.to_owned() }),
     env_keys,
     env_values,
     inherit_env,
@@ -177,9 +177,9 @@ async fn collect_output_merged_internal(
 ) -> (Int, &@async_io.Data) {
   let (env_keys, env_values) = env_to_arrays(extra_env)
   let promise = spawn_and_collect_merged(
-    cmd.to_string(),
+    cmd.to_owned(),
     args,
-    cwd.map(fn(c) { c.to_string() }),
+    cwd.map(fn(c) { c.to_owned() }),
     env_keys,
     env_values,
     inherit_env,

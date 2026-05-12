@@ -2671,7 +2671,7 @@ pub fn Client::close(self : Client) -> Unit {
 pub async fn Client::request(
   self : Client,
   meth : RequestMethod,
-  path : String,
+  path : StringView,
   extra_headers? : Map[String, String],
 ) -> Unit raise HttpError {
   if self.closed {
@@ -2684,7 +2684,7 @@ pub async fn Client::request(
   let promise = js_client_request_begin(
     self.id,
     request_method_to_string(meth),
-    path,
+    path.to_owned(),
     headers_to_json(extra_headers.unwrap_or({})),
   )
   let err = @js_async.Promise::wait(promise, abort_controller=controller) catch {

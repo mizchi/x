@@ -1,7 +1,7 @@
 ///|
 async test "websocket text echo" {
   @async.with_task_group(group => {
-    let server = @http_server.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+    let server = @http_server.Server(@socket.Addr::parse("127.0.0.1:0"))
     let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
@@ -35,7 +35,7 @@ async test "websocket text echo" {
 ///|
 async test "websocket binary echo" {
   @async.with_task_group(group => {
-    let server = @http_server.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+    let server = @http_server.Server(@socket.Addr::parse("127.0.0.1:0"))
     let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
@@ -76,7 +76,7 @@ async test "websocket binary echo" {
 ///|
 async test "websocket multiple messages" {
   @async.with_task_group(group => {
-    let server = @http_server.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+    let server = @http_server.Server(@socket.Addr::parse("127.0.0.1:0"))
     let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
@@ -118,7 +118,7 @@ async test "websocket multiple messages" {
 ///|
 async test "smoke: text echo matches upstream" {
   @async.with_task_group(group => {
-    let server = @http_server.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+    let server = @http_server.Server(@socket.Addr::parse("127.0.0.1:0"))
     let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
@@ -169,7 +169,7 @@ async test "smoke: text echo matches upstream" {
 ///|
 async test "smoke: binary echo matches upstream" {
   @async.with_task_group(group => {
-    let server = @http_server.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+    let server = @http_server.Server(@socket.Addr::parse("127.0.0.1:0"))
     let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
@@ -221,7 +221,7 @@ async test "smoke: binary echo matches upstream" {
 ///|
 async test "smoke: close code matches upstream" {
   @async.with_task_group(group => {
-    let server = @http_server.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+    let server = @http_server.Server(@socket.Addr::parse("127.0.0.1:0"))
     let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
@@ -272,7 +272,7 @@ async test "smoke: close code matches upstream" {
 ///|
 async test "smoke: multiple messages match upstream" {
   @async.with_task_group(group => {
-    let server = @http_server.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+    let server = @http_server.Server(@socket.Addr::parse("127.0.0.1:0"))
     let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
@@ -329,7 +329,7 @@ async test "smoke: multiple messages match upstream" {
 ///|
 async test "smoke: mixed text and binary match upstream" {
   @async.with_task_group(group => {
-    let server = @http_server.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+    let server = @http_server.Server(@socket.Addr::parse("127.0.0.1:0"))
     let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
@@ -390,7 +390,7 @@ async test "smoke: mixed text and binary match upstream" {
 ///|
 async test "websocket empty string" {
   @async.with_task_group(group => {
-    let server = @http_server.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+    let server = @http_server.Server(@socket.Addr::parse("127.0.0.1:0"))
     let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
@@ -424,7 +424,7 @@ async test "websocket empty string" {
 ///|
 async test "websocket unicode text" {
   @async.with_task_group(group => {
-    let server = @http_server.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+    let server = @http_server.Server(@socket.Addr::parse("127.0.0.1:0"))
     let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
@@ -463,7 +463,7 @@ async test "websocket unicode text" {
 ///|
 async test "websocket empty binary" {
   @async.with_task_group(group => {
-    let server = @http_server.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+    let server = @http_server.Server(@socket.Addr::parse("127.0.0.1:0"))
     let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
@@ -498,7 +498,7 @@ async test "websocket empty binary" {
 ///|
 async test "websocket large binary" {
   @async.with_task_group(group => {
-    let server = @http_server.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+    let server = @http_server.Server(@socket.Addr::parse("127.0.0.1:0"))
     let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
@@ -537,7 +537,7 @@ async test "websocket large binary" {
 ///|
 async test "websocket close with reason" {
   @async.with_task_group(group => {
-    let server = @http_server.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+    let server = @http_server.Server(@socket.Addr::parse("127.0.0.1:0"))
     let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
@@ -549,7 +549,7 @@ async test "websocket close with reason" {
       try ws.recv() catch {
         @async_ws.ConnectionClosed(code, reason) => {
           inspect(@debug.to_string(code), content="Normal")
-          inspect(reason, content="Some(\"goodbye\")")
+          inspect(@debug.to_string(reason), content="Some(\"goodbye\")")
         }
         err => raise err
       } noraise {
@@ -565,7 +565,7 @@ async test "websocket close with reason" {
 ///|
 async test "websocket close with custom code" {
   @async.with_task_group(group => {
-    let server = @http_server.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+    let server = @http_server.Server(@socket.Addr::parse("127.0.0.1:0"))
     let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
@@ -592,7 +592,7 @@ async test "websocket close with custom code" {
 async test "websocket invalid handshake" {
   // Connecting to a non-WebSocket HTTP endpoint should raise InvalidHandshake
   @async.with_task_group(group => {
-    let server = @http_server.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+    let server = @http_server.Server(@socket.Addr::parse("127.0.0.1:0"))
     let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
@@ -615,7 +615,7 @@ async test "websocket invalid handshake" {
 ///|
 async test "websocket server-initiated close" {
   @async.with_task_group(group => {
-    let server = @http_server.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+    let server = @http_server.Server(@socket.Addr::parse("127.0.0.1:0"))
     let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
@@ -646,7 +646,7 @@ async test "websocket server-initiated close" {
     } catch {
       @websocket.ConnectionClosed(code, reason) => {
         inspect(code, content="PolicyViolation")
-        inspect(reason, content="Some(\"policy\")")
+        inspect(@debug.to_string(reason), content="Some(\"policy\")")
       }
       err => fail("unexpected error: \{err}")
     }
@@ -656,7 +656,7 @@ async test "websocket server-initiated close" {
 ///|
 async test "websocket close with code" {
   @async.with_task_group(group => {
-    let server = @http_server.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+    let server = @http_server.Server(@socket.Addr::parse("127.0.0.1:0"))
     let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()

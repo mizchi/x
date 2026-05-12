@@ -18,16 +18,17 @@ Node.js backend compatibility layer for `moonbitlang/async` in [MoonBit](https:/
 
 | Dependency | Version |
 |---|---|
-| `moonbitlang/async` | 0.16.6 |
-| `moonbitlang/x` | 0.4.40 |
+| `moonbitlang/async` | 0.19.0 |
+| `moonbitlang/x` | 0.4.43 |
 
 ## Packages
 
 | Package | Description |
 |---|---|
 | `mizchi/x/process` | Command execution (`run`, `collect_output`, `collect_stdout`, `collect_stderr`, `collect_output_merged`) |
-| `mizchi/x/fs` | File system operations (`read_file`, `write_file`, `exists`, `mkdir`, `readdir`, `remove`, `rmdir`) |
+| `mizchi/x/fs` | File system operations (`open`, `create`, `File`, `read_file`, `write_file`, `tmpdir`, `walk`, `exists`, `mkdir`, `readdir`, `opendir`, `Directory::next`, `rename`, `remove`, `rmdir`) |
 | `mizchi/x/http` | HTTP client (`get`, `post`, `put`, `get_stream`, `post_stream`, `put_stream`) |
+| `mizchi/x/socket` | TCP/UDP sockets (`Addr`, `Tcp`, `TcpServer`, `UdpClient`, `UdpServer`) |
 | `mizchi/x/websocket` | WebSocket client (`connect`, `Conn::send_text`, `Conn::send_binary`, `Conn::recv`, `Conn::close`) |
 | `mizchi/x/stdio` | Standard I/O (`stdin`, `stdout`, `stderr` with `@io.Reader`/`@io.Writer`) |
 | `mizchi/x/pipe` | In-memory pipes (`pipe()` → `PipeRead`/`PipeWrite` with `@io.Reader`/`@io.Writer`) |
@@ -40,6 +41,7 @@ Node.js backend compatibility layer for `moonbitlang/async` in [MoonBit](https:/
 | `process` | Yes | Yes | stub | stub |
 | `fs` | Yes | Yes | WASI P1 | stub |
 | `http` | Yes | Yes | stub | stub |
+| `socket` | TCP/UDP | TCP/UDP | stub | stub |
 | `websocket` | Yes | Yes | stub | stub |
 | `stdio` | Yes | Yes | stub | stub |
 | `pipe` | Yes | Yes | stub | stub |
@@ -51,9 +53,15 @@ Node.js backend compatibility layer for `moonbitlang/async` in [MoonBit](https:/
 
 ## Upstream Compatibility
 
-Compatibility with `moonbitlang/async` 0.16.6 / `moonbitlang/x` 0.4.40.
+Compatibility with `moonbitlang/async` 0.19.0 / `moonbitlang/x` 0.4.43.
 
 The wrapper re-exports upstream types and APIs with matching signatures. On native, each function delegates directly to the upstream implementation. On JS, equivalent behavior is provided via `extern "js"` FFI (Node.js).
+
+### Extension Notes
+
+`mizchi/x/fs` now exposes the upstream-style `File` API (`open`, `create`, stream `@io.Reader`/`@io.Writer`, random access, size, timestamps, sync, `tmpdir`, and `walk`) on native and Node.js. Native delegates to `moonbitlang/async/fs`; JS maps to `node:fs/promises`. JS file locking is not supported because Node.js has no standard advisory file-locking API.
+
+`mizchi/x/socket` currently covers TCP and UDP on native and Node.js. Native delegates to `moonbitlang/async/socket`; JS maps TCP to `node:net` and UDP to `node:dgram`. Node.js does not expose stable OS file descriptors for these sockets, so `fd()` returns `-1` on JS. TCP connect/accept/run_forever and UDP unicast roundtrips are covered by automated tests. UDP multicast helpers are mapped to Node where available, but multicast is not covered by automated tests.
 
 #### http (`moonbitlang/async/http`)
 

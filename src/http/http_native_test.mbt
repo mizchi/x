@@ -3,7 +3,7 @@
 ///|
 async test "stream: GET read_some" {
   @async.with_task_group(group => {
-    let server = @async_http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+    let server = @async_http.Server(@socket.Addr::parse("127.0.0.1:0"))
     let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
@@ -39,7 +39,7 @@ async test "stream: GET read_some" {
 ///|
 async test "stream: GET read_all" {
   @async.with_task_group(group => {
-    let server = @async_http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+    let server = @async_http.Server(@socket.Addr::parse("127.0.0.1:0"))
     let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
@@ -63,7 +63,7 @@ async test "stream: GET read_all" {
 ///|
 async test "stream: POST with body" {
   @async.with_task_group(group => {
-    let server = @async_http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+    let server = @async_http.Server(@socket.Addr::parse("127.0.0.1:0"))
     let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
@@ -94,7 +94,7 @@ async test "stream: POST with body" {
 ///|
 async test "stream: SSE-like chunked response" {
   @async.with_task_group(group => {
-    let server = @async_http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+    let server = @async_http.Server(@socket.Addr::parse("127.0.0.1:0"))
     let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
@@ -144,7 +144,7 @@ async test "stream: OpenAI-like POST SSE" {
   // Simulates OpenAI chat completions streaming:
   // POST with JSON body + Authorization header → SSE response
   @async.with_task_group(group => {
-    let server = @async_http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+    let server = @async_http.Server(@socket.Addr::parse("127.0.0.1:0"))
     let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
@@ -213,9 +213,9 @@ async test "stream: OpenAI-like POST SSE" {
     let raw = buf.to_string()
     let lines = raw.split("\n")
     for line in lines {
-      let trimmed = line.to_string()
+      let trimmed = line.to_owned()
       if trimmed.has_prefix("data: ") {
-        events.push(trimmed.view(start_offset=6).to_string())
+        events.push(trimmed.view(start_offset=6).to_owned())
       }
     }
     assert_eq(events.length(), 3)
@@ -228,7 +228,7 @@ async test "stream: OpenAI-like POST SSE" {
 ///|
 async test "stream: response headers available before body" {
   @async.with_task_group(group => {
-    let server = @async_http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+    let server = @async_http.Server(@socket.Addr::parse("127.0.0.1:0"))
     let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
@@ -258,7 +258,7 @@ async test "stream: response headers available before body" {
 ///|
 async test "smoke: stream matches upstream get_stream" {
   @async.with_task_group(group => {
-    let server = @async_http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+    let server = @async_http.Server(@socket.Addr::parse("127.0.0.1:0"))
     let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
@@ -313,7 +313,7 @@ async test "smoke: stream matches upstream get_stream" {
 ///|
 async test "http GET" {
   @async.with_task_group(group => {
-    let server = @async_http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+    let server = @async_http.Server(@socket.Addr::parse("127.0.0.1:0"))
     let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
@@ -336,7 +336,7 @@ async test "http GET" {
 ///|
 async test "http POST with body" {
   @async.with_task_group(group => {
-    let server = @async_http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+    let server = @async_http.Server(@socket.Addr::parse("127.0.0.1:0"))
     let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
@@ -363,7 +363,7 @@ async test "http POST with body" {
 ///|
 async test "http PUT with body" {
   @async.with_task_group(group => {
-    let server = @async_http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+    let server = @async_http.Server(@socket.Addr::parse("127.0.0.1:0"))
     let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
@@ -389,7 +389,7 @@ async test "http PUT with body" {
 ///|
 async test "http GET with custom headers" {
   @async.with_task_group(group => {
-    let server = @async_http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+    let server = @async_http.Server(@socket.Addr::parse("127.0.0.1:0"))
     let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
@@ -415,7 +415,7 @@ async test "http GET with custom headers" {
 ///|
 async test "http response headers" {
   @async.with_task_group(group => {
-    let server = @async_http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+    let server = @async_http.Server(@socket.Addr::parse("127.0.0.1:0"))
     let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
@@ -441,7 +441,7 @@ async test "http response headers" {
 ///|
 async test "http 404 response" {
   @async.with_task_group(group => {
-    let server = @async_http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+    let server = @async_http.Server(@socket.Addr::parse("127.0.0.1:0"))
     let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
@@ -463,7 +463,7 @@ async test "http 404 response" {
 ///|
 async test "http empty body" {
   @async.with_task_group(group => {
-    let server = @async_http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+    let server = @async_http.Server(@socket.Addr::parse("127.0.0.1:0"))
     let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
@@ -483,7 +483,7 @@ async test "http empty body" {
 ///|
 async test "http unicode body" {
   @async.with_task_group(group => {
-    let server = @async_http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+    let server = @async_http.Server(@socket.Addr::parse("127.0.0.1:0"))
     let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
@@ -507,7 +507,7 @@ async test "http unicode body" {
 ///|
 async test "smoke: GET matches upstream" {
   @async.with_task_group(group => {
-    let server = @async_http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+    let server = @async_http.Server(@socket.Addr::parse("127.0.0.1:0"))
     let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
@@ -524,9 +524,7 @@ async test "smoke: GET matches upstream" {
     })
     let url = "http://localhost:\{addr.port()}/test"
     // Upstream
-    let upstream_client = @async_http.Client::new(
-      "http://localhost:\{addr.port()}",
-    )
+    let upstream_client = @async_http.Client("http://localhost:\{addr.port()}")
     defer upstream_client.close()
     let upstream_resp = upstream_client.get("/test")
     let upstream_body = upstream_client.read_all()
@@ -542,7 +540,7 @@ async test "smoke: GET matches upstream" {
 ///|
 async test "smoke: POST matches upstream" {
   @async.with_task_group(group => {
-    let server = @async_http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+    let server = @async_http.Server(@socket.Addr::parse("127.0.0.1:0"))
     let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
@@ -558,9 +556,7 @@ async test "smoke: POST matches upstream" {
     })
     let post_data : String = "payload"
     // Upstream
-    let upstream_client = @async_http.Client::new(
-      "http://localhost:\{addr.port()}",
-    )
+    let upstream_client = @async_http.Client("http://localhost:\{addr.port()}")
     defer upstream_client.close()
     let upstream_resp = upstream_client.post("/api", post_data)
     let upstream_body = upstream_client.read_all()
@@ -580,7 +576,7 @@ async test "smoke: POST matches upstream" {
 ///|
 async test "client: generic request via Client::request" {
   @async.with_task_group(group => {
-    let server = @async_http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+    let server = @async_http.Server(@socket.Addr::parse("127.0.0.1:0"))
     let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
@@ -612,7 +608,7 @@ async test "http multi-part response" {
   // Adapted from upstream "request streaming" test
   // Server sends response in multiple writes, client receives full body
   @async.with_task_group(group => {
-    let server = @async_http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+    let server = @async_http.Server(@socket.Addr::parse("127.0.0.1:0"))
     let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
@@ -636,7 +632,7 @@ async test "http multi-part response" {
 async test "http POST echo - request method and path" {
   // Adapted from upstream "request streaming": server echoes method+path
   @async.with_task_group(group => {
-    let server = @async_http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+    let server = @async_http.Server(@socket.Addr::parse("127.0.0.1:0"))
     let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
@@ -671,7 +667,7 @@ async test "http POST echo - request method and path" {
 async test "http multiple sequential requests" {
   // Adapted from upstream "request streaming": multiple requests on same server
   @async.with_task_group(group => {
-    let server = @async_http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+    let server = @async_http.Server(@socket.Addr::parse("127.0.0.1:0"))
     let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
@@ -711,7 +707,7 @@ async test "http request" {
 ///|
 async test "smoke: response headers match upstream" {
   @async.with_task_group(group => {
-    let server = @async_http.Server::new(@socket.Addr::parse("127.0.0.1:0"))
+    let server = @async_http.Server(@socket.Addr::parse("127.0.0.1:0"))
     let addr = server.addr
     group.spawn_bg(() => {
       defer server.close()
@@ -727,9 +723,7 @@ async test "smoke: response headers match upstream" {
       }
     })
     // Upstream
-    let upstream_client = @async_http.Client::new(
-      "http://localhost:\{addr.port()}",
-    )
+    let upstream_client = @async_http.Client("http://localhost:\{addr.port()}")
     defer upstream_client.close()
     let upstream_resp = upstream_client.get("/")
     ignore(upstream_client.read_all())

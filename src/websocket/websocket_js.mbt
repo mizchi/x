@@ -156,7 +156,7 @@ pub async fn Conn::send_text(
   self : Conn,
   text : StringView,
 ) -> Unit raise WebSocketError {
-  let promise = js_ws_send_text(self.id, text.to_string())
+  let promise = js_ws_send_text(self.id, text.to_owned())
   @js_async.run_promise(fn(_signal) { promise.cast() }) catch {
     err => raise WebSocketError::ProtocolError(err.to_string())
   }

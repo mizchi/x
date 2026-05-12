@@ -101,7 +101,7 @@ pub fn Client::close(self : Client) -> Unit {
 pub fn Client::request(
   self : Client,
   meth : RequestMethod,
-  path : String,
+  path : StringView,
   extra_headers? : Map[String, String],
 ) -> Unit raise HttpError {
   ignore(self)

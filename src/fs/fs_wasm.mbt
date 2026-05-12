@@ -44,6 +44,16 @@ fn wasi_path_create_directory(fd : Int, path_ptr : Int, path_len : Int) -> Int =
 fn wasi_path_remove_directory(fd : Int, path_ptr : Int, path_len : Int) -> Int = "wasi_snapshot_preview1" "path_remove_directory"
 
 ///|
+fn wasi_path_rename(
+  fd : Int,
+  old_path_ptr : Int,
+  old_path_len : Int,
+  new_fd : Int,
+  new_path_ptr : Int,
+  new_path_len : Int,
+) -> Int = "wasi_snapshot_preview1" "path_rename"
+
+///|
 fn wasi_fd_readdir(
   fd : Int,
   buf_ptr : Int,
@@ -55,6 +65,7 @@ fn wasi_fd_readdir(
 // Memory helpers
 
 ///|
+#borrow(arr)
 extern "wasm" fn wasm_memory_ptr(arr : FixedArray[Byte]) -> Int =
   #|(func (param i32) (result i32) local.get 0 i32.const 8 i32.add)
 
@@ -171,7 +182,11 @@ fn wasi_open(
 }
 
 ///|
-pub fn read_file(path : StringView) -> &@io.Data raise IOError {
+pub fn read_file(
+  path : StringView,
+  sync_timestamp? : Bool,
+) -> &@io.Data raise IOError {
+  ignore(sync_timestamp)
   let fd = wasi_open(path, 0, wasi_right_fd_read)
   let chunks : Array[FixedArray[Byte]] = []
   let buf = FixedArray::make(4096, b'\x00')
@@ -216,9 +231,19 @@ pub fn read_file(path : StringView) -> &@io.Data raise IOError {
 pub fn write_file(
   path : StringView,
   content : &@io.Data,
+  create_mode? : CreateMode,
+  permission? : Int,
+  sync? : SyncMode,
+  append? : Bool,
   create? : Int,
+  truncate? : Bool,
 ) -> Unit raise IOError {
+  ignore(create_mode)
+  ignore(permission)
+  ignore(sync)
+  ignore(append)
   ignore(create)
+  ignore(truncate)
   let oflags = wasi_oflags_creat | wasi_oflags_trunc
   let fd = wasi_open(path, oflags, wasi_right_fd_write)
   let data = content.binary()
@@ -249,9 +274,56 @@ pub fn exists(path : StringView) -> Bool {
 }
 
 ///|
+pub fn can_read(path : StringView) -> Bool {
+  exists(path)
+}
+
+///|
+pub fn can_write(path : StringView) -> Bool {
+  exists(path)
+}
+
+///|
+pub fn can_execute(_path : StringView) -> Bool {
+  false
+}
+
+///|
+pub fn chmod(_path : StringView, _permission : Int) -> Unit raise IOError {
+  raise IOError::IOError("chmod is not supported on wasm target")
+}
+
+///|
+pub fn atime(
+  _path : StringView,
+  follow_symlink? : Bool,
+) -> (Int64, Int) raise IOError {
+  ignore(follow_symlink)
+  raise IOError::IOError("atime is not supported on wasm target")
+}
+
+///|
+pub fn mtime(
+  _path : StringView,
+  follow_symlink? : Bool,
+) -> (Int64, Int) raise IOError {
+  ignore(follow_symlink)
+  raise IOError::IOError("mtime is not supported on wasm target")
+}
+
+///|
+pub fn ctime(
+  _path : StringView,
+  follow_symlink? : Bool,
+) -> (Int64, Int) raise IOError {
+  ignore(follow_symlink)
+  raise IOError::IOError("ctime is not supported on wasm target")
+}
+
+///|
 pub fn mkdir(
   path : StringView,
-  permission~ : Int,
+  permission? : Int,
   recursive? : Bool,
 ) -> Unit raise IOError {
   ignore(permission)
@@ -324,6 +396,29 @@ pub fn remove(path : StringView) -> Unit raise IOError {
 }
 
 ///|
+pub fn rename(
+  old_path : StringView,
+  new_path : StringView,
+  replace? : Bool,
+) -> Unit raise IOError {
+  if !replace.unwrap_or(true) && exists(new_path) {
+    raise IOError::IOError("target already exists: " + new_path.to_owned())
+  }
+  let old_path_bytes = string_to_utf8(old_path)
+  let old_path_ptr = wasm_memory_ptr(old_path_bytes)
+  let old_path_len = old_path_bytes.length()
+  let new_path_bytes = string_to_utf8(new_path)
+  let new_path_ptr = wasm_memory_ptr(new_path_bytes)
+  let new_path_len = new_path_bytes.length()
+  let err = wasi_path_rename(
+    preopen_fd, old_path_ptr, old_path_len, preopen_fd, new_path_ptr, new_path_len,
+  )
+  if err != 0 {
+    raise IOError::IOError("WASI rename error: " + err.to_string())
+  }
+}
+
+///|
 pub fn rmdir(path : StringView, recursive? : Bool) -> Unit raise IOError {
   ignore(recursive)
   let path_bytes = string_to_utf8(path)
@@ -356,4 +451,217 @@ pub fn symlink(
 ) -> Unit raise IOError {
   ignore(target)
   raise IOError::IOError("symlink is not supported on wasm target")
+}
+
+///|
+pub(all) struct File {}
+
+///|
+pub fn open(
+  _path : StringView,
+  mode~ : Mode,
+  sync? : SyncMode,
+  append? : Bool,
+  create_mode? : CreateMode,
+  permission? : Int,
+  create? : Int,
+  truncate? : Bool,
+) -> File raise IOError {
+  ignore((mode, sync, append, create_mode, permission, create, truncate))
+  raise IOError::IOError("open is not supported on wasm target")
+}
+
+///|
+pub fn create(
+  _path : StringView,
+  allow_existing? : Bool,
+  permission? : Int,
+  sync? : SyncMode,
+) -> File raise IOError {
+  ignore((allow_existing, permission, sync))
+  raise IOError::IOError("create is not supported on wasm target")
+}
+
+///|
+pub fn File::close(self : File) -> Unit {
+  ignore(self)
+}
+
+///|
+pub fn File::fd(self : File) -> Int {
+  ignore(self)
+  -1
+}
+
+///|
+pub fn File::as_dir(self : File) -> Directory raise IOError {
+  ignore(self)
+  raise IOError::IOError("File::as_dir is not supported on wasm target")
+}
+
+///|
+pub fn File::kind(self : File) -> FileKind {
+  ignore(self)
+  Unknown
+}
+
+///|
+pub fn File::size(self : File) -> Int64 raise IOError {
+  ignore(self)
+  raise IOError::IOError("File::size is not supported on wasm target")
+}
+
+///|
+pub fn File::atime(self : File) -> (Int64, Int) raise IOError {
+  ignore(self)
+  raise IOError::IOError("File::atime is not supported on wasm target")
+}
+
+///|
+pub fn File::mtime(self : File) -> (Int64, Int) raise IOError {
+  ignore(self)
+  raise IOError::IOError("File::mtime is not supported on wasm target")
+}
+
+///|
+pub fn File::ctime(self : File) -> (Int64, Int) raise IOError {
+  ignore(self)
+  raise IOError::IOError("File::ctime is not supported on wasm target")
+}
+
+///|
+pub fn File::read_at(
+  self : File,
+  _buf : FixedArray[Byte],
+  position~ : Int64,
+  offset? : Int,
+  len? : Int,
+) -> Int raise IOError {
+  ignore((self, position, offset, len))
+  raise IOError::IOError("File::read_at is not supported on wasm target")
+}
+
+///|
+pub fn File::read_exactly_at(
+  self : File,
+  _len : Int,
+  position~ : Int64,
+) -> Bytes raise IOError {
+  ignore((self, position))
+  raise IOError::IOError(
+    "File::read_exactly_at is not supported on wasm target",
+  )
+}
+
+///|
+pub fn File::write_at(
+  self : File,
+  _buf : BytesView,
+  position~ : Int64,
+) -> Unit raise IOError {
+  ignore((self, position))
+  raise IOError::IOError("File::write_at is not supported on wasm target")
+}
+
+///|
+pub fn File::sync(self : File, only_data? : Bool) -> Unit raise IOError {
+  ignore((self, only_data))
+  raise IOError::IOError("File::sync is not supported on wasm target")
+}
+
+///|
+pub fn File::lock(self : File, _lock : Lock) -> Unit raise IOError {
+  ignore(self)
+  raise IOError::IOError("File::lock is not supported on wasm target")
+}
+
+///|
+pub fn File::try_lock(self : File, _lock : Lock) -> Bool raise IOError {
+  ignore(self)
+  raise IOError::IOError("File::try_lock is not supported on wasm target")
+}
+
+///|
+pub fn File::unlock(self : File) -> Unit {
+  ignore(self)
+}
+
+///|
+pub impl @io.Reader for File with _get_internal_buffer(self) {
+  ignore(self)
+  @io.ReaderBuffer::new()
+}
+
+///|
+pub impl @io.Reader for File with _direct_read(self, _buf, offset~, max_len~) {
+  ignore((self, offset, max_len))
+  raise IOError::IOError("File::read is not supported on wasm target")
+}
+
+///|
+pub impl @io.Writer for File with write_once(self, _buf, offset~, len~) {
+  ignore((self, offset, len))
+  raise IOError::IOError("File::write is not supported on wasm target")
+}
+
+///|
+pub fn tmpdir(prefix~ : StringView) -> String raise IOError {
+  ignore(prefix)
+  raise IOError::IOError("tmpdir is not supported on wasm target")
+}
+
+///|
+pub fn walk(
+  _path : StringView,
+  _f : async (String, Array[String]) -> Unit,
+  exclude? : (String) -> Bool,
+  max_concurrency? : Int,
+  allow_failure? : Bool,
+) -> Unit raise IOError {
+  ignore((exclude, max_concurrency, allow_failure))
+  raise IOError::IOError("walk is not supported on wasm target")
+}
+
+///|
+pub(all) struct Directory {
+  entries : Array[String]
+  mut index : Int
+}
+
+///|
+pub fn opendir(path : StringView) -> Directory raise IOError {
+  Directory::{ entries: readdir(path), index: 0 }
+}
+
+///|
+pub fn Directory::close(self : Directory) -> Unit {
+  ignore(self)
+}
+
+///|
+pub fn Directory::next(
+  self : Directory,
+  include_hidden? : Bool,
+  include_special? : Bool,
+) -> DirectoryEntry? {
+  ignore(include_hidden)
+  ignore(include_special)
+  if self.index >= self.entries.length() {
+    None
+  } else {
+    let name = self.entries[self.index]
+    self.index += 1
+    Some({ name, is_dir: false })
+  }
+}
+
+///|
+pub fn Directory::read_all(
+  self : Directory,
+  include_hidden? : Bool,
+  include_special? : Bool,
+) -> Array[String] {
+  ignore(include_hidden)
+  ignore(include_special)
+  self.entries
 }

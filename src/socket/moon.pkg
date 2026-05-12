@@ -1,0 +1,20 @@
+import {
+  "moonbitlang/async",
+  "moonbitlang/async/io",
+  "moonbitlang/async/socket" @async_socket,
+  "moonbitlang/async/js_async",
+  "moonbitlang/core/debug",
+  "moonbitlang/core/string",
+}
+
+warnings = "-0029-0014-0001-0009-0067"
+
+options(
+  targets: {
+    "socket_js.mbt": [ "js" ],
+    "socket_native.mbt": [ "native" ],
+    "socket_test.mbt": [ "native", "js" ],
+    "socket_wasm.mbt": [ "wasm" ],
+    "socket_wasmgc.mbt": [ "wasm-gc" ],
+  },
+)

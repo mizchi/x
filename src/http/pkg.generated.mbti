@@ -45,7 +45,7 @@ pub async fn Client::get(Self, String, extra_headers? : Map[String, String], bod
 pub async fn Client::new(String, headers? : Map[String, String]) -> Self raise HttpError
 pub async fn Client::post(Self, String, &@io.Data, extra_headers? : Map[String, String]) -> Response raise HttpError
 pub async fn Client::put(Self, String, &@io.Data, extra_headers? : Map[String, String]) -> Response raise HttpError
-pub async fn Client::request(Self, RequestMethod, String, extra_headers? : Map[String, String]) -> Unit raise HttpError
+pub async fn Client::request(Self, RequestMethod, StringView, extra_headers? : Map[String, String]) -> Unit raise HttpError
 pub async fn Client::skip_response_body(Self) -> Unit raise HttpError
 pub impl @io.Reader for Client
 pub impl @io.Writer for Client

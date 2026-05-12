@@ -434,7 +434,8 @@ async test "client(js): generic request via Client::request" {
     @async.sleep(20)
     let client = @http.Client::new("http://127.0.0.1:\{port}")
     defer client.close()
-    client.request(@http.RequestMethod::Patch, "/generic", extra_headers={
+    let request_path = "xx/generic"[2:]
+    client.request(@http.RequestMethod::Patch, request_path, extra_headers={
       "Content-Type": "text/plain",
     })
     client.write("payload")

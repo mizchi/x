@@ -17,7 +17,7 @@ fn extract_host_url(url : String) -> String {
   if path_start == -1 {
     url
   } else {
-    url[:path_start].to_string()
+    url[:path_start].to_owned()
   }
 }
 
@@ -40,7 +40,7 @@ fn extract_path_from_url(url : String) -> String {
   if path_start == -1 {
     "/"
   } else {
-    url[path_start:].to_string()
+    url[path_start:].to_owned()
   }
 }
 
@@ -78,7 +78,7 @@ pub async fn Client::new(
   url : String,
   headers? : Map[String, String],
 ) -> Client raise HttpError {
-  let client = @async_http.Client::new(url, headers=headers.unwrap_or({})) catch {
+  let client = @async_http.Client(url, headers=headers.unwrap_or({})) catch {
     _ => raise HttpError::InvalidUrl(url)
   }
   Client::{ inner: client }
@@ -93,7 +93,7 @@ pub fn Client::close(self : Client) -> Unit {
 pub async fn Client::request(
   self : Client,
   meth : RequestMethod,
-  path : String,
+  path : StringView,
   extra_headers? : Map[String, String],
 ) -> Unit raise HttpError {
   self.inner.request(
@@ -211,7 +211,7 @@ async fn request_internal(
 ) -> (Response, &@io.Data) raise HttpError {
   let host_url = extract_host_url(url)
   let path = extract_path_from_url(url)
-  let client = @async_http.Client::new(host_url, headers~) catch {
+  let client = @async_http.Client(host_url, headers~) catch {
     _ => raise HttpError::InvalidUrl(url)
   }
   let resp = try {
@@ -252,7 +252,7 @@ async fn stream_request_internal(
 ) -> (Response, Stream) raise HttpError {
   let host_url = extract_host_url(url)
   let path = extract_path_from_url(url)
-  let client = @async_http.Client::new(host_url, headers~) catch {
+  let client = @async_http.Client(host_url, headers~) catch {
     _ => raise HttpError::InvalidUrl(url)
   }
   let resp = try {
@@ -412,7 +412,7 @@ pub async fn Server::new(
   let addr = @socket.Addr::parse("\{h}:\{p}") catch {
     _ => raise HttpError::InvalidUrl("\{h}:\{p}")
   }
-  let server = @async_http.Server::new(
+  let server = @async_http.Server(
     addr,
     dual_stack?,
     reuse_addr?,
