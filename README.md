@@ -147,7 +147,7 @@ Coverage is verified by `scripts/sync-upstream-tests.sh`, which extracts test na
 
 #### process (`moonbitlang/async/process`)
 
-Upstream tests: 28 | Covered: 10 | Skipped: 18
+Upstream tests: 28 | Covered: 26 | Skipped: 2
 
 | Upstream test | Status | Notes |
 |---|---|---|
@@ -156,28 +156,28 @@ Upstream tests: 28 | Covered: 10 | Skipped: 18
 | `collect_stdout` | Covered | |
 | `collect_error` | Covered | |
 | `collect_output` | Covered | |
+| `collect_output blocked` | Covered | |
 | `collect_output_merged` | Covered | |
 | `wait exitcode` | Covered | |
 | `set cwd` | Covered | |
 | `set_env` | Covered | |
 | `set_env no inherit` | Covered | |
-| `basic_cat` | Skip | upstream shell/stdin scenario not mirrored yet |
-| `wait_pid` | Skip | API exposed; upstream scenario not mirrored yet |
-| `cancel process` | Skip | cancellation API exposed; upstream scenario not mirrored yet |
-| `cancel process hard` | Skip | cancellation API exposed; upstream scenario not mirrored yet |
-| `cancel process timeout` | Skip | cancellation API exposed; upstream scenario not mirrored yet |
-| `orphan process` | Skip | API exposed; upstream scenario not mirrored yet |
-| `collect_output blocked` | Skip | stdin scenario not mirrored yet |
-| `spawn_in_group wait` | Skip | API exposed; upstream task-group scenario not mirrored yet |
-| `spawn_in_group cancel` | Skip | API exposed; upstream task-group scenario not mirrored yet |
-| `Process::wait` | Skip | API exposed; covered by wrapper-specific smoke test |
-| `Process::try_wait` | Skip | API exposed; covered by wrapper-specific smoke test |
-| `Process:cancel` | Skip | API exposed; upstream scenario not mirrored yet |
-| `merge stdout and stderr` | Skip | API exposed; upstream scenario not mirrored yet |
-| `merge multiple` | Skip | API exposed; upstream scenario not mirrored yet |
-| `redirect to file` | Skip | API exposed; covered by wrapper-specific smoke test |
+| `wait_pid` | Covered | |
+| `basic_cat` | Covered | |
+| `cancel process` | Covered | |
+| `cancel process hard` | Covered | |
+| `cancel process timeout` | Covered | |
+| `orphan process` | Covered | |
+| `spawn_in_group wait` | Covered | |
+| `spawn_in_group cancel` | Covered | |
+| `Process::wait` | Covered | |
+| `Process::try_wait` | Covered | |
+| `Process:cancel` | Covered | |
+| `merge stdout and stderr` | Covered | |
+| `merge multiple` | Covered | |
+| `redirect to file` | Covered | |
 | `kill children on hard cancel` | Skip | requires custom test program + Windows |
-| `do not kill orphan children on hard cancel` | Skip | requires custom test program + Windows |
+| `do not kill orphan children on hard cancel` | Covered | |
 | `windows command line arg escape` | Skip | Windows-specific |
 
 ## HTTP Server Operations (Node.js)
