@@ -25,7 +25,7 @@ Node.js backend compatibility layer for `moonbitlang/async` in [MoonBit](https:/
 
 | Package | Description |
 |---|---|
-| `mizchi/x/process` | Command execution (`run`, `spawn`, `spawn_orphan`, `wait_pid`, process pipes, file redirects, `collect_output`, `collect_stdout`, `collect_stderr`, `collect_output_merged`) |
+| `mizchi/x/process` | Command execution (`run`, `spawn`, `spawn_orphan`, `wait_pid`, process pipes, file/stdio redirects, native pipe redirects, `collect_output`, `collect_stdout`, `collect_stderr`, `collect_output_merged`) |
 | `mizchi/x/fs` | File system operations (`open`, `create`, `File`, `read_file`, `write_file`, `tmpdir`, `walk`, `exists`, `mkdir`, `readdir`, `opendir`, `Directory::next`, `rename`, `remove`, `rmdir`) |
 | `mizchi/x/http` | HTTP client/server (`get`, `post`, `put`, `get_stream`, `post_stream`, `put_stream`, `Client`, `Server`, `Cookie`) |
 | `mizchi/x/gzip` | Gzip stream encoder/decoder (`Encoder`, `Decoder`) |
@@ -38,7 +38,7 @@ Node.js backend compatibility layer for `moonbitlang/async` in [MoonBit](https:/
 | `mizchi/x/semaphore` | Async semaphore (`Semaphore::acquire`, `release`, `try_acquire`) |
 | `mizchi/x/websocket` | WebSocket client (`connect`, `Conn::send_text`, `Conn::send_binary`, `Conn::recv`, `Conn::close`) |
 | `mizchi/x/stdio` | Standard I/O (`stdin`, `stdout`, `stderr` with `@io.Reader`/`@io.Writer`) |
-| `mizchi/x/pipe` | In-memory pipes (`pipe()` → `PipeRead`/`PipeWrite` with `@io.Reader`/`@io.Writer`) |
+| `mizchi/x/pipe` | In-memory pipes (`pipe()` → `PipeRead`/`PipeWrite` with `@io.Reader`/`@io.Writer`; native process redirect support) |
 | `mizchi/x/sys` | Environment variables and CLI args (`get_env_var`, `get_cli_args`, `exit`) |
 
 ## Platform Support
@@ -93,21 +93,23 @@ The wrapper re-exports upstream types and APIs with matching signatures. On nati
 
 #### http (`moonbitlang/async/http`)
 
-Upstream tests: 47 | Covered: 29 | Skipped: 18
+Upstream tests: 47 | Covered: 31 | Skipped: 16
 
 | Upstream test | Status | Notes |
 |---|---|---|
 | `http request` | Covered | |
 | `https request` | Covered | |
 | `passthrough mode` | Covered | |
+| `passthrough mode remaining data` | Covered | native |
 | Parser/body/cookie/gzip/sender edge cases | Covered | `http_upstream_test.mbt` mirrors applicable upstream cases |
-| Other 18 tests | Skip | Internal parser/sender/proxy tests |
+| `request streaming` | Covered | native and JS |
+| Other 16 tests | Skip | Internal parser/sender/proxy tests |
 
 #### websocket (`moonbitlang/async/websocket`)
 
-Upstream tests: 24 | Covered: 0 | Skipped: 24
+Upstream tests: 24 | Covered: 1 | Skipped: 23
 
-All upstream tests are internal (frame handling, ping/pong, UTF-8 validation) and not applicable to the wrapper's high-level API. The wrapper has 24 independent tests covering its own API.
+Most upstream tests are internal (frame handling, ping/pong, UTF-8 validation) and not applicable to the wrapper's high-level API. `CloseCode conversions` is covered directly; the wrapper also has independent tests covering its own API.
 
 #### pipe (`moonbitlang/async/pipe`)
 
@@ -117,9 +119,9 @@ All upstream pipe tests are fully covered.
 
 #### stdio (`moonbitlang/async/stdio`)
 
-Upstream tests: 3 | Covered: 0 | Skipped: 3
+Upstream tests: 3 | Covered: 3 | Skipped: 0
 
-All upstream tests require process piping/redirect features (`@process.run` with redirect options).
+All upstream stdio/process redirect tests are covered on native and JS.
 
 #### tls (`moonbitlang/async/tls`)
 

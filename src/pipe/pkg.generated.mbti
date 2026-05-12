@@ -16,6 +16,7 @@ pub struct PipeRead {
 }
 pub fn PipeRead::close(Self) -> Unit
 pub fn PipeRead::fd(Self) -> Int
+pub impl @mizchi/x/process.ProcessInput for PipeRead
 pub impl @io.Reader for PipeRead
 
 pub struct PipeWrite {
@@ -23,6 +24,7 @@ pub struct PipeWrite {
 }
 pub fn PipeWrite::close(Self) -> Unit
 pub fn PipeWrite::fd(Self) -> Int
+pub impl @mizchi/x/process.ProcessOutput for PipeWrite
 pub impl @io.Writer for PipeWrite
 
 // Type aliases

@@ -29,8 +29,18 @@ pub impl @io.Reader for Input with _direct_read(self, buf, offset~, max_len~) {
 }
 
 ///|
+pub impl @process.ProcessInput for Input with _process_input_native(self) {
+  self.inner
+}
+
+///|
 pub impl @io.Writer for Output with write_once(self, buf, offset~, len~) {
   @io.Writer::write_once(self.inner, buf, offset~, len~)
+}
+
+///|
+pub impl @process.ProcessOutput for Output with _process_output_native(self) {
+  self.inner
 }
 
 ///|

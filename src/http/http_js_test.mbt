@@ -130,6 +130,68 @@ async test "server: run_forever SSE flush chunked" {
 }
 
 ///|
+async test "request streaming" {
+  @async.with_task_group(group => {
+    let server = @http.Server::new(port=0)
+    defer server.close()
+    let port = server.port()
+    group.spawn_bg(no_wait=true, allow_failure=true, () => {
+      server.run_forever(
+        (req, body, conn) => {
+          let request_body = body.read_all()
+          conn.send_response(200, "OK")
+          conn.write(req.meth.to_string() + " " + req.path + "\n")
+          conn.write(request_body.text())
+          conn.end_response()
+        },
+        max_connections=3,
+      )
+    })
+    @async.sleep(20)
+    {
+      let (response, client) = @http.get_stream("http://127.0.0.1:\{port}/get")
+      defer client.close()
+      inspect(response.code, content="200")
+      inspect(client.read_all().text(), content="Get /get\n")
+    }
+    {
+      let client = @http.put_stream("http://127.0.0.1:\{port}/put")
+      defer client.close()
+      client..write("PUT data part 1\n").flush()
+      @async.sleep(20)
+      client.write("PUT data part 2\n")
+      let response = client.end_request()
+      inspect(response.code, content="200")
+      inspect(
+        client.read_all().text(),
+        content=(
+          #|Put /put
+          #|PUT data part 1
+          #|PUT data part 2
+          #|
+        ),
+      )
+    }
+    let client = @http.post_stream("http://127.0.0.1:\{port}/post")
+    defer client.close()
+    client..write("POST data part 1\n").flush()
+    @async.sleep(20)
+    client.write("POST data part 2\n")
+    let response = client.end_request()
+    inspect(response.code, content="200")
+    inspect(
+      client.read_all().text(),
+      content=(
+        #|Post /post
+        #|POST data part 1
+        #|POST data part 2
+        #|
+      ),
+    )
+  })
+}
+
+///|
 async test "server: addr and client_addr" {
   @async.with_task_group(group => {
     let server = @http.Server::new(port=0)

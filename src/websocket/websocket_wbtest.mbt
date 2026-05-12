@@ -1,5 +1,5 @@
 ///|
-test "close_code_from_int roundtrip - standard codes" {
+test "CloseCode conversions" {
   let codes = [
     (1000, Normal),
     (1001, GoingAway),

@@ -89,9 +89,20 @@ pub impl @io.Reader for Input with _direct_read(self, buf, offset~, max_len~) {
 }
 
 ///|
+pub impl @process.ProcessInput for Input with _process_input_js(self) {
+  ignore(self)
+  -1
+}
+
+///|
 pub impl @io.Writer for Output with write_once(self, buf, offset~, len~) {
   js_write(self.target, buf, offset, len)
   len
+}
+
+///|
+pub impl @process.ProcessOutput for Output with _process_output_js(self) {
+  0 - self.target
 }
 
 ///|

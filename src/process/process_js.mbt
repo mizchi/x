@@ -187,7 +187,15 @@ extern "js" fn js_process_start(
   #|   if (!inheritEnv && !path.isAbsolute(cmd) && !cmd.includes('/')) {
   #|     try { resolvedCmd = execFileSync('/usr/bin/which', [cmd], { encoding: 'utf8' }).trim(); } catch {}
   #|   }
-  #|   const options = { stdio: inheritStdio ? 'inherit' : ['pipe', 'pipe', 'pipe'] };
+  #|   const outputSpec = (id) => {
+  #|     if (id === -1) return process.stdout;
+  #|     if (id === -2) return process.stderr;
+  #|     return 'pipe';
+  #|   };
+  #|   const stdio = inheritStdio
+  #|     ? 'inherit'
+  #|     : [stdinId === -1 ? process.stdin : 'pipe', outputSpec(stdoutId), outputSpec(stderrId)];
+  #|   const options = { stdio };
   #|   if (cwd !== undefined) options.cwd = cwd;
   #|   const extraEnv = {};
   #|   for (let i = 0; i < envKeys.length; i++) extraEnv[envKeys[i]] = envValues[i];
@@ -206,7 +214,9 @@ extern "js" fn js_process_start(
   #|   child.on('close', code => finish(code));
   #|   if (!inheritStdio) {
   #|     const input = state.inputs.get(stdinId);
-  #|     if (!input) {
+  #|     if (!child.stdin) {
+  #|       // stdin is inherited from the parent process
+  #|     } else if (!input) {
   #|       child.stdin.end();
   #|     } else if (input.type === 'file') {
   #|       fs.createReadStream(input.path).pipe(child.stdin);
@@ -263,8 +273,8 @@ extern "js" fn js_process_start(
   #|         stream.once('error', finish);
   #|       }
   #|     };
-  #|     attachOutput(child.stdout, stdoutId);
-  #|     attachOutput(child.stderr, stderrId);
+  #|     if (child.stdout) attachOutput(child.stdout, stdoutId);
+  #|     if (child.stderr) attachOutput(child.stderr, stderrId);
   #|   }
   #|   return { id, pid: proc.pid };
   #| }

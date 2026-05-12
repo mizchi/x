@@ -787,7 +787,7 @@ async test "server: accept GET" {
 }
 
 ///|
-async test "server: enter_passthrough_mode reads remaining data" {
+async test "passthrough mode remaining data" {
   @async.with_task_group(group => {
     let server = @http.Server::new(port=0)
     defer server.close()
