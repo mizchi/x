@@ -20,12 +20,9 @@ fn wasi_proc_exit(code : Int) = "wasi_snapshot_preview1" "proc_exit"
 // Memory helpers
 
 ///|
+#borrow(arr)
 extern "wasm" fn sys_wasm_memory_ptr(arr : FixedArray[Byte]) -> Int =
   #|(func (param i32) (result i32) local.get 0 i32.const 8 i32.add)
-
-///|
-extern "wasm" fn sys_wasm_i32_store(ptr : Int, val : Int) -> Unit =
-  #|(func (param i32) (param i32) local.get 0 local.get 1 i32.store)
 
 ///|
 extern "wasm" fn sys_wasm_i32_load(ptr : Int) -> Int =

@@ -25,10 +25,16 @@ Node.js backend compatibility layer for `moonbitlang/async` in [MoonBit](https:/
 
 | Package | Description |
 |---|---|
-| `mizchi/x/process` | Command execution (`run`, `collect_output`, `collect_stdout`, `collect_stderr`, `collect_output_merged`) |
+| `mizchi/x/process` | Command execution (`run`, `spawn`, `spawn_orphan`, `wait_pid`, process pipes, file redirects, `collect_output`, `collect_stdout`, `collect_stderr`, `collect_output_merged`) |
 | `mizchi/x/fs` | File system operations (`open`, `create`, `File`, `read_file`, `write_file`, `tmpdir`, `walk`, `exists`, `mkdir`, `readdir`, `opendir`, `Directory::next`, `rename`, `remove`, `rmdir`) |
-| `mizchi/x/http` | HTTP client (`get`, `post`, `put`, `get_stream`, `post_stream`, `put_stream`) |
+| `mizchi/x/http` | HTTP client/server (`get`, `post`, `put`, `get_stream`, `post_stream`, `put_stream`, `Client`, `Server`, `Cookie`) |
+| `mizchi/x/gzip` | Gzip stream encoder/decoder (`Encoder`, `Decoder`) |
 | `mizchi/x/socket` | TCP/UDP sockets (`Addr`, `Tcp`, `TcpServer`, `UdpClient`, `UdpServer`) |
+| `mizchi/x/signal` | Signal constants and global cancellation signal configuration (`Signal`, `to_int`, `set_global_cancellation_signals`) |
+| `mizchi/x/raw_fd` | Raw file descriptor reads/writes (`RawFd::read`, `RawFd::write`, `RawFd::close`) |
+| `mizchi/x/aqueue` | Async queue (`Queue`, `Kind`, `put`, `get`, `try_put`, `try_get`, `close`) |
+| `mizchi/x/cond_var` | Async condition variable (`Cond::wait`, `Cond::signal`, `Cond::broadcast`) |
+| `mizchi/x/semaphore` | Async semaphore (`Semaphore::acquire`, `release`, `try_acquire`) |
 | `mizchi/x/websocket` | WebSocket client (`connect`, `Conn::send_text`, `Conn::send_binary`, `Conn::recv`, `Conn::close`) |
 | `mizchi/x/stdio` | Standard I/O (`stdin`, `stdout`, `stderr` with `@io.Reader`/`@io.Writer`) |
 | `mizchi/x/pipe` | In-memory pipes (`pipe()` → `PipeRead`/`PipeWrite` with `@io.Reader`/`@io.Writer`) |
@@ -41,7 +47,13 @@ Node.js backend compatibility layer for `moonbitlang/async` in [MoonBit](https:/
 | `process` | Yes | Yes | stub | stub |
 | `fs` | Yes | Yes | WASI P1 | stub |
 | `http` | Yes | Yes | stub | stub |
+| `gzip` | Yes | Yes | Yes | Yes |
 | `socket` | TCP/UDP | TCP/UDP | stub | stub |
+| `signal` | Yes | constants/no-op | constants/no-op | constants/no-op |
+| `raw_fd` | Yes | Yes | stub | stub |
+| `aqueue` | Yes | Yes | Yes | Yes |
+| `cond_var` | Yes | Yes | Yes | Yes |
+| `semaphore` | Yes | Yes | Yes | Yes |
 | `websocket` | Yes | Yes | stub | stub |
 | `stdio` | Yes | Yes | stub | stub |
 | `pipe` | Yes | Yes | stub | stub |
@@ -62,6 +74,18 @@ The wrapper re-exports upstream types and APIs with matching signatures. On nati
 `mizchi/x/fs` now exposes the upstream-style `File` API (`open`, `create`, stream `@io.Reader`/`@io.Writer`, random access, size, timestamps, sync, `tmpdir`, and `walk`) on native and Node.js. Native delegates to `moonbitlang/async/fs`; JS maps to `node:fs/promises`. JS file locking is not supported because Node.js has no standard advisory file-locking API.
 
 `mizchi/x/socket` currently covers TCP and UDP on native and Node.js. Native delegates to `moonbitlang/async/socket`; JS maps TCP to `node:net` and UDP to `node:dgram`. Node.js does not expose stable OS file descriptors for these sockets, so `fd()` returns `-1` on JS. TCP connect/accept/run_forever and UDP unicast roundtrips are covered by automated tests. UDP multicast helpers are mapped to Node where available, but multicast is not covered by automated tests.
+
+`mizchi/x/process` exposes async 0.19 process inputs/outputs, file redirection, `spawn`, `spawn_orphan`, `wait_pid`, `Process::wait`, `Process::try_wait`, and cancellation handlers. Native delegates to `moonbitlang/async/process`; JS maps to `node:child_process`.
+
+`mizchi/x/http` includes async 0.19 response cookies and upstream-style streaming requests: `get_stream` returns a `Client`, while `post_stream`/`put_stream` return a writable `Client` whose response is obtained with `end_request()`. Native supports upstream proxy/trust options; JS returns `NotSupported` for proxy clients and custom TLS trust.
+
+`mizchi/x/gzip` mirrors `moonbitlang/async/gzip` and works across native, JS, wasm, and wasm-gc via the upstream stream encoder/decoder.
+
+`mizchi/x/signal` mirrors the async signal constants on native and provides portable numeric constants on JS/wasm targets. Global cancellation signal setup delegates to upstream on native and is a no-op on JS/wasm.
+
+`mizchi/x/raw_fd` owns an existing OS file descriptor and provides single read/write operations. Native uses a small C FFI shim; JS maps to Node.js `fs.read`/`fs.write`/`fs.closeSync`. WASM targets compile as stubs.
+
+`mizchi/x/aqueue`, `mizchi/x/cond_var`, and `mizchi/x/semaphore` are thin wrappers around the async synchronization primitives, keeping the same high-level API available from this compatibility module.
 
 #### http (`moonbitlang/async/http`)
 
@@ -120,21 +144,21 @@ Upstream tests: 28 | Covered: 10 | Skipped: 18
 | `set cwd` | Covered | |
 | `set_env` | Covered | |
 | `set_env no inherit` | Covered | |
-| `basic_cat` | Skip | stdin pipe not yet exposed |
-| `wait_pid` | Skip | spawn_orphan not yet exposed |
-| `cancel process` | Skip | cancellation not yet exposed |
-| `cancel process hard` | Skip | cancellation not yet exposed |
-| `cancel process timeout` | Skip | cancellation not yet exposed |
-| `orphan process` | Skip | spawn_orphan not yet exposed |
-| `collect_output blocked` | Skip | stdin param not yet exposed |
-| `spawn_in_group wait` | Skip | spawn not yet exposed |
-| `spawn_in_group cancel` | Skip | spawn not yet exposed |
-| `Process::wait` | Skip | Process type not yet exposed |
-| `Process::try_wait` | Skip | Process type not yet exposed |
-| `Process:cancel` | Skip | Process type not yet exposed |
-| `merge stdout and stderr` | Skip | stdout/stderr redirect not yet exposed |
-| `merge multiple` | Skip | spawn + pipe redirect not yet exposed |
-| `redirect to file` | Skip | file redirect not yet exposed |
+| `basic_cat` | Skip | upstream shell/stdin scenario not mirrored yet |
+| `wait_pid` | Skip | API exposed; upstream scenario not mirrored yet |
+| `cancel process` | Skip | cancellation API exposed; upstream scenario not mirrored yet |
+| `cancel process hard` | Skip | cancellation API exposed; upstream scenario not mirrored yet |
+| `cancel process timeout` | Skip | cancellation API exposed; upstream scenario not mirrored yet |
+| `orphan process` | Skip | API exposed; upstream scenario not mirrored yet |
+| `collect_output blocked` | Skip | stdin scenario not mirrored yet |
+| `spawn_in_group wait` | Skip | API exposed; upstream task-group scenario not mirrored yet |
+| `spawn_in_group cancel` | Skip | API exposed; upstream task-group scenario not mirrored yet |
+| `Process::wait` | Skip | API exposed; covered by wrapper-specific smoke test |
+| `Process::try_wait` | Skip | API exposed; covered by wrapper-specific smoke test |
+| `Process:cancel` | Skip | API exposed; upstream scenario not mirrored yet |
+| `merge stdout and stderr` | Skip | API exposed; upstream scenario not mirrored yet |
+| `merge multiple` | Skip | API exposed; upstream scenario not mirrored yet |
+| `redirect to file` | Skip | API exposed; covered by wrapper-specific smoke test |
 | `kill children on hard cancel` | Skip | requires custom test program + Windows |
 | `do not kill orphan children on hard cancel` | Skip | requires custom test program + Windows |
 | `windows command line arg escape` | Skip | Windows-specific |

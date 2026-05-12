@@ -1,0 +1,16 @@
+import {
+  "moonbitlang/async/signal" @async_signal,
+  "moonbitlang/core/debug",
+}
+
+warnings = "-0029-0067"
+
+options(
+  targets: {
+    "signal_js.mbt": [ "js" ],
+    "signal_native.mbt": [ "native" ],
+    "signal_test.mbt": [ "native", "js", "wasm", "wasm-gc" ],
+    "signal_wasm.mbt": [ "wasm" ],
+    "signal_wasmgc.mbt": [ "wasm-gc" ],
+  },
+)

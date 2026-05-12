@@ -1,0 +1,7 @@
+import {
+  "moonbitlang/async",
+  "moonbitlang/async/gzip" @async_gzip,
+  "moonbitlang/async/io" @io,
+}
+
+warnings = "-0029"

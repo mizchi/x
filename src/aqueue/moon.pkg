@@ -1,0 +1,7 @@
+import {
+  "moonbitlang/async",
+  "moonbitlang/async/aqueue" @async_aqueue,
+  "moonbitlang/core/debug",
+}
+
+warnings = "-0029"

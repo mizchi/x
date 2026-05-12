@@ -5,28 +5,34 @@ pub struct Stream {}
 pub fn get_stream(
   _url : String,
   headers? : Map[String, String],
-) -> (Response, Stream) raise HttpError {
+  body? : &@io.Data = "",
+  proxy? : Client,
+) -> (Response, Client) raise HttpError {
   ignore(headers)
+  ignore(body)
+  ignore(proxy)
   raise HttpError::NotSupported
 }
 
 ///|
 pub fn post_stream(
   _url : String,
-  _body : &@io.Data,
   headers? : Map[String, String],
-) -> (Response, Stream) raise HttpError {
+  proxy? : Client,
+) -> Client raise HttpError {
   ignore(headers)
+  ignore(proxy)
   raise HttpError::NotSupported
 }
 
 ///|
 pub fn put_stream(
   _url : String,
-  _body : &@io.Data,
   headers? : Map[String, String],
-) -> (Response, Stream) raise HttpError {
+  proxy? : Client,
+) -> Client raise HttpError {
   ignore(headers)
+  ignore(proxy)
   raise HttpError::NotSupported
 }
 
@@ -52,8 +58,12 @@ pub fn Stream::close(self : Stream) -> Unit {
 pub fn get(
   _url : String,
   headers? : Map[String, String],
+  body? : &@io.Data = "",
+  proxy? : Client,
 ) -> (Response, &@io.Data) raise HttpError {
   ignore(headers)
+  ignore(body)
+  ignore(proxy)
   raise HttpError::NotSupported
 }
 
@@ -62,8 +72,10 @@ pub fn post(
   _url : String,
   _body : &@io.Data,
   headers? : Map[String, String],
+  proxy? : Client,
 ) -> (Response, &@io.Data) raise HttpError {
   ignore(headers)
+  ignore(proxy)
   raise HttpError::NotSupported
 }
 
@@ -72,8 +84,10 @@ pub fn put(
   _url : String,
   _body : &@io.Data,
   headers? : Map[String, String],
+  proxy? : Client,
 ) -> (Response, &@io.Data) raise HttpError {
   ignore(headers)
+  ignore(proxy)
   raise HttpError::NotSupported
 }
 
@@ -86,9 +100,13 @@ pub struct Client {}
 pub fn Client::new(
   url : String,
   headers? : Map[String, String],
+  proxy? : Client,
+  verify? : Bool = true,
 ) -> Client raise HttpError {
   ignore(url)
   ignore(headers)
+  ignore(proxy)
+  ignore(verify)
   raise HttpError::NotSupported
 }
 
@@ -316,9 +334,11 @@ pub fn ServerConnection::send_response(
   _code : Int,
   _reason : String,
   extra_headers? : Map[String, String],
+  cookies? : Array[Cookie] = [],
 ) -> Unit raise HttpError {
   ignore(self)
   ignore(extra_headers)
+  ignore(cookies)
   raise HttpError::NotSupported
 }
 

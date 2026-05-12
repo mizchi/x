@@ -3,21 +3,22 @@ package "mizchi/x/http"
 
 import {
   "moonbitlang/async/io",
+  "moonbitlang/async/tls",
   "moonbitlang/core/debug",
 }
 
 // Values
-pub async fn get(String, headers? : Map[String, String]) -> (Response, &@io.Data) raise HttpError
+pub async fn get(String, headers? : Map[String, String], body? : &@io.Data, proxy? : Client) -> (Response, &@io.Data) raise HttpError
 
-pub async fn get_stream(String, headers? : Map[String, String]) -> (Response, Stream) raise HttpError
+pub async fn get_stream(String, headers? : Map[String, String], body? : &@io.Data, proxy? : Client) -> (Response, Client) raise HttpError
 
-pub async fn post(String, &@io.Data, headers? : Map[String, String]) -> (Response, &@io.Data) raise HttpError
+pub async fn post(String, &@io.Data, headers? : Map[String, String], proxy? : Client) -> (Response, &@io.Data) raise HttpError
 
-pub async fn post_stream(String, &@io.Data, headers? : Map[String, String]) -> (Response, Stream) raise HttpError
+pub async fn post_stream(String, headers? : Map[String, String], proxy? : Client) -> Client raise HttpError
 
-pub async fn put(String, &@io.Data, headers? : Map[String, String]) -> (Response, &@io.Data) raise HttpError
+pub async fn put(String, &@io.Data, headers? : Map[String, String], proxy? : Client) -> (Response, &@io.Data) raise HttpError
 
-pub async fn put_stream(String, &@io.Data, headers? : Map[String, String]) -> (Response, Stream) raise HttpError
+pub async fn put_stream(String, headers? : Map[String, String], proxy? : Client) -> Client raise HttpError
 
 // Errors
 pub suberror HttpError {
@@ -42,13 +43,27 @@ pub async fn Client::end_request(Self) -> Response raise HttpError
 pub async fn Client::enter_passthrough_mode(Self) -> Unit raise HttpError
 pub async fn Client::flush(Self) -> Unit raise HttpError
 pub async fn Client::get(Self, String, extra_headers? : Map[String, String], body? : &@io.Data) -> Response raise HttpError
-pub async fn Client::new(String, headers? : Map[String, String]) -> Self raise HttpError
+pub async fn Client::new(String, headers? : Map[String, String], proxy? : Self, verify? : Bool, trust? : @tls.TrustedRoot) -> Self raise HttpError
 pub async fn Client::post(Self, String, &@io.Data, extra_headers? : Map[String, String]) -> Response raise HttpError
 pub async fn Client::put(Self, String, &@io.Data, extra_headers? : Map[String, String]) -> Response raise HttpError
 pub async fn Client::request(Self, RequestMethod, StringView, extra_headers? : Map[String, String]) -> Unit raise HttpError
 pub async fn Client::skip_response_body(Self) -> Unit raise HttpError
 pub impl @io.Reader for Client
 pub impl @io.Writer for Client
+
+pub struct Cookie {
+  name : String
+  value : String
+  path : String?
+  expires_raw : String?
+  max_age : Int64?
+  domain : String?
+  secure : Bool
+  http_only : Bool
+  extensions : Array[String]
+} derive(@debug.Debug)
+#alias(new, deprecated)
+pub fn Cookie::Cookie(String, String, path? : String, expires_raw? : String, max_age? : Int64, domain? : String, secure? : Bool, http_only? : Bool, extensions? : Array[String]) -> Self
 
 pub(all) struct Request {
   meth : RequestMethod
@@ -73,6 +88,7 @@ pub(all) struct Response {
   code : Int
   reason : String
   headers : Map[String, String]
+  cookies : Array[Cookie]
 }
 
 pub struct Server {
@@ -95,7 +111,7 @@ pub async fn ServerConnection::end_response(Self) -> Unit raise HttpError
 pub async fn ServerConnection::enter_passthrough_mode(Self) -> Unit raise HttpError
 pub async fn ServerConnection::flush(Self) -> Unit raise HttpError
 pub async fn ServerConnection::read_request(Self) -> Request raise HttpError
-pub async fn ServerConnection::send_response(Self, Int, String, extra_headers? : Map[String, String]) -> Unit raise HttpError
+pub async fn ServerConnection::send_response(Self, Int, String, extra_headers? : Map[String, String], cookies? : Array[Cookie]) -> Unit raise HttpError
 pub async fn ServerConnection::skip_request_body(Self) -> Unit raise HttpError
 pub impl @io.Reader for ServerConnection
 pub impl @io.Writer for ServerConnection

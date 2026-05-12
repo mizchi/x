@@ -4,12 +4,14 @@ import {
   "moonbitlang/async/io",
   "moonbitlang/async/js_async",
   "moonbitlang/async/socket",
+  "moonbitlang/async/tls",
   "moonbitlang/core/cmp",
   "moonbitlang/core/debug",
   "moonbitlang/core/json",
+  "moonbitlang/core/string",
 }
 
-warnings = "-0029-0014-0001"
+warnings = "-0029-0014-0001-0009-0067"
 
 options(
   targets: {

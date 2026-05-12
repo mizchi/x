@@ -1,0 +1,6 @@
+import {
+  "moonbitlang/async",
+  "moonbitlang/async/cond_var" @async_cond,
+}
+
+warnings = "-0029"

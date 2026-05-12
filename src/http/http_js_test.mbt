@@ -49,6 +49,43 @@ async test "server: run_forever POST body and headers" {
 }
 
 ///|
+async test "server: response cookies" {
+  @async.with_task_group(group => {
+    let server = @http.Server::new(port=0)
+    defer server.close()
+    let port = server.port()
+    group.spawn_bg(no_wait=true, allow_failure=true, () => {
+      server.run_forever((_req, _body, conn) => {
+        conn.send_response(200, "OK", cookies=[
+          @http.Cookie(
+            "sid",
+            "abc",
+            path="/",
+            max_age=60L,
+            secure=true,
+            http_only=true,
+            extensions=["SameSite=Lax"],
+          ),
+        ])
+        conn.write("ok")
+        conn.end_response()
+      })
+    })
+    @async.sleep(20)
+    let (resp, body) = @http.get("http://127.0.0.1:\{port}/cookie")
+    assert_eq(resp.code, 200)
+    assert_eq(body.text(), "ok")
+    assert_eq(resp.cookies.length(), 1)
+    assert_eq(resp.cookies[0].name, "sid")
+    assert_eq(resp.cookies[0].value, "abc")
+    assert_eq(resp.cookies[0].path.unwrap_or(""), "/")
+    assert_eq(resp.cookies[0].max_age.unwrap_or(0L), 60L)
+    assert_true(resp.cookies[0].secure)
+    assert_true(resp.cookies[0].http_only)
+  })
+}
+
+///|
 async test "server: run_forever SSE flush chunked" {
   @async.with_task_group(group => {
     let server = @http.Server::new(port=0)

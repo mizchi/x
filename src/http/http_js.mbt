@@ -16,10 +16,14 @@ extern "js" fn js_fetch_internal(
   #|     const resBody = await res.text();
   #|     const resHeaders = {};
   #|     res.headers.forEach((v, k) => { resHeaders[k] = v; });
+  #|     const cookies = typeof res.headers.getSetCookie === 'function'
+  #|       ? res.headers.getSetCookie()
+  #|       : (res.headers.get('set-cookie') ? [res.headers.get('set-cookie')] : []);
   #|     return JSON.stringify({
   #|       code: res.status,
   #|       reason: res.statusText,
   #|       headers: resHeaders,
+  #|       cookies,
   #|       body: resBody,
   #|     });
   #|   } catch (e) {
@@ -30,7 +34,8 @@ extern "js" fn js_fetch_internal(
 ///|
 fn parse_response_json(json_str : String) -> (Response, &@io.Data) {
   let parsed = @json.parse(json_str) catch {
-    _ => return (Response::{ code: 0, reason: "", headers: {} }, "")
+    _ =>
+      return (Response::{ code: 0, reason: "", headers: {}, cookies: [] }, "")
   }
   let code = match parsed {
     Object(map) =>
@@ -57,6 +62,14 @@ fn parse_response_json(json_str : String) -> (Response, &@io.Data) {
     _ => ""
   }
   let headers : Map[String, String] = {}
+  let cookies : Array[Cookie] = match parsed {
+    Object(map) =>
+      match map.get("cookies") {
+        Some(value) => parse_cookies_value(value)
+        _ => []
+      }
+    _ => []
+  }
   match parsed {
     Object(map) =>
       match map.get("headers") {
@@ -71,7 +84,7 @@ fn parse_response_json(json_str : String) -> (Response, &@io.Data) {
       }
     _ => ()
   }
-  (Response::{ code, reason, headers }, body)
+  (Response::{ code, reason, headers, cookies }, body)
 }
 
 // Streaming API
@@ -82,6 +95,7 @@ priv struct JsStreamResult {
   code : Int
   reason : String
   headers_json : String
+  cookies_json : String
 }
 
 ///|
@@ -110,7 +124,10 @@ extern "js" fn js_fetch_stream(
   #|   globalThis.__xhs.streams.set(id, { reader });
   #|   const resHeaders = {};
   #|   res.headers.forEach((v, k) => { resHeaders[k] = v; });
-  #|   return { id, code: res.status, reason: res.statusText, headers_json: JSON.stringify(resHeaders) };
+  #|   const cookies = typeof res.headers.getSetCookie === 'function'
+  #|     ? res.headers.getSetCookie()
+  #|     : (res.headers.get('set-cookie') ? [res.headers.get('set-cookie')] : []);
+  #|   return { id, code: res.status, reason: res.statusText, headers_json: JSON.stringify(resHeaders), cookies_json: JSON.stringify(cookies) };
   #| }
 
 ///|
@@ -150,6 +167,52 @@ fn parse_headers_json(json_str : String) -> Map[String, String] {
     _ => ()
   }
   headers
+}
+
+///|
+fn extract_host_url_js(url : String) -> String {
+  let start = if url.has_prefix("https://") {
+    8
+  } else if url.has_prefix("http://") {
+    7
+  } else {
+    0
+  }
+  let mut path_start = -1
+  for i = start; i < url.length(); i = i + 1 {
+    if url[i].to_int() == '/'.to_int() {
+      path_start = i
+      break
+    }
+  }
+  if path_start == -1 {
+    url
+  } else {
+    url[:path_start].to_owned()
+  }
+}
+
+///|
+fn extract_path_from_url_js(url : String) -> String {
+  let start = if url.has_prefix("https://") {
+    8
+  } else if url.has_prefix("http://") {
+    7
+  } else {
+    0
+  }
+  let mut path_start = -1
+  for i = start; i < url.length(); i = i + 1 {
+    if url[i].to_int() == '/'.to_int() {
+      path_start = i
+      break
+    }
+  }
+  if path_start == -1 {
+    "/"
+  } else {
+    url[path_start:].to_owned()
+  }
 }
 
 // Server API
@@ -799,8 +862,9 @@ extern "js" fn js_conn_send_response(
   code : Int,
   reason : String,
   headers_json : String,
+  cookies_json : String,
 ) -> Unit =
-  #| (connId, code, reason, headersJson) => {
+  #| (connId, code, reason, headersJson, cookiesJson) => {
   #|   const state = globalThis.__xhttpServer;
   #|   const conn = state?.conns.get(connId);
   #|   if (!conn || conn.closed || conn.responseEnded || conn.responseStarted) return;
@@ -811,6 +875,16 @@ extern "js" fn js_conn_send_response(
   #|     try { extra = JSON.parse(headersJson); } catch {}
   #|   }
   #|   const headers = { ...base, ...extra };
+  #|   let cookies = [];
+  #|   if (cookiesJson && cookiesJson.length > 0) {
+  #|     try {
+  #|       const parsed = JSON.parse(cookiesJson);
+  #|       if (Array.isArray(parsed)) cookies = parsed.map(String);
+  #|     } catch {}
+  #|   }
+  #|   if (cookies.length > 0) {
+  #|     headers['Set-Cookie'] = cookies;
+  #|   }
   #|   const status = typeof code === 'number' ? code : 200;
   #|   if (reason && reason.length > 0) {
   #|     conn.res.writeHead(status, reason, headers);
@@ -1324,6 +1398,7 @@ pub fn ServerConnection::send_response(
   code : Int,
   reason : String,
   extra_headers? : Map[String, String],
+  cookies? : Array[Cookie] = [],
 ) -> Unit {
   if self.passthrough_mode {
     return
@@ -1336,6 +1411,7 @@ pub fn ServerConnection::send_response(
     code,
     reason,
     headers_to_json(extra_headers.unwrap_or({})),
+    cookies_to_json(cookies),
   )
   self.response_started = true
 }
@@ -1637,35 +1713,99 @@ async fn stream_request_internal_js(
     code: result.code,
     reason: result.reason,
     headers: parse_headers_json(result.headers_json),
+    cookies: parse_cookies_json(result.cookies_json),
   }
   (resp, Stream::{ id: result.id })
+}
+
+///|
+async fn create_stream_client_js(
+  url : String,
+  meth : RequestMethod,
+  headers : Map[String, String],
+  body : &@io.Data,
+  proxy? : Client,
+) -> (Response, Client) raise HttpError {
+  if proxy is Some(_) {
+    raise HttpError::NotSupported
+  }
+  let host_url = extract_host_url_js(url)
+  let path = extract_path_from_url_js(url)
+  let client = Client::new(host_url)
+  let resp = try {
+    match meth {
+      Get => client.get(path, extra_headers=headers, body~)
+      _ => {
+        client.request(meth, path, extra_headers=headers)
+        ignore(
+          client.write(body) catch {
+            err => raise classify_http_error(err.to_string())
+          },
+        )
+        client.end_request()
+      }
+    }
+  } catch {
+    err => {
+      client.close()
+      raise classify_http_error(err.to_string())
+    }
+  }
+  (resp, client)
 }
 
 ///|
 pub async fn get_stream(
   url : String,
   headers? : Map[String, String],
-) -> (Response, Stream) raise HttpError {
-  let empty : String = ""
-  stream_request_internal_js(url, "GET", headers.unwrap_or({}), empty)
+  body? : &@io.Data = "",
+  proxy? : Client,
+) -> (Response, Client) raise HttpError {
+  create_stream_client_js(url, Get, headers.unwrap_or({}), body, proxy?)
 }
 
 ///|
 pub async fn post_stream(
   url : String,
-  body : &@io.Data,
   headers? : Map[String, String],
-) -> (Response, Stream) raise HttpError {
-  stream_request_internal_js(url, "POST", headers.unwrap_or({}), body)
+  proxy? : Client,
+) -> Client raise HttpError {
+  if proxy is Some(_) {
+    raise HttpError::NotSupported
+  }
+  let host_url = extract_host_url_js(url)
+  let path = extract_path_from_url_js(url)
+  let client = Client::new(host_url)
+  try client.request(Post, path, extra_headers=headers.unwrap_or({})) catch {
+    err => {
+      client.close()
+      raise classify_http_error(err.to_string())
+    }
+  } noraise {
+    _ => client
+  }
 }
 
 ///|
 pub async fn put_stream(
   url : String,
-  body : &@io.Data,
   headers? : Map[String, String],
-) -> (Response, Stream) raise HttpError {
-  stream_request_internal_js(url, "PUT", headers.unwrap_or({}), body)
+  proxy? : Client,
+) -> Client raise HttpError {
+  if proxy is Some(_) {
+    raise HttpError::NotSupported
+  }
+  let host_url = extract_host_url_js(url)
+  let path = extract_path_from_url_js(url)
+  let client = Client::new(host_url)
+  try client.request(Put, path, extra_headers=headers.unwrap_or({})) catch {
+    err => {
+      client.close()
+      raise classify_http_error(err.to_string())
+    }
+  } noraise {
+    _ => client
+  }
 }
 
 ///|
@@ -1720,27 +1860,38 @@ async fn request_internal_js(
   meth : String,
   headers : Map[String, String],
   body : &@io.Data,
+  proxy? : Client,
 ) -> (Response, &@io.Data) raise HttpError {
-  let hjson = headers_to_json(headers)
-  let body_str = body.text() catch { _ => "" }
-  let controller = @js_async.AbortController::new()
-  let promise = js_fetch_internal(url, meth, hjson, body_str)
-  let result_json = @js_async.Promise::wait(
-    promise,
-    abort_controller=controller,
-  ) catch {
-    err => raise classify_http_error(err.to_string())
+  let request_method = match meth {
+    "POST" => Post
+    "PUT" => Put
+    _ => Get
   }
-  parse_response_json(result_json)
+  let (resp, client) = create_stream_client_js(
+    url,
+    request_method,
+    headers,
+    body,
+    proxy?,
+  )
+  let body_data : &@io.Data = @io.Reader::read_all(client) catch {
+    err => {
+      client.close()
+      raise classify_http_error(err.to_string())
+    }
+  }
+  client.close()
+  (resp, body_data)
 }
 
 ///|
 pub async fn get(
   url : String,
   headers? : Map[String, String],
+  body? : &@io.Data = "",
+  proxy? : Client,
 ) -> (Response, &@io.Data) raise HttpError {
-  let empty : String = ""
-  request_internal_js(url, "GET", headers.unwrap_or({}), empty)
+  request_internal_js(url, "GET", headers.unwrap_or({}), body, proxy?)
 }
 
 ///|
@@ -1748,8 +1899,9 @@ pub async fn post(
   url : String,
   body : &@io.Data,
   headers? : Map[String, String],
+  proxy? : Client,
 ) -> (Response, &@io.Data) raise HttpError {
-  request_internal_js(url, "POST", headers.unwrap_or({}), body)
+  request_internal_js(url, "POST", headers.unwrap_or({}), body, proxy?)
 }
 
 ///|
@@ -1757,8 +1909,9 @@ pub async fn put(
   url : String,
   body : &@io.Data,
   headers? : Map[String, String],
+  proxy? : Client,
 ) -> (Response, &@io.Data) raise HttpError {
-  request_internal_js(url, "PUT", headers.unwrap_or({}), body)
+  request_internal_js(url, "PUT", headers.unwrap_or({}), body, proxy?)
 }
 
 // Native-compatible Client API
@@ -1774,6 +1927,7 @@ priv struct JsClientResponse {
   code : Int
   reason : String
   headers_json : String
+  cookies_json : String
 }
 
 ///|
@@ -1808,7 +1962,15 @@ extern "js" fn js_client_new(
   #|       };
   #|       const toResponseObject = (nodeRes) => {
   #|         const resHeaders = {};
+  #|         const cookies = [];
   #|         for (const [k, v] of Object.entries(nodeRes.headers || {})) {
+  #|           if (k.toLowerCase() === 'set-cookie') {
+  #|             if (Array.isArray(v)) {
+  #|               for (const cookie of v) cookies.push(String(cookie));
+  #|             } else if (typeof v === 'string') {
+  #|               cookies.push(v);
+  #|             }
+  #|           }
   #|           if (Array.isArray(v)) {
   #|             resHeaders[k] = v.join(', ');
   #|           } else if (typeof v === 'string') {
@@ -1821,6 +1983,7 @@ extern "js" fn js_client_new(
   #|           code: Number(nodeRes.statusCode || 0),
   #|           reason: String(nodeRes.statusMessage || ''),
   #|           headers_json: JSON.stringify(resHeaders),
+  #|           cookies_json: JSON.stringify(cookies),
   #|         };
   #|       };
   #|       const clearTunnelWaiters = (client, value) => {
@@ -2645,7 +2808,12 @@ pub struct Client {
 pub async fn Client::new(
   url : String,
   headers? : Map[String, String],
+  proxy? : Client,
+  verify? : Bool = true,
 ) -> Client raise HttpError {
+  if proxy is Some(_) || !verify {
+    raise HttpError::NotSupported
+  }
   let controller = @js_async.AbortController::new()
   let promise = js_client_new(url, headers_to_json(headers.unwrap_or({})))
   let result = @js_async.Promise::wait(promise, abort_controller=controller) catch {
@@ -2712,6 +2880,7 @@ pub async fn Client::end_request(self : Client) -> Response raise HttpError {
     code: result.code,
     reason: result.reason,
     headers: parse_headers_json(result.headers_json),
+    cookies: parse_cookies_json(result.cookies_json),
   }
 }
 

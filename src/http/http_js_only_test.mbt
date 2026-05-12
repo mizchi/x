@@ -392,7 +392,7 @@ async test "bench(js): graceful close time under concurrent sse" {
       }
     })
 
-    let streams : Array[@http.Stream] = []
+    let streams : Array[@http.Client] = []
     for _ in 0..<clients {
       let (resp, stream) = @http.get_stream("http://127.0.0.1:\{port}/bench")
       assert_eq(resp.code, 200)

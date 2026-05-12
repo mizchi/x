@@ -1,14 +1,15 @@
 import {
+  "moonbitlang/async",
+  "moonbitlang/async/fs" @async_fs,
   "moonbitlang/async/process" @async_process,
   "moonbitlang/async/io" @async_io,
   "moonbitlang/async/js_async",
+  "moonbitlang/async/signal" @async_signal,
+  "mizchi/x/fs" @fs,
+  "mizchi/x/signal" @signal,
 }
 
-import {
-  "moonbitlang/async",
-} for "test"
-
-warnings = "-0029"
+warnings = "-0029-0014-0024-0009-0067"
 
 options(
   targets: {

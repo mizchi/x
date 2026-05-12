@@ -17,13 +17,18 @@
     "process",
     "filesystem",
     "http",
+    "gzip",
     "socket",
     "tcp",
     "udp",
+    "signal",
+    "raw-fd",
+    "queue",
+    "semaphore",
     "websocket",
     "wasi"
   ],
-  "description": "Node.js backend compatibility layer for moonbitlang/async in MoonBit, with native delegation and JS FFI implementations for process, fs, http, socket, websocket, stdio, pipe, and sys.",
+  "description": "Node.js backend compatibility layer for moonbitlang/async in MoonBit, with native delegation and JS FFI implementations for process, fs, http, gzip, socket, raw_fd, signal, sync primitives, websocket, stdio, pipe, and sys.",
   "source": "src",
   "preferred-target": "native"
 }

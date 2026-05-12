@@ -2,27 +2,83 @@
 package "mizchi/x/process"
 
 import {
+  "mizchi/x/fs",
+  "mizchi/x/signal",
+  "moonbitlang/async",
   "moonbitlang/async/io",
 }
 
 // Values
-pub async fn collect_output(StringView, ArrayView[String], cwd? : StringView, extra_env? : Map[String, String], inherit_env? : Bool) -> (Int, &@io.Data, &@io.Data)
+pub async fn collect_output(StringView, ArrayView[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, cwd? : StringView) -> (Int, &@io.Data, &@io.Data)
 
-pub async fn collect_output_merged(StringView, Array[String], cwd? : StringView, extra_env? : Map[String, String], inherit_env? : Bool) -> (Int, &@io.Data)
+pub async fn collect_output_merged(StringView, Array[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, cwd? : StringView) -> (Int, &@io.Data)
 
-pub async fn collect_stderr(StringView, ArrayView[String], cwd? : StringView, extra_env? : Map[String, String], inherit_env? : Bool) -> (Int, &@io.Data)
+pub async fn collect_stderr(StringView, ArrayView[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stdout? : &ProcessOutput, cwd? : StringView) -> (Int, &@io.Data)
 
-pub async fn collect_stdout(StringView, ArrayView[String], cwd? : StringView, extra_env? : Map[String, String], inherit_env? : Bool) -> (Int, &@io.Data)
+pub async fn collect_stdout(StringView, ArrayView[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stderr? : &ProcessOutput, cwd? : StringView) -> (Int, &@io.Data)
 
-pub async fn run(StringView, ArrayView[String], cwd? : StringView, extra_env? : Map[String, String], inherit_env? : Bool) -> Int
+pub fn graceful_cancel(timeout~ : Int, signal? : @signal.Signal) -> CancellationHandler
 
-pub async fn run_inherit(StringView, ArrayView[String], cwd? : StringView, extra_env? : Map[String, String], inherit_env? : Bool) -> Int
+pub fn hard_cancel() -> CancellationHandler
+
+pub fn read_from_process() -> (ReadFromProcess, &ProcessOutput) raise
+
+pub async fn redirect_from_file(String) -> &ProcessInput
+
+pub async fn redirect_to_file(String, append? : Bool, create_mode? : @fs.CreateMode, permission? : Int, create? : Int, truncate? : Bool) -> &ProcessOutput
+
+pub async fn run(StringView, ArrayView[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stdout? : &ProcessOutput, stderr? : &ProcessOutput, cwd? : StringView, cancel_handler? : CancellationHandler) -> Int
+
+pub async fn run_inherit(StringView, ArrayView[String], extra_env? : Map[String, String], inherit_env? : Bool, cwd? : StringView) -> Int
+
+pub async fn[X] spawn(@async.TaskGroup[X], StringView, ArrayView[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stdout? : &ProcessOutput, stderr? : &ProcessOutput, cwd? : StringView, cancel_handler? : CancellationHandler, no_wait? : Bool) -> Process
+
+pub async fn spawn_orphan(StringView, ArrayView[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stdout? : &ProcessOutput, stderr? : &ProcessOutput, cwd? : StringView) -> Int
+
+pub async fn wait_pid(Int) -> Int
+
+pub fn write_to_process() -> (&ProcessInput, WriteToProcess) raise
 
 // Errors
 
 // Types and methods
+pub(all) struct CancellationHandler {
+  kind : CancellationKind
+}
+
+pub(all) enum CancellationKind {
+  Graceful(Int, @signal.Signal?)
+  Hard
+}
+
+pub struct Process {
+  pid : Int
+  // private fields
+}
+pub fn Process::cancel(Self) -> Unit
+pub fn Process::try_wait(Self) -> Int? raise
+pub async fn Process::wait(Self) -> Int
+
+pub struct ReadFromProcess {
+  // private fields
+}
+pub fn ReadFromProcess::close(Self) -> Unit
+pub impl @io.Reader for ReadFromProcess
+
+pub struct WriteToProcess {
+  // private fields
+}
+pub fn WriteToProcess::close(Self) -> Unit
+pub impl @io.Writer for WriteToProcess
 
 // Type aliases
 
 // Traits
+pub(open) trait ProcessInput {
+  _process_input_native(Self) -> &@moonbitlang/async/process.ProcessInput
+}
+
+pub(open) trait ProcessOutput {
+  _process_output_native(Self) -> &@moonbitlang/async/process.ProcessOutput
+}
 

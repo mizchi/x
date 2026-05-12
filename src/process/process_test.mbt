@@ -108,3 +108,63 @@ async test "set_env no inherit" {
     content="MAGIC_VAR_1=MAGIC_VALUE_1\nMAGIC_VAR_2=MAGIC_VALUE_2",
   )
 }
+
+///|
+async test "redirect stdin and stdout files" {
+  let input = "/tmp/mizchi_x_process_redirect_in.txt"
+  let output = "/tmp/mizchi_x_process_redirect_out.txt"
+  ignore(try? @fs.remove(input))
+  ignore(try? @fs.remove(output))
+  @fs.write_file(input, "redirected", create_mode=CreateOrTruncate)
+
+  let code = @process.run(
+    "node",
+    ["-e", "process.stdin.pipe(process.stdout)"],
+    stdin=@process.redirect_from_file(input),
+    stdout=@process.redirect_to_file(output, create_mode=CreateOrTruncate),
+  )
+  inspect(code, content="0")
+  inspect(@fs.read_file(output).text(), content="redirected")
+
+  @fs.remove(input)
+  @fs.remove(output)
+}
+
+///|
+async test "write_to_process feeds stdin" {
+  let (stdin, writer) = @process.write_to_process()
+  @async.with_task_group(group => {
+    let task = group.spawn(() => {
+      @process.collect_stdout(
+        "node",
+        [
+          "-e", "let s=''; process.stdin.on('data', c=>s+=c); process.stdin.on('end',()=>console.log(s.toUpperCase()))",
+        ],
+        stdin~,
+      )
+    })
+    writer.write("abc")
+    writer.close()
+    let (code, stdout) = task.wait()
+    inspect(code, content="0")
+    inspect(stdout.text().trim_end(), content="ABC")
+  })
+}
+
+///|
+async test "spawn wait and try_wait" {
+  @async.with_task_group(group => {
+    let proc = @process.spawn(group, "node", [
+      "-e", "setTimeout(()=>process.exit(7),100)",
+    ])
+    assert_true(proc.pid > 0)
+    assert_true(proc.try_wait() is None)
+    inspect(proc.wait(), content="7")
+  })
+}
+
+///|
+test "graceful_cancel accepts signal" {
+  let handler = @process.graceful_cancel(timeout=5000, signal=@signal.SIGTERM)
+  ignore(handler)
+}

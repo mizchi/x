@@ -79,15 +79,13 @@ async test "stream: POST with body" {
       conn.end_response()
     })
     let post_body : String = "stream data"
-    let (resp, stream) = @http.post_stream(
-      "http://localhost:\{addr.port()}/post",
-      post_body,
-    )
+    let stream = @http.post_stream("http://localhost:\{addr.port()}/post")
     defer stream.close()
+    stream.write(post_body)
+    let resp = stream.end_request()
     assert_eq(resp.code, 200)
     let body = stream.read_all()
-    let body_data : &@io.Data = body
-    assert_eq(body_data.text(), "echo:stream data")
+    assert_eq(body.text(), "echo:stream data")
   })
 }
 
@@ -186,11 +184,12 @@ async test "stream: OpenAI-like POST SSE" {
       "Content-Type": "application/json",
     }
     let body : String = "{\"model\":\"gpt-4\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"stream\":true}"
-    let (resp, stream) = @http.post_stream(
+    let stream = @http.post_stream(
       "http://localhost:\{addr.port()}/v1/chat/completions",
-      body,
       headers~,
     )
+    stream.write(body)
+    let resp = stream.end_request()
     defer stream.close()
     assert_eq(resp.code, 200)
     assert_eq(

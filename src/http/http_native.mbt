@@ -50,7 +50,38 @@ fn to_response(resp : @async_http.Response) -> Response {
   for k, v in resp.headers {
     headers[k.to_lower()] = v
   }
-  Response::{ code: resp.code, reason: resp.reason, headers }
+  let cookies = resp.cookies.map(to_cookie)
+  Response::{ code: resp.code, reason: resp.reason, headers, cookies }
+}
+
+///|
+fn to_cookie(cookie : @async_http.Cookie) -> Cookie {
+  Cookie(
+    cookie.name,
+    cookie.value,
+    path?=cookie.path,
+    expires_raw?=cookie.expires_raw,
+    max_age?=cookie.max_age,
+    domain?=cookie.domain,
+    secure=cookie.secure,
+    http_only=cookie.http_only,
+    extensions=cookie.extensions,
+  )
+}
+
+///|
+fn from_cookie(cookie : Cookie) -> @async_http.Cookie {
+  @async_http.Cookie(
+    cookie.name,
+    cookie.value,
+    path?=cookie.path,
+    expires_raw?=cookie.expires_raw,
+    max_age?=cookie.max_age,
+    domain?=cookie.domain,
+    secure=cookie.secure,
+    http_only=cookie.http_only,
+    extensions=cookie.extensions,
+  )
 }
 
 ///|
@@ -77,8 +108,21 @@ pub struct Client {
 pub async fn Client::new(
   url : String,
   headers? : Map[String, String],
+  proxy? : Client,
+  verify? : Bool = true,
+  trust? : @tls.TrustedRoot,
 ) -> Client raise HttpError {
-  let client = @async_http.Client(url, headers=headers.unwrap_or({})) catch {
+  let proxy = proxy.map(fn(proxy) { proxy.inner })
+  let trust = match trust {
+    Some(trust) => trust
+    None => if verify { @tls.SystemRoot } else { @tls.NoVerification }
+  }
+  let client = @async_http.Client(
+    url,
+    headers=headers.unwrap_or({}),
+    proxy?,
+    trust~,
+  ) catch {
     _ => raise HttpError::InvalidUrl(url)
   }
   Client::{ inner: client }
@@ -208,17 +252,44 @@ async fn request_internal(
   meth : String,
   headers : Map[String, String],
   body : &@io.Data,
+  proxy? : Client,
 ) -> (Response, &@io.Data) raise HttpError {
+  let proxy = proxy.map(fn(proxy) { proxy.inner })
+  let (resp, body_data) = try {
+    match meth {
+      "POST" => @async_http.post(url, body, headers~, proxy?)
+      "PUT" => @async_http.put(url, body, headers~, proxy?)
+      _ => @async_http.get(url, headers~, body~, proxy?)
+    }
+  } catch {
+    err => raise classify_http_error(err.to_string())
+  }
+  (to_response(resp), body_data)
+}
+
+///|
+async fn create_stream_client(
+  url : String,
+  meth : RequestMethod,
+  headers : Map[String, String],
+  body : &@io.Data,
+  proxy? : Client,
+) -> (Response, Client) raise HttpError {
   let host_url = extract_host_url(url)
   let path = extract_path_from_url(url)
-  let client = @async_http.Client(host_url, headers~) catch {
-    _ => raise HttpError::InvalidUrl(url)
-  }
+  let client = Client::new(host_url, proxy?)
   let resp = try {
     match meth {
-      "POST" => client.post(path, body)
-      "PUT" => client.put(path, body)
-      _ => client.get(path)
+      Get => client.get(path, extra_headers=headers, body~)
+      _ => {
+        client.request(meth, path, extra_headers=headers)
+        ignore(
+          client.write(body) catch {
+            err => raise classify_http_error(err.to_string())
+          },
+        )
+        client.end_request()
+      }
     }
   } catch {
     err => {
@@ -226,14 +297,7 @@ async fn request_internal(
       raise classify_http_error(err.to_string())
     }
   }
-  let body_data : &@io.Data = @io.Reader::read_all(client) catch {
-    err => {
-      client.close()
-      raise classify_http_error(err.to_string())
-    }
-  }
-  client.close()
-  (to_response(resp), body_data)
+  (resp, client)
 }
 
 // Streaming API
@@ -274,27 +338,48 @@ async fn stream_request_internal(
 pub async fn get_stream(
   url : String,
   headers? : Map[String, String],
-) -> (Response, Stream) raise HttpError {
-  let empty : String = ""
-  stream_request_internal(url, "GET", headers.unwrap_or({}), empty)
+  body? : &@io.Data = "",
+  proxy? : Client,
+) -> (Response, Client) raise HttpError {
+  create_stream_client(url, Get, headers.unwrap_or({}), body, proxy?)
 }
 
 ///|
 pub async fn post_stream(
   url : String,
-  body : &@io.Data,
   headers? : Map[String, String],
-) -> (Response, Stream) raise HttpError {
-  stream_request_internal(url, "POST", headers.unwrap_or({}), body)
+  proxy? : Client,
+) -> Client raise HttpError {
+  let host_url = extract_host_url(url)
+  let path = extract_path_from_url(url)
+  let client = Client::new(host_url, proxy?)
+  try client.request(Post, path, extra_headers=headers.unwrap_or({})) catch {
+    err => {
+      client.close()
+      raise classify_http_error(err.to_string())
+    }
+  } noraise {
+    _ => client
+  }
 }
 
 ///|
 pub async fn put_stream(
   url : String,
-  body : &@io.Data,
   headers? : Map[String, String],
-) -> (Response, Stream) raise HttpError {
-  stream_request_internal(url, "PUT", headers.unwrap_or({}), body)
+  proxy? : Client,
+) -> Client raise HttpError {
+  let host_url = extract_host_url(url)
+  let path = extract_path_from_url(url)
+  let client = Client::new(host_url, proxy?)
+  try client.request(Put, path, extra_headers=headers.unwrap_or({})) catch {
+    err => {
+      client.close()
+      raise classify_http_error(err.to_string())
+    }
+  } noraise {
+    _ => client
+  }
 }
 
 ///|
@@ -323,9 +408,10 @@ pub fn Stream::close(self : Stream) -> Unit {
 pub async fn get(
   url : String,
   headers? : Map[String, String],
+  body? : &@io.Data = "",
+  proxy? : Client,
 ) -> (Response, &@io.Data) raise HttpError {
-  let empty : String = ""
-  request_internal(url, "GET", headers.unwrap_or({}), empty)
+  request_internal(url, "GET", headers.unwrap_or({}), body, proxy?)
 }
 
 ///|
@@ -333,8 +419,9 @@ pub async fn post(
   url : String,
   body : &@io.Data,
   headers? : Map[String, String],
+  proxy? : Client,
 ) -> (Response, &@io.Data) raise HttpError {
-  request_internal(url, "POST", headers.unwrap_or({}), body)
+  request_internal(url, "POST", headers.unwrap_or({}), body, proxy?)
 }
 
 ///|
@@ -342,8 +429,9 @@ pub async fn put(
   url : String,
   body : &@io.Data,
   headers? : Map[String, String],
+  proxy? : Client,
 ) -> (Response, &@io.Data) raise HttpError {
-  request_internal(url, "PUT", headers.unwrap_or({}), body)
+  request_internal(url, "PUT", headers.unwrap_or({}), body, proxy?)
 }
 
 // Server API
@@ -517,11 +605,14 @@ pub async fn ServerConnection::send_response(
   code : Int,
   reason : String,
   extra_headers? : Map[String, String],
+  cookies? : Array[Cookie] = [],
 ) -> Unit raise HttpError {
+  let cookies = cookies.map(from_cookie)
   self.inner.send_response(
     code,
     reason,
     extra_headers=extra_headers.unwrap_or({}),
+    cookies~,
   ) catch {
     err => raise classify_http_error(err.to_string())
   }

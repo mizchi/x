@@ -53,10 +53,30 @@ test "headers_to_json - escapes special characters" {
 
 ///|
 test "Response construction" {
-  let resp = Response::{ code: 200, reason: "OK", headers: {} }
+  let resp = Response::{ code: 200, reason: "OK", headers: {}, cookies: [] }
   assert_eq(resp.code, 200)
   assert_eq(resp.reason, "OK")
   assert_eq(resp.headers.length(), 0)
+  assert_eq(resp.cookies.length(), 0)
+}
+
+///|
+test "Cookie parse and serialize" {
+  let cookie = Cookie::parse(
+    "sid=abc; Path=/; Max-Age=60; Domain=example.test; Secure; HttpOnly; SameSite=Lax",
+  )
+  assert_eq(cookie.name, "sid")
+  assert_eq(cookie.value, "abc")
+  assert_eq(cookie.path.unwrap_or(""), "/")
+  assert_eq(cookie.max_age.unwrap_or(0L), 60L)
+  assert_eq(cookie.domain.unwrap_or(""), "example.test")
+  assert_true(cookie.secure)
+  assert_true(cookie.http_only)
+  assert_eq(cookie.extensions[0], "SameSite=Lax")
+  assert_eq(
+    cookie.to_header_value(),
+    "sid=abc; Path=/; Max-Age=60; Domain=example.test; Secure; HttpOnly; SameSite=Lax",
+  )
 }
 
 ///|
