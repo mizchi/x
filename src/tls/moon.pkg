@@ -1,0 +1,26 @@
+import {
+  "moonbitlang/async",
+  "moonbitlang/async/io",
+  "moonbitlang/async/js_async",
+  "moonbitlang/async/tls" @async_tls,
+  "moonbitlang/core/cmp",
+  "moonbitlang/core/debug",
+  "moonbitlang/x/crypto" @crypto,
+}
+
+import {
+  "mizchi/x/fs" @fs,
+  "mizchi/x/pipe" @pipe,
+  "moonbitlang/core/encoding/utf8",
+} for "test"
+
+warnings = "-0029-0067-0006-0009-0014-0053"
+
+options(
+  targets: {
+    "tls_js.mbt": [ "js" ],
+    "tls_native.mbt": [ "native" ],
+    "tls_stub.mbt": [ "wasm", "wasm-gc" ],
+    "tls_test.mbt": [ "native", "js" ],
+  },
+)

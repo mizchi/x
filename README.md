@@ -29,6 +29,7 @@ Node.js backend compatibility layer for `moonbitlang/async` in [MoonBit](https:/
 | `mizchi/x/fs` | File system operations (`open`, `create`, `File`, `read_file`, `write_file`, `tmpdir`, `walk`, `exists`, `mkdir`, `readdir`, `opendir`, `Directory::next`, `rename`, `remove`, `rmdir`) |
 | `mizchi/x/http` | HTTP client/server (`get`, `post`, `put`, `get_stream`, `post_stream`, `put_stream`, `Client`, `Server`, `Cookie`) |
 | `mizchi/x/gzip` | Gzip stream encoder/decoder (`Encoder`, `Decoder`) |
+| `mizchi/x/tls` | TLS client/server streams (`Tls::client`, `Tls::server_from_pair`, peer certificate, channel binding, `rand_bytes`, `sha1`) |
 | `mizchi/x/socket` | TCP/UDP sockets (`Addr`, `Tcp`, `TcpServer`, `UdpClient`, `UdpServer`) |
 | `mizchi/x/signal` | Signal constants and global cancellation signal configuration (`Signal`, `to_int`, `set_global_cancellation_signals`) |
 | `mizchi/x/raw_fd` | Raw file descriptor reads/writes (`RawFd::read`, `RawFd::write`, `RawFd::close`) |
@@ -48,6 +49,7 @@ Node.js backend compatibility layer for `moonbitlang/async` in [MoonBit](https:/
 | `fs` | Yes | Yes | WASI P1 | stub |
 | `http` | Yes | Yes | stub | stub |
 | `gzip` | Yes | Yes | Yes | Yes |
+| `tls` | Yes | Yes | stub | stub |
 | `socket` | TCP/UDP | TCP/UDP | stub | stub |
 | `signal` | Yes | constants/no-op | constants/no-op | constants/no-op |
 | `raw_fd` | Yes | Yes | stub | stub |
@@ -80,6 +82,8 @@ The wrapper re-exports upstream types and APIs with matching signatures. On nati
 `mizchi/x/http` includes async 0.19 response cookies and upstream-style streaming requests: `get_stream` returns a `Client`, while `post_stream`/`put_stream` return a writable `Client` whose response is obtained with `end_request()`. Native supports upstream proxy/trust options; JS returns `NotSupported` for proxy clients and custom TLS trust.
 
 `mizchi/x/gzip` mirrors `moonbitlang/async/gzip` and works across native, JS, wasm, and wasm-gc via the upstream stream encoder/decoder.
+
+`mizchi/x/tls` mirrors `moonbitlang/async/tls`. Native delegates to the upstream OpenSSL/Schannel implementation. JS maps to Node.js `node:tls` over any `@io.Reader`/`@io.Writer` pair and supports client/server handshakes, graceful shutdown, peer certificate access, `tls-unique`/`tls-server-end-point` style channel bindings, `rand_bytes`, and `sha1`. WASM targets compile as stubs.
 
 `mizchi/x/signal` mirrors the async signal constants on native and provides portable numeric constants on JS/wasm targets. Global cancellation signal setup delegates to upstream on native and is a no-op on JS/wasm.
 
@@ -114,6 +118,17 @@ All upstream pipe tests are fully covered.
 Upstream tests: 3 | Covered: 0 | Skipped: 3
 
 All upstream tests require process piping/redirect features (`@process.run` with redirect options).
+
+#### tls (`moonbitlang/async/tls`)
+
+Upstream tests: 9 | Covered: 3 | Skipped: 6
+
+| Upstream test | Status | Notes |
+|---|---|---|
+| `echo` | Covered | native and JS |
+| `get_peer_certificate` | Covered | native and JS |
+| `channel binding` | Covered | native and JS |
+| Other 6 tests | Skip | shutdown/error/custom-root scenarios not mirrored yet |
 
 ## Quick Start
 

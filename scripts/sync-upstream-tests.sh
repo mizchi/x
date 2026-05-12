@@ -23,28 +23,36 @@ if [ ! -f "$ZIP" ]; then
   exit 1
 fi
 
-# Map of upstream package -> wrapper package
-declare -A PKG_MAP=(
-  [http]="src/http"
-  [websocket]="src/websocket"
-  [pipe]="src/pipe"
-  [stdio]="src/stdio"
-  [process]="src/process"
-)
-
-# Map of upstream package -> source directory in zip
-declare -A SRC_MAP=(
-  [http]="src/http"
-  [websocket]="src/websocket"
-  [pipe]="src/pipe"
-  [stdio]="src/stdio"
-  [process]="src/process"
-)
-
-packages=("${!PKG_MAP[@]}")
+all_packages=(http websocket pipe stdio process tls)
+packages=("${all_packages[@]}")
 if [ "${1:-}" != "" ]; then
   packages=("$1")
 fi
+
+wrapper_dir_for() {
+  case "$1" in
+    http) echo "src/http" ;;
+    websocket) echo "src/websocket" ;;
+    pipe) echo "src/pipe" ;;
+    stdio) echo "src/stdio" ;;
+    process) echo "src/process" ;;
+    tls) echo "src/tls" ;;
+    *)
+      echo "ERROR: unknown package '$1'" >&2
+      exit 1
+      ;;
+  esac
+}
+
+upstream_dir_for() {
+  case "$1" in
+    http|websocket|pipe|stdio|process|tls) echo "src/$1" ;;
+    *)
+      echo "ERROR: unknown package '$1'" >&2
+      exit 1
+      ;;
+  esac
+}
 
 # Load exclusion list for a package
 load_excludes() {
@@ -75,8 +83,8 @@ total_missing=0
 total_excluded=0
 
 for pkg in "${packages[@]}"; do
-  upstream_dir="${SRC_MAP[$pkg]}"
-  wrapper_dir="${PKG_MAP[$pkg]}"
+  upstream_dir="$(upstream_dir_for "$pkg")"
+  wrapper_dir="$(wrapper_dir_for "$pkg")"
 
   # Extract upstream test files
   unzip -qo "$ZIP" "${upstream_dir}/*_test.mbt" "${upstream_dir}/*_wbtest.mbt" -d "$TMPDIR" 2>/dev/null || true
