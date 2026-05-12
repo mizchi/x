@@ -123,14 +123,19 @@ All upstream tests require process piping/redirect features (`@process.run` with
 
 #### tls (`moonbitlang/async/tls`)
 
-Upstream tests: 9 | Covered: 3 | Skipped: 6
+Upstream tests: 9 | Covered: 9 | Skipped: 0
 
 | Upstream test | Status | Notes |
 |---|---|---|
+| `one way` | Covered | native and JS |
 | `echo` | Covered | native and JS |
+| `` `connect` accidental close `` | Covered | native and JS |
+| `` `read` already closed `` | Covered | native and JS |
+| `client custom root certificate` | Covered | native and JS |
+| `client custom root certificate rejects different root` | Covered | native and JS |
 | `get_peer_certificate` | Covered | native and JS |
 | `channel binding` | Covered | native and JS |
-| Other 6 tests | Skip | shutdown/error/custom-root scenarios not mirrored yet |
+| `peer close connection` | Covered | native and JS |
 
 ## Quick Start
 

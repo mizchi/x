@@ -50,11 +50,73 @@ let cert_pem =
   #|-----END CERTIFICATE-----
 
 ///|
+let other_key_pem =
+  #|-----BEGIN PRIVATE KEY-----
+  #|MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDjTOGQXq+yJzvj
+  #|P5IZMM0eGdBRgzHrFmfABULuG6V5c4zkmdVfyVxoNVHZFnaDmFovKQjDCqoxMKyR
+  #|JmjkPRzEOaME8Wykz2K+71Tw94aZMTtcViitOiUE6LQyPTbMfg6f2Zv80SmrtB+t
+  #|Tnl5XwQ3ClrtrzU7yXWHcz7e1tkgYIPJKiQKFd29Roe+5sXYEvfgY2NK8Tw3dW4b
+  #|wf9aojdJ96jdPKV1q1I9feKHtClGbY97TvSDu2GouS4b273IBXlvZZIpSvtkRzZe
+  #|d21xFrh+z9t85+04wxKMVMbovIqdCsKRtRWNoIT2ez1QEvHOdsqflAUlZ9z8Dr+c
+  #|3x45nTNZAgMBAAECggEBAL+smFXnEt/3p8/VTr1BYucsO3hRWun0hd7uUOd7lsnZ
+  #|AAnSE5Xntq4FsJSRFbWY5wv33XSj7Kr4cb0hF7jINBbgx7Cmach9PbbnGcjt4qoS
+  #|Uw1ldn3Fl2wRU8s9xZUiA/EWTy0dsLcjeMbrcxI/Zs2HRPBEHG7jTuG+9Fhz8rsS
+  #|MWkI3/UW+otU2BmINjOXeUkj84qAkQAqEBKP5oGqxDSMtbi6W/9QkGfZWAKhG9Ds
+  #|V/aJElippWaXoMi2Ina8CCckFEzOsvCGQpxI+9jsbMvcA3cbroHtHGc4mNQqbqxN
+  #|+1no75fi8MXFwCj58afQYHs0uyu7PIIeqq9oc5KZz4ECgYEA+K9G5y/rZ4TO1FKQ
+  #|1YQRp1F6XhYmPFceX7NRmqG2ouaKj+19FaImvhWKkImI+FFpyd8UXB2bKNdOwNjJ
+  #|vRUoU8U7PGuIXSBO8MkJjLdanE5hBgtk5e0pYcgcgTyc5Fohj+cv82YtQjA6moZ4
+  #|W3j3o1gET49N9MjxBCayXDnI9akCgYEA6fyRp6voo7nj45/YOKzX7lHcbBJtDQ5n
+  #|EsviQNV3pkWeQNriZb51CfX/aTpslkJUmtPcnNQdDZ8U8lNlCNodc8STxrjGpRG3
+  #|7ycxgDMaPi3c6ZkAObgK5C2TPoVz3TSW9X5QOfbuCPJxBkGvQNjsDROz3eJympI4
+  #|NgLvBQN1fjECgYA7kikm6ji2xH6TJ/Af5ZIhBYiNjzq7i5bwD9GFfCV24kjg71/e
+  #|Vch4EkruErQn38C6peCHrGPlpaXs1kGFNNNDNeTZtVymCj4+ubm65pUjCjd9ri8O
+  #|UQBvtvL1FmLy5JBTm2rGIHzI9Sqkp3+fUdvoWgY2VLq034m0l9xz8TeteQKBgQDL
+  #|oNv5eWfqJHoovBDlsbXxVxhmjNqOhDw7ZWevWJbaArgoZNSmCsu8MXNnVkrtsSgD
+  #|3eCeMxJdqlYGVYEV5QvAlhCs3l0xhmv2Gru/f7mU50DboiVKFdqUnP0JagZdOcku
+  #|OBEFgNnCu4qVEVC9NIqpDr53mPx3fEyi5IaybEIx4QKBgEKws2C9VnPCdlZKeJvA
+  #|fmVdHc1/cADZe+NGpZqmQY1Kl5r7jo+l1ipvMjlikCWssIciUycwSdchrfXi1ahD
+  #|O3UBeO2YM4YI7QGpV3xkLzgRv1gfmrVoeo3TJVJTYgErukFsQ8vfoNmYIBtKBw9J
+  #|0GLaJrQUpdUgfJUwCqte73ga
+  #|-----END PRIVATE KEY-----
+
+///|
+let other_cert_pem =
+  #|-----BEGIN CERTIFICATE-----
+  #|MIICpDCCAYwCCQC2A5LcYyLsATANBgkqhkiG9w0BAQsFADAUMRIwEAYDVQQDDAls
+  #|b2NhbGhvc3QwHhcNMjYwNTEyMTUwNTQwWhcNMjcwNTEyMTUwNTQwWjAUMRIwEAYD
+  #|VQQDDAlsb2NhbGhvc3QwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDj
+  #|TOGQXq+yJzvjP5IZMM0eGdBRgzHrFmfABULuG6V5c4zkmdVfyVxoNVHZFnaDmFov
+  #|KQjDCqoxMKyRJmjkPRzEOaME8Wykz2K+71Tw94aZMTtcViitOiUE6LQyPTbMfg6f
+  #|2Zv80SmrtB+tTnl5XwQ3ClrtrzU7yXWHcz7e1tkgYIPJKiQKFd29Roe+5sXYEvfg
+  #|Y2NK8Tw3dW4bwf9aojdJ96jdPKV1q1I9feKHtClGbY97TvSDu2GouS4b273IBXlv
+  #|ZZIpSvtkRzZed21xFrh+z9t85+04wxKMVMbovIqdCsKRtRWNoIT2ez1QEvHOdsqf
+  #|lAUlZ9z8Dr+c3x45nTNZAgMBAAEwDQYJKoZIhvcNAQELBQADggEBAN+ADvhU4y4M
+  #|xfshB/pngDhCXOPGR1M1ZqoDshzBqnJ3vjlKvXITQELX2+tu72ceOvk5iEs2jF6L
+  #|EeocPVADNQct8uFrpsmW0nssYv+YS4W/jS7q6w6xVRizEzw2ILZ4vExIv3xZjMFN
+  #|sc3dRmAv4/gt9sG2affy9L4tNOx7iiVTZCzufILM0eucxRyjs+4Mv3jfF4b1z8HT
+  #|7h+P8ugQcZ5+uc0v3MqyAXGLekJfKkSpqhlonwwiQJSUiE/gj0nslcXlGOKa9x6Y
+  #|6w6oIN+1cKpE65vyFudGjHhBWLc2zfOPA7p/OMainIeCObCXuc65Ca9SlhGEKIzl
+  #|d9ZtzROFG7o=
+  #|-----END CERTIFICATE-----
+
+///|
 async fn write_test_keys() -> (String, String) {
-  let key = "/tmp/mizchi_x_tls_key.pem"
-  let cert = "/tmp/mizchi_x_tls_cert.pem"
+  let suffix = @crypto.bytes_to_hex_string(@tls.rand_bytes(8))
+  let key = "/tmp/mizchi_x_tls_key_\{suffix}.pem"
+  let cert = "/tmp/mizchi_x_tls_cert_\{suffix}.pem"
   @fs.write_file(key, key_pem)
   @fs.write_file(cert, cert_pem)
+  (key, cert)
+}
+
+///|
+async fn write_other_test_keys() -> (String, String) {
+  let suffix = @crypto.bytes_to_hex_string(@tls.rand_bytes(8))
+  let key = "/tmp/mizchi_x_tls_other_key_\{suffix}.pem"
+  let cert = "/tmp/mizchi_x_tls_other_cert_\{suffix}.pem"
+  @fs.write_file(key, other_key_pem)
+  @fs.write_file(cert, other_cert_pem)
   (key, cert)
 }
 
@@ -69,6 +131,57 @@ test "sha1" {
 ///|
 test "rand_bytes length" {
   inspect(@tls.rand_bytes(12).length(), content="12")
+}
+
+///|
+test "one way" {
+  @async.run_async_main(() => {
+    let (key, cert) = write_test_keys()
+    @async.with_task_group(root => {
+      let (client_read_from_server, server_write_to_client) = @pipe.pipe()
+      let (server_read_from_client, client_write_to_server) = @pipe.pipe()
+      let server_task = root.spawn(() => {
+        defer {
+          server_read_from_client.close()
+          server_write_to_client.close()
+        }
+        let server = @tls.Tls::server_from_pair(
+          server_read_from_client,
+          server_write_to_client,
+          private_key_file=key,
+          private_key_type=@tls.PEM,
+          certificate_file=cert,
+          certificate_type=@tls.PEM,
+        )
+        defer server.close()
+        let data = server.read_all().text()
+        server.shutdown()
+        data
+      })
+      root.spawn_bg(() => {
+        defer {
+          client_read_from_server.close()
+          client_write_to_server.close()
+        }
+        let client = @tls.Tls::client_from_pair(
+          client_read_from_server,
+          client_write_to_server,
+          trust=@tls.NoVerification,
+        )
+        defer client.close()
+        client.write(b"abcd")
+        @async.sleep(50)
+        client.write(b"efgh")
+        @async.sleep(50)
+        client.write(b"ijkl")
+        client.shutdown()
+        inspect(client.read_all().text(), content="")
+      })
+      inspect(server_task.wait(), content="abcdefghijkl")
+    })
+    ignore(try? @fs.remove(key))
+    ignore(try? @fs.remove(cert))
+  })
 }
 
 ///|
@@ -124,6 +237,83 @@ test "echo" {
 }
 
 ///|
+test "`connect` accidental close" {
+  @async.run_async_main(() => {
+    @async.with_task_group(root => {
+      let (client_read_from_server, server_write_to_client) = @pipe.pipe()
+      let (server_read_from_client, client_write_to_server) = @pipe.pipe()
+      root.spawn_bg(() => {
+        defer {
+          server_read_from_client.close()
+          server_write_to_client.close()
+        }
+        ignore(server_read_from_client.read_some())
+        @async.sleep(100)
+      })
+      root.spawn_bg(() => {
+        defer {
+          client_read_from_server.close()
+          client_write_to_server.close()
+        }
+        let client = try? @tls.Tls::client_from_pair(
+          client_read_from_server,
+          client_write_to_server,
+          trust=@tls.NoVerification,
+        )
+        match client {
+          Ok(client) => {
+            client.close()
+            fail("expected `ConnectionClosed` error")
+          }
+          Err(err) => inspect(err, content="ConnectionClosed")
+        }
+      })
+    })
+  })
+}
+
+///|
+test "`read` already closed" {
+  @async.run_async_main(() => {
+    let (key, cert) = write_test_keys()
+    @async.with_task_group(root => {
+      let (client_read_from_server, server_write_to_client) = @pipe.pipe()
+      let (server_read_from_client, client_write_to_server) = @pipe.pipe()
+      root.spawn_bg(() => {
+        defer {
+          server_read_from_client.close()
+          server_write_to_client.close()
+        }
+        let server = @tls.Tls::server_from_pair(
+          server_read_from_client,
+          server_write_to_client,
+          private_key_file=key,
+          private_key_type=@tls.PEM,
+          certificate_file=cert,
+          certificate_type=@tls.PEM,
+        )
+        server.close()
+      })
+      root.spawn_bg(() => {
+        defer {
+          client_read_from_server.close()
+          client_write_to_server.close()
+        }
+        let client = @tls.Tls::client_from_pair(
+          client_read_from_server,
+          client_write_to_server,
+          trust=@tls.NoVerification,
+        )
+        defer client.close()
+        debug_inspect(try? client.read_some(), content="Ok(None)")
+      })
+    })
+    ignore(try? @fs.remove(key))
+    ignore(try? @fs.remove(cert))
+  })
+}
+
+///|
 test "get_peer_certificate" {
   @async.run_async_main(() => {
     let (key, cert) = write_test_keys()
@@ -166,6 +356,96 @@ test "get_peer_certificate" {
     })
     ignore(try? @fs.remove(key))
     ignore(try? @fs.remove(cert))
+  })
+}
+
+///|
+test "client custom root certificate" {
+  @async.run_async_main(() => {
+    let (key, cert) = write_test_keys()
+    @async.with_task_group(root => {
+      let (client_read_from_server, server_write_to_client) = @pipe.pipe()
+      let (server_read_from_client, client_write_to_server) = @pipe.pipe()
+      root.spawn_bg(() => {
+        defer {
+          server_read_from_client.close()
+          server_write_to_client.close()
+        }
+        let server = @tls.Tls::server_from_pair(
+          server_read_from_client,
+          server_write_to_client,
+          private_key_file=key,
+          private_key_type=@tls.PEM,
+          certificate_file=cert,
+          certificate_type=@tls.PEM,
+        )
+        defer server.close()
+        assert_eq(server.read_exactly(2), b"ok")
+        server.shutdown()
+      })
+      root.spawn_bg(() => {
+        defer {
+          client_read_from_server.close()
+          client_write_to_server.close()
+        }
+        let client = @tls.Tls::client_from_pair(
+          client_read_from_server,
+          client_write_to_server,
+          host="localhost",
+          trust=@tls.CustomPemFile(cert),
+        )
+        defer client.close()
+        client.write(b"ok")
+        client.shutdown()
+        inspect(client.read_all().text(), content="")
+      })
+    })
+    ignore(try? @fs.remove(key))
+    ignore(try? @fs.remove(cert))
+  })
+}
+
+///|
+test "client custom root certificate rejects different root" {
+  @async.run_async_main(() => {
+    let (key, cert) = write_test_keys()
+    let (other_key, other_cert) = write_other_test_keys()
+    @async.with_task_group(root => {
+      let (client_read_from_server, server_write_to_client) = @pipe.pipe()
+      let (server_read_from_client, client_write_to_server) = @pipe.pipe()
+      root.spawn_bg(() => {
+        defer {
+          server_read_from_client.close()
+          server_write_to_client.close()
+        }
+        let server = try? @tls.Tls::server_from_pair(
+          server_read_from_client,
+          server_write_to_client,
+          private_key_file=other_key,
+          private_key_type=@tls.PEM,
+          certificate_file=other_cert,
+          certificate_type=@tls.PEM,
+        )
+        assert_true(server is Err(_))
+      })
+      root.spawn_bg(() => {
+        defer {
+          client_read_from_server.close()
+          client_write_to_server.close()
+        }
+        let client = try? @tls.Tls::client_from_pair(
+          client_read_from_server,
+          client_write_to_server,
+          host="localhost",
+          trust=@tls.CustomPemFile(cert),
+        )
+        assert_true(client is Err(_))
+      })
+    })
+    ignore(try? @fs.remove(key))
+    ignore(try? @fs.remove(cert))
+    ignore(try? @fs.remove(other_key))
+    ignore(try? @fs.remove(other_cert))
   })
 }
 
@@ -219,6 +499,51 @@ test "channel binding" {
       assert_true(client_unique.length() > 0)
       assert_eq(client_endpoint, server_endpoint)
       assert_true(client_endpoint.length() > 0)
+    })
+    ignore(try? @fs.remove(key))
+    ignore(try? @fs.remove(cert))
+  })
+}
+
+///|
+test "peer close connection" {
+  @async.run_async_main(() => {
+    let (key, cert) = write_test_keys()
+    @async.with_task_group(root => {
+      let (client_read_from_server, server_write_to_client) = @pipe.pipe()
+      let (server_read_from_client, client_write_to_server) = @pipe.pipe()
+      root.spawn_bg(() => {
+        defer {
+          server_read_from_client.close()
+          server_write_to_client.close()
+        }
+        let server = @tls.Tls::server_from_pair(
+          server_read_from_client,
+          server_write_to_client,
+          private_key_file=key,
+          private_key_type=@tls.PEM,
+          certificate_file=cert,
+          certificate_type=@tls.PEM,
+        )
+        defer server.close()
+        server.write("1234")
+        inspect(@utf8.decode(server.read_exactly(4)), content="abcd")
+      })
+      root.spawn_bg(() => {
+        defer {
+          client_read_from_server.close()
+          client_write_to_server.close()
+        }
+        let client = @tls.Tls::client_from_pair(
+          client_read_from_server,
+          client_write_to_server,
+          trust=@tls.NoVerification,
+        )
+        defer client.close()
+        inspect(@utf8.decode(client.read_exactly(4)), content="1234")
+        client.write("abcd")
+        client.close()
+      })
     })
     ignore(try? @fs.remove(key))
     ignore(try? @fs.remove(cert))
