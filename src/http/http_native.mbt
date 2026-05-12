@@ -102,6 +102,8 @@ fn from_request_method(meth : RequestMethod) -> @async_http.RequestMethod {
 ///|
 pub struct Client {
   inner : @async_http.Client
+  priv mut request_method : RequestMethod?
+  priv mut response_has_no_body : Bool
 }
 
 ///|
@@ -125,7 +127,7 @@ pub async fn Client::new(
   ) catch {
     _ => raise HttpError::InvalidUrl(url)
   }
-  Client::{ inner: client }
+  Client::{ inner: client, request_method: None, response_has_no_body: false }
 }
 
 ///|
@@ -140,6 +142,8 @@ pub async fn Client::request(
   path : StringView,
   extra_headers? : Map[String, String],
 ) -> Unit raise HttpError {
+  self.request_method = Some(meth)
+  self.response_has_no_body = false
   self.inner.request(
     from_request_method(meth),
     path,
@@ -151,10 +155,14 @@ pub async fn Client::request(
 
 ///|
 pub async fn Client::end_request(self : Client) -> Response raise HttpError {
+  let meth = self.request_method
   let response = self.inner.end_request() catch {
     err => raise classify_http_error(err.to_string())
   }
-  to_response(response)
+  let resp = to_response(response)
+  self.response_has_no_body = response_has_no_body(resp.code, meth)
+  self.request_method = None
+  resp
 }
 
 ///|
@@ -169,12 +177,14 @@ pub async fn Client::skip_response_body(self : Client) -> Unit raise HttpError {
   self.inner.skip_response_body() catch {
     err => raise classify_http_error(err.to_string())
   }
+  self.response_has_no_body = false
 }
 
 ///|
 pub async fn Client::enter_passthrough_mode(
   self : Client,
 ) -> Unit raise HttpError {
+  self.response_has_no_body = false
   self.inner.enter_passthrough_mode() catch {
     err => raise classify_http_error(err.to_string())
   }
@@ -194,7 +204,9 @@ pub async fn Client::get(
   ) catch {
     err => raise classify_http_error(err.to_string())
   }
-  to_response(response)
+  let resp = to_response(response)
+  self.response_has_no_body = response_has_no_body(resp.code, Some(Get))
+  resp
 }
 
 ///|
@@ -211,7 +223,9 @@ pub async fn Client::post(
   ) catch {
     err => raise classify_http_error(err.to_string())
   }
-  to_response(response)
+  let resp = to_response(response)
+  self.response_has_no_body = response_has_no_body(resp.code, Some(Post))
+  resp
 }
 
 ///|
@@ -228,7 +242,9 @@ pub async fn Client::put(
   ) catch {
     err => raise classify_http_error(err.to_string())
   }
-  to_response(response)
+  let resp = to_response(response)
+  self.response_has_no_body = response_has_no_body(resp.code, Some(Put))
+  resp
 }
 
 ///|
@@ -238,7 +254,11 @@ pub impl @io.Reader for Client with _get_internal_buffer(self) {
 
 ///|
 pub impl @io.Reader for Client with _direct_read(self, buf, offset~, max_len~) {
-  @io.Reader::_direct_read(self.inner, buf, offset~, max_len~)
+  if self.response_has_no_body {
+    0
+  } else {
+    @io.Reader::_direct_read(self.inner, buf, offset~, max_len~)
+  }
 }
 
 ///|

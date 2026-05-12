@@ -37,6 +37,7 @@ pub(all) struct Addr {
 
 pub struct Client {
   inner : @moonbitlang/async/http.Client
+  // private fields
 }
 pub fn Client::close(Self) -> Unit
 pub async fn Client::end_request(Self) -> Response raise HttpError

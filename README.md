@@ -93,12 +93,14 @@ The wrapper re-exports upstream types and APIs with matching signatures. On nati
 
 #### http (`moonbitlang/async/http`)
 
-Upstream tests: 20 | Covered: 2 | Skipped: 18
+Upstream tests: 47 | Covered: 29 | Skipped: 18
 
 | Upstream test | Status | Notes |
 |---|---|---|
 | `http request` | Covered | |
 | `https request` | Covered | |
+| `passthrough mode` | Covered | |
+| Parser/body/cookie/gzip/sender edge cases | Covered | `http_upstream_test.mbt` mirrors applicable upstream cases |
 | Other 18 tests | Skip | Internal parser/sender/proxy tests |
 
 #### websocket (`moonbitlang/async/websocket`)

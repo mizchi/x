@@ -76,7 +76,7 @@ fn parse_response_json(json_str : String) -> (Response, &@io.Data) {
         Some(Object(hmap)) =>
           hmap.each(fn(k, v) {
             match v {
-              String(s) => headers[k.to_lower()] = s
+              String(s) => headers[normalize_header_key(k)] = s
               _ => ()
             }
           })
@@ -150,23 +150,6 @@ extern "js" fn js_stream_close(id : Int) -> Unit =
 ///|
 pub struct Stream {
   id : Int
-}
-
-///|
-fn parse_headers_json(json_str : String) -> Map[String, String] {
-  let headers : Map[String, String] = {}
-  let parsed = @json.parse(json_str) catch { _ => return headers }
-  match parsed {
-    Object(map) =>
-      map.each(fn(k, v) {
-        match v {
-          String(s) => headers[k.to_lower()] = s
-          _ => ()
-        }
-      })
-    _ => ()
-  }
-  headers
 }
 
 ///|
@@ -1949,6 +1932,27 @@ extern "js" fn js_client_new(
   #|         }
   #|         return false;
   #|       };
+  #|       const getHeader = (headers, key) => {
+  #|         if (!headers) return null;
+  #|         if (headers[key] != null) return headers[key];
+  #|         const low = key.toLowerCase();
+  #|         const up = key.toUpperCase();
+  #|         if (headers[low] != null) return headers[low];
+  #|         if (headers[up] != null) return headers[up];
+  #|         for (const k of Object.keys(headers)) {
+  #|           if (k.toLowerCase() === low) return headers[k];
+  #|         }
+  #|         return null;
+  #|       };
+  #|       const contentLengthOf = (headers) => {
+  #|         const raw = getHeader(headers, 'content-length');
+  #|         if (raw == null) return null;
+  #|         const parsed = Number.parseInt(String(raw).trim(), 10);
+  #|         if (!Number.isFinite(parsed) || parsed < 0) {
+  #|           throw new Error('incorrect body length');
+  #|         }
+  #|         return parsed;
+  #|       };
   #|       const responseReadHighWatermark = 4 * 1024 * 1024;
   #|       const responseReadLowWatermark = responseReadHighWatermark >> 1;
   #|       const responseReadMaxQueueBytes = 16 * 1024 * 1024;
@@ -1960,7 +1964,7 @@ extern "js" fn js_client_new(
   #|         if (path.startsWith('//')) return true;
   #|         return /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(path);
   #|       };
-  #|       const toResponseObject = (nodeRes) => {
+  #|       const toResponseObject = (nodeRes, decodedGzip = false) => {
   #|         const resHeaders = {};
   #|         const cookies = [];
   #|         for (const [k, v] of Object.entries(nodeRes.headers || {})) {
@@ -1970,6 +1974,9 @@ extern "js" fn js_client_new(
   #|             } else if (typeof v === 'string') {
   #|               cookies.push(v);
   #|             }
+  #|           }
+  #|           if (decodedGzip && (k.toLowerCase() === 'content-encoding' || k.toLowerCase() === 'content-length')) {
+  #|             continue;
   #|           }
   #|           if (Array.isArray(v)) {
   #|             resHeaders[k] = v.join(', ');
@@ -2100,15 +2107,40 @@ extern "js" fn js_client_new(
   #|           client.tunnelEnded = true;
   #|         }
   #|       };
-  #|       const setupResponseReader = (client, nodeRes) => {
+  #|       const setupResponseReader = (client, nodeRes, autoDecompress = false, method = 'GET') => {
   #|         const waiters = [];
   #|         client.responseQueue = [];
   #|         client.responseQueueBytes = 0;
   #|         client.responseReadPaused = false;
-  #|         client.responseDone = false;
+  #|         const statusCode = Number(nodeRes.statusCode || 0);
+  #|         const noBody =
+  #|           method === 'HEAD' ||
+  #|           (method === 'CONNECT' && statusCode >= 200 && statusCode < 300) ||
+  #|           (statusCode >= 100 && statusCode < 200) ||
+  #|           statusCode === 204 ||
+  #|           statusCode === 205 ||
+  #|           statusCode === 304;
+  #|         client.responseDone = noBody;
   #|         client.responseError = null;
-  #|         client.responseNodeRes = nodeRes;
+  #|         const contentEncoding = String(nodeRes.headers?.['content-encoding'] || '').toLowerCase();
+  #|         const decodedGzip = !noBody && !!autoDecompress && contentEncoding === 'gzip';
+  #|         let source = nodeRes;
+  #|         if (decodedGzip) {
+  #|           const zlib = require('node:zlib');
+  #|           const gunzip = zlib.createGunzip();
+  #|           source = nodeRes.pipe(gunzip);
+  #|         }
+  #|         client.responseNodeRes = source;
   #|         client.responseWaiters = waiters;
+  #|         const responseObject = toResponseObject(nodeRes, decodedGzip);
+  #|         if (noBody) {
+  #|           client.responseReader = {
+  #|             read: async () => ({ done: true, value: new Uint8Array(0) }),
+  #|             cancel: async () => {},
+  #|           };
+  #|           try { nodeRes.resume?.(); } catch {}
+  #|           return responseObject;
+  #|         }
   #|         const maybeResumeResponse = () => {
   #|           if (!client.responseReadPaused) return;
   #|           if (client.responseDone) {
@@ -2117,7 +2149,7 @@ extern "js" fn js_client_new(
   #|           }
   #|           if (client.responseQueueBytes > client.responseReadLowWatermark) return;
   #|           client.responseReadPaused = false;
-  #|           try { nodeRes.resume(); } catch {}
+  #|           try { source.resume(); } catch {}
   #|         };
   #|         const resolveWaitersWithData = () => {
   #|           while (waiters.length > 0 && client.responseQueue.length > 0) {
@@ -2140,7 +2172,7 @@ extern "js" fn js_client_new(
   #|             waiter.reject(err);
   #|           }
   #|         };
-  #|         nodeRes.on('data', (chunk) => {
+  #|         source.on('data', (chunk) => {
   #|           const src = chunk instanceof Uint8Array
   #|             ? chunk
   #|             : new Uint8Array(chunk.buffer, chunk.byteOffset, chunk.byteLength);
@@ -2157,22 +2189,22 @@ extern "js" fn js_client_new(
   #|             client.responseQueueBytes = 0;
   #|             client.responseDone = true;
   #|             client.responseError = new Error('response queue overflow');
-  #|             try { nodeRes.destroy(client.responseError); } catch {}
+  #|             try { source.destroy(client.responseError); } catch {}
   #|             rejectWaiters(client.responseError);
   #|             return;
   #|           }
   #|           if (!client.responseReadPaused && client.responseQueueBytes > client.responseReadHighWatermark) {
   #|             client.responseReadPaused = true;
-  #|             try { nodeRes.pause(); } catch {}
+  #|             try { source.pause(); } catch {}
   #|           }
   #|           resolveWaitersWithData();
   #|         });
-  #|         nodeRes.on('end', () => {
+  #|         source.on('end', () => {
   #|           client.responseDone = true;
   #|           client.responseReadPaused = false;
   #|           resolveWaitersDone();
   #|         });
-  #|         nodeRes.on('error', (err) => {
+  #|         source.on('error', (err) => {
   #|           client.responseDone = true;
   #|           client.responseReadPaused = false;
   #|           client.responseError = err;
@@ -2205,15 +2237,19 @@ extern "js" fn js_client_new(
   #|             client.responseReadPaused = false;
   #|             client.responseError = null;
   #|             client.responseNodeRes = null;
-  #|             try { nodeRes.destroy(); } catch {}
+  #|             try { source.destroy(); } catch {}
+  #|             if (source !== nodeRes) {
+  #|               try { nodeRes.destroy(); } catch {}
+  #|             }
   #|             resolveWaitersDone();
   #|           },
   #|         };
-  #|         return toResponseObject(nodeRes);
+  #|         return responseObject;
   #|       };
   #|       const flushPendingChunks = async (pending) => {
   #|         const req = pending?.request;
   #|         if (!req) return;
+  #|         if (pending.bodyError) throw new Error(pending.bodyError);
   #|         while (pending.bodyChunks.length > 0) {
   #|           const chunk = pending.bodyChunks.shift();
   #|           if (!chunk || chunk.length <= 0) continue;
@@ -2255,6 +2291,9 @@ extern "js" fn js_client_new(
   #|           ? rawPath
   #|           : ((target.pathname || '/') + (target.search || ''));
   #|         const headers = { ...(client.baseHeaders || {}), ...(pending.headers || {}) };
+  #|         if (pending.autoDecompress && !hasHeader(headers, 'accept-encoding')) {
+  #|           headers['Accept-Encoding'] = 'gzip,identity';
+  #|         }
   #|         if (
   #|           withContentLength &&
   #|           pending.bodySize > 0 &&
@@ -2288,11 +2327,33 @@ extern "js" fn js_client_new(
   #|         };
   #|         const nodeReq = transport.request(options, (nodeRes) => {
   #|           pending.response = nodeRes;
-  #|           const response = setupResponseReader(client, nodeRes);
+  #|           const response = setupResponseReader(
+  #|             client,
+  #|             nodeRes,
+  #|             pending.autoDecompress,
+  #|             method,
+  #|           );
   #|           if (!pending.responseResolved) {
   #|             pending.responseResolved = true;
   #|             pending.resolveResponse(response);
   #|           }
+  #|         });
+  #|         nodeReq.on('information', (info) => {
+  #|           if (pending.responseResolved) return;
+  #|           pending.responseResolved = true;
+  #|           client.responseReader = {
+  #|             read: async () => ({ done: true, value: new Uint8Array(0) }),
+  #|             cancel: async () => {},
+  #|           };
+  #|           client.responseQueue = [];
+  #|           client.responseQueueBytes = 0;
+  #|           client.responseDone = true;
+  #|           client.responseError = null;
+  #|           pending.resolveResponse(toResponseObject({
+  #|             statusCode: info.statusCode,
+  #|             statusMessage: info.statusMessage,
+  #|             headers: info.headers || {},
+  #|           }));
   #|         });
   #|         nodeReq.on('connect', (nodeRes, socket, head) => {
   #|           const copiedHead =
@@ -2334,6 +2395,8 @@ extern "js" fn js_client_new(
   #|         attachTunnel,
   #|         resetTunnel,
   #|         isAbsoluteRequestPath,
+  #|         hasHeader,
+  #|         contentLengthOf,
   #|         maybeResumeTunnel,
   #|       };
   #|     }
@@ -2449,12 +2512,19 @@ extern "js" fn js_client_request_begin(
   #|   if (extraHeadersJson && extraHeadersJson.length > 0) {
   #|     try { headers = JSON.parse(extraHeadersJson); } catch {}
   #|   }
+  #|   const autoDecompress = !state.hasHeader(client.baseHeaders, 'accept-encoding') &&
+  #|     !state.hasHeader(headers, 'accept-encoding');
+  #|   const contentLength = state.contentLengthOf(headers);
   #|   client.pending = {
   #|     method,
   #|     path: reqPath,
   #|     headers,
+  #|     autoDecompress,
+  #|     contentLength,
+  #|     bodyError: '',
   #|     bodyChunks: [],
   #|     bodySize: 0,
+  #|     bodyTotal: 0,
   #|     started: false,
   #|     ended: false,
   #|     request: null,
@@ -2487,10 +2557,16 @@ extern "js" fn js_client_request_append_body(
   #|   const end = Math.min(data.length, start + maxLen);
   #|   if (end <= start) return 0;
   #|   const part = data.subarray(start, end);
+  #|   if (req.bodyError) return -1;
+  #|   if (req.contentLength != null && req.bodyTotal + part.length > req.contentLength) {
+  #|     req.bodyError = 'incorrect body length';
+  #|     return -1;
+  #|   }
   #|   const copied = new Uint8Array(part.length);
   #|   copied.set(part);
   #|   req.bodyChunks.push(copied);
   #|   req.bodySize += copied.length;
+  #|   req.bodyTotal += copied.length;
   #|   return copied.length;
   #| }
 
@@ -2531,6 +2607,10 @@ extern "js" fn js_client_end_request(
   #|   if (!pending) throw new Error('no pending request');
   #|   if (pending.ended) throw new Error('request already ended');
   #|   try {
+  #|     if (pending.bodyError) throw new Error(pending.bodyError);
+  #|     if (pending.contentLength != null && pending.bodyTotal !== pending.contentLength) {
+  #|       throw new Error('incorrect body length');
+  #|     }
   #|     if (!pending.started) {
   #|       await state.startPendingRequest(client, pending, true);
   #|     }
@@ -3032,7 +3112,11 @@ pub impl @io.Writer for Client with write_once(self, _buf, offset~, len~) {
     } else if self.passthrough_mode {
       js_client_tunnel_write(self.id, _buf, offset, n)
     } else {
-      js_client_request_append_body(self.id, _buf, offset, n)
+      let written = js_client_request_append_body(self.id, _buf, offset, n)
+      if written < 0 {
+        raise HttpError::NetworkError("incorrect body length")
+      }
+      written
     }
   }
 }

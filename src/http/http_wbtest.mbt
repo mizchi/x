@@ -52,6 +52,16 @@ test "headers_to_json - escapes special characters" {
 }
 
 ///|
+test "parse_headers_json - normalizes only when needed" {
+  let mixed = parse_headers_json("{\"Content-Type\":\"text/plain\"}")
+  assert_eq(mixed.get("content-type").unwrap_or(""), "text/plain")
+  let lower = parse_headers_json("{\"content-length\":\"3\"}")
+  assert_eq(lower.get("content-length").unwrap_or(""), "3")
+  assert_false(has_ascii_upper("content-length"))
+  assert_true(has_ascii_upper("Content-Length"))
+}
+
+///|
 test "Response construction" {
   let resp = Response::{ code: 200, reason: "OK", headers: {}, cookies: [] }
   assert_eq(resp.code, 200)

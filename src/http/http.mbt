@@ -156,6 +156,43 @@ fn parse_cookies_json(json_str : String) -> Array[Cookie] {
 }
 
 ///|
+fn parse_headers_json(json_str : String) -> Map[String, String] {
+  let headers : Map[String, String] = {}
+  let parsed = @json.parse(json_str) catch { _ => return headers }
+  match parsed {
+    Object(map) =>
+      map.each(fn(k, v) {
+        match v {
+          String(s) => headers[normalize_header_key(k)] = s
+          _ => ()
+        }
+      })
+    _ => ()
+  }
+  headers
+}
+
+///|
+fn has_ascii_upper(value : String) -> Bool {
+  for i in 0..<value.length() {
+    let c = value[i].to_int()
+    if c >= 'A'.to_int() && c <= 'Z'.to_int() {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn normalize_header_key(value : String) -> String {
+  if has_ascii_upper(value) {
+    value.to_lower()
+  } else {
+    value
+  }
+}
+
+///|
 fn parse_cookies_value(value : Json) -> Array[Cookie] {
   let cookies : Array[Cookie] = []
   let parsed = value
@@ -239,6 +276,16 @@ fn classify_http_error(message : String) -> HttpError {
     NotSupported
   } else {
     NetworkError(message)
+  }
+}
+
+///|
+fn response_has_no_body(code : Int, meth : RequestMethod?) -> Bool {
+  match meth {
+    Some(Head) => true
+    Some(Connect) => code >= 200 && code < 300
+    _ =>
+      (code >= 100 && code < 200) || code == 204 || code == 205 || code == 304
   }
 }
 

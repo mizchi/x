@@ -1,12 +1,16 @@
 import {
+  "mizchi/x/gzip" @gzip,
+  "mizchi/x/socket" @x_socket,
   "moonbitlang/async",
   "moonbitlang/async/http" @async_http,
   "moonbitlang/async/io",
   "moonbitlang/async/js_async",
   "moonbitlang/async/socket",
   "moonbitlang/async/tls",
+  "moonbitlang/core/bench",
   "moonbitlang/core/cmp",
   "moonbitlang/core/debug",
+  "moonbitlang/core/encoding/utf8",
   "moonbitlang/core/json",
   "moonbitlang/core/string",
 }
@@ -15,12 +19,14 @@ warnings = "-0029-0014-0001-0009-0067"
 
 options(
   targets: {
+    "http_bench_wbtest.mbt": [ "native", "js" ],
     "http_js.mbt": [ "js" ],
     "http_js_only_test.mbt": [ "js" ],
     "http_js_test.mbt": [ "native", "js" ],
     "http_native.mbt": [ "native" ],
     "http_native_test.mbt": [ "native" ],
     "http_native_wbtest.mbt": [ "native" ],
+    "http_upstream_test.mbt": [ "native", "js" ],
     "http_wasm.mbt": [ "wasm" ],
     "http_wasmgc.mbt": [ "wasm-gc" ],
   },
