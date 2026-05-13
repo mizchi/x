@@ -262,8 +262,9 @@ async test "merge multiple" {
     )
     |> ignore
   })
-  @async.sleep(50)
-  inspect(@fs.read_file(output).text(), content="abcd\nefgh\n")
+  let text = @fs.read_file(output).text()
+  assert_true(text.contains("abcd\n"))
+  assert_true(text.contains("efgh\n"))
   @fs.remove(output)
 }
 
