@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.1 - 2026-05-13
+
+### Added
+
+- Added native WebSocket server upgrade support via `websocket.from_http_server`.
+
+### Fixed
+
+- Stabilized macOS native process tests by removing timing and output-order assumptions.
+- Regenerated WebSocket package interfaces for the native HTTP server upgrade API.
+
 ## 0.3.0 - 2026-05-13
 
 ### Added
