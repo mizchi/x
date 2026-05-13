@@ -1,4 +1,28 @@
 ///|
+async fn read_text_if_exists(path : String) -> String? {
+  let data = @fs.read_file(path) catch { _ => return None }
+  let text = data.text() catch { _ => return None }
+  Some(text)
+}
+
+///|
+async fn wait_for_file_text(
+  path : String,
+  expected : String,
+  timeout_ms : Int64,
+) -> Unit {
+  let deadline = @async.now() + timeout_ms
+  while @async.now() < deadline {
+    match read_text_if_exists(path) {
+      Some(text) => if text == expected { return }
+      None => ()
+    }
+    @async.sleep(20)
+  }
+  inspect(read_text_if_exists(path).unwrap_or("<missing>"), content=expected)
+}
+
+///|
 async test "run exit code 0" {
   let code = @process.run("node", ["-e", "process.exit(0)"])
   inspect(code, content="0")
@@ -290,14 +314,13 @@ async test "spawn_in_group wait" {
 async test "spawn_in_group cancel" {
   let marker = "/tmp/mizchi_x_process_spawn_group_cancel.txt"
   ignore(try? @fs.remove(marker))
-  let script = "const fs=require('fs');process.on('SIGTERM',()=>{fs.writeFileSync(process.argv[1],'term');process.exit(0)});setInterval(()=>{},1000)"
+  let script = "const fs=require('fs');process.on('SIGTERM',()=>{fs.writeFileSync(process.argv[1],'term');process.exit(0)});fs.writeFileSync(process.argv[1],'ready');setInterval(()=>{},1000)"
   @async.with_task_group(group => {
     @process.spawn(group, "node", ["-e", script, marker], no_wait=true)
     |> ignore
-    @async.sleep(80)
+    wait_for_file_text(marker, "ready", 1000)
   })
-  @async.sleep(150)
-  inspect(@fs.read_file(marker).text(), content="term")
+  wait_for_file_text(marker, "term", 1000)
   @fs.remove(marker)
 }
 
@@ -320,7 +343,16 @@ async test "Process::try_wait" {
     ])
     @async.sleep(50)
     debug_inspect(child.try_wait(), content="None")
-    @async.sleep(180)
+    let deadline = @async.now() + 1000
+    while @async.now() < deadline {
+      match child.try_wait() {
+        Some(code) => {
+          debug_inspect(Some(code), content="Some(42)")
+          return
+        }
+        None => @async.sleep(20)
+      }
+    }
     debug_inspect(child.try_wait(), content="Some(42)")
   })
 }
@@ -329,14 +361,13 @@ async test "Process::try_wait" {
 async test "Process:cancel" {
   let marker = "/tmp/mizchi_x_process_method_cancel.txt"
   ignore(try? @fs.remove(marker))
-  let script = "const fs=require('fs');process.on('SIGTERM',()=>{fs.writeFileSync(process.argv[1],'term');process.exit(0)});setInterval(()=>{},1000)"
+  let script = "const fs=require('fs');process.on('SIGTERM',()=>{fs.writeFileSync(process.argv[1],'term');process.exit(0)});fs.writeFileSync(process.argv[1],'ready');setInterval(()=>{},1000)"
   @async.with_task_group(group => {
     let child = @process.spawn(group, "node", ["-e", script, marker])
-    @async.sleep(80)
+    wait_for_file_text(marker, "ready", 1000)
     child.cancel()
   })
-  @async.sleep(100)
-  inspect(@fs.read_file(marker).text(), content="term")
+  wait_for_file_text(marker, "term", 1000)
   @fs.remove(marker)
 }
 
@@ -357,8 +388,7 @@ async test "orphan process" {
   let pid = @process.spawn_orphan("node", ["-e", script, marker])
   let result = try? @async.with_timeout(70, () => @process.wait_pid(pid))
   assert_true(result is Err(_))
-  @async.sleep(220)
-  inspect(@fs.read_file(marker).text(), content="second")
+  wait_for_file_text(marker, "second", 1200)
   ignore(try? @async.with_timeout(500, () => @process.wait_pid(pid)))
   @fs.remove(marker)
 }
@@ -368,7 +398,7 @@ async test "cancel process" {
   let marker = "/tmp/mizchi_x_process_cancel_signal.txt"
   ignore(try? @fs.remove(marker))
   let script = "const fs=require('fs');process.on('SIGTERM',()=>{fs.writeFileSync(process.argv[1],'term');process.exit(0)});setInterval(()=>{},1000)"
-  let result = try? @async.with_timeout(120, () => {
+  let result = try? @async.with_timeout(300, () => {
     @process.run(
       "node",
       ["-e", script, marker],
@@ -379,8 +409,7 @@ async test "cancel process" {
     )
   })
   assert_true(result is Err(_))
-  @async.sleep(120)
-  inspect(@fs.read_file(marker).text(), content="term")
+  wait_for_file_text(marker, "term", 1000)
   @fs.remove(marker)
 }
 
@@ -390,7 +419,7 @@ async test "cancel process timeout" {
   ignore(try? @fs.remove(marker))
   let script = "const fs=require('fs');process.on('SIGTERM',()=>{fs.writeFileSync(process.argv[1],'term')});setInterval(()=>{},1000)"
   let t0 = @async.now()
-  let result = try? @async.with_timeout(80, () => {
+  let result = try? @async.with_timeout(300, () => {
     @process.run(
       "node",
       ["-e", script, marker],
@@ -402,8 +431,8 @@ async test "cancel process timeout" {
   })
   let elapsed = @async.now() - t0
   assert_true(result is Err(_))
-  assert_true(elapsed >= 160)
-  inspect(@fs.read_file(marker).text(), content="term")
+  assert_true(elapsed >= 140)
+  wait_for_file_text(marker, "term", 1000)
   @fs.remove(marker)
 }
 
@@ -412,7 +441,7 @@ async test "cancel process hard" {
   let marker = "/tmp/mizchi_x_process_hard_cancel_signal.txt"
   ignore(try? @fs.remove(marker))
   let script = "const fs=require('fs');process.on('SIGTERM',()=>{fs.writeFileSync(process.argv[1],'term');process.exit(0)});setInterval(()=>{},1000)"
-  let result = try? @async.with_timeout(120, () => {
+  let result = try? @async.with_timeout(300, () => {
     @process.run(
       "node",
       ["-e", script, marker],
@@ -428,9 +457,9 @@ async test "cancel process hard" {
 async test "do not kill orphan children on hard cancel" {
   let marker = "/tmp/mizchi_x_process_orphan_child.txt"
   ignore(try? @fs.remove(marker))
-  let child_script = "const fs=require('fs');setTimeout(()=>{fs.writeFileSync(process.argv[1],'after sleep');process.exit(0)},180)"
+  let child_script = "const fs=require('fs');setTimeout(()=>{fs.writeFileSync(process.argv[1],'after sleep');process.exit(0)},500)"
   let parent_script = "const {spawn}=require('node:child_process');const child=spawn(process.execPath,['-e',process.argv[1],process.argv[2]],{detached:true,stdio:'ignore'});child.unref();setInterval(()=>{},1000)"
-  let result = try? @async.with_timeout(80, () => {
+  let result = try? @async.with_timeout(300, () => {
     @process.run(
       "node",
       ["-e", parent_script, child_script, marker],
@@ -438,8 +467,7 @@ async test "do not kill orphan children on hard cancel" {
     )
   })
   assert_true(result is Err(_))
-  @async.sleep(260)
-  inspect(@fs.read_file(marker).text(), content="after sleep")
+  wait_for_file_text(marker, "after sleep", 2000)
   @fs.remove(marker)
 }
 

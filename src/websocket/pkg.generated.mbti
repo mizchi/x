@@ -2,10 +2,12 @@
 package "mizchi/x/websocket"
 
 import {
+  "mizchi/x/http",
   "moonbitlang/core/debug",
 }
 
 // Values
+pub async fn from_http_server(@http.Request, @http.ServerConnection) -> Conn raise WebSocketError
 
 // Errors
 pub suberror WebSocketError {

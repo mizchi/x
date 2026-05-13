@@ -36,7 +36,7 @@ Node.js backend compatibility layer for `moonbitlang/async` in [MoonBit](https:/
 | `mizchi/x/aqueue` | Async queue (`Queue`, `Kind`, `put`, `get`, `try_put`, `try_get`, `close`) |
 | `mizchi/x/cond_var` | Async condition variable (`Cond::wait`, `Cond::signal`, `Cond::broadcast`) |
 | `mizchi/x/semaphore` | Async semaphore (`Semaphore::acquire`, `release`, `try_acquire`) |
-| `mizchi/x/websocket` | WebSocket client (`connect`, `Conn::send_text`, `Conn::send_binary`, `Conn::recv`, `Conn::close`) |
+| `mizchi/x/websocket` | WebSocket client/server upgrade (`connect`, `from_http_server`, `Conn::send_text`, `Conn::send_binary`, `Conn::recv`, `Conn::close`) |
 | `mizchi/x/stdio` | Standard I/O (`stdin`, `stdout`, `stderr` with `@io.Reader`/`@io.Writer`) |
 | `mizchi/x/pipe` | In-memory pipes (`pipe()` → `PipeRead`/`PipeWrite` with `@io.Reader`/`@io.Writer`; native process redirect support) |
 | `mizchi/x/sys` | Environment variables and CLI args (`get_env_var`, `get_cli_args`, `exit`) |
@@ -84,6 +84,8 @@ The wrapper re-exports upstream types and APIs with matching signatures. On nati
 `mizchi/x/gzip` mirrors `moonbitlang/async/gzip` and works across native, JS, wasm, and wasm-gc via the upstream stream encoder/decoder.
 
 `mizchi/x/tls` mirrors `moonbitlang/async/tls`. Native delegates to the upstream OpenSSL/Schannel implementation. JS maps to Node.js `node:tls` over any `@io.Reader`/`@io.Writer` pair and supports client/server handshakes, graceful shutdown, peer certificate access, `tls-unique`/`tls-server-end-point` style channel bindings, `rand_bytes`, and `sha1`. WASM targets compile as stubs.
+
+`mizchi/x/websocket` mirrors the client API and exposes `from_http_server` for native `mizchi/x/http` server connections. JS currently supports the client API only.
 
 `mizchi/x/signal` mirrors the async signal constants on native and provides portable numeric constants on JS/wasm targets. Global cancellation signal setup delegates to upstream on native and is a no-op on JS/wasm.
 

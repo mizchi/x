@@ -4,6 +4,32 @@ pub struct Conn {
 }
 
 ///|
+fn to_upstream_request_method(
+  meth : @http.RequestMethod,
+) -> @async_http.RequestMethod {
+  match meth {
+    @http.RequestMethod::Get => @async_http.RequestMethod::Get
+    @http.RequestMethod::Head => @async_http.RequestMethod::Head
+    @http.RequestMethod::Post => @async_http.RequestMethod::Post
+    @http.RequestMethod::Put => @async_http.RequestMethod::Put
+    @http.RequestMethod::Delete => @async_http.RequestMethod::Delete
+    @http.RequestMethod::Connect => @async_http.RequestMethod::Connect
+    @http.RequestMethod::Options => @async_http.RequestMethod::Options
+    @http.RequestMethod::Trace => @async_http.RequestMethod::Trace
+    @http.RequestMethod::Patch => @async_http.RequestMethod::Patch
+  }
+}
+
+///|
+fn to_upstream_request(request : @http.Request) -> @async_http.Request {
+  {
+    meth: to_upstream_request_method(request.meth),
+    path: request.path,
+    headers: request.headers,
+  }
+}
+
+///|
 fn from_upstream_close_code(code : @async_ws.CloseCode) -> CloseCode {
   match code {
     @async_ws.Normal => Normal
@@ -35,6 +61,20 @@ fn to_upstream_close_code(code : CloseCode) -> @async_ws.CloseCode {
     InternalError => @async_ws.InternalError
     Other(n) => @async_ws.Other(n)
   }
+}
+
+///|
+pub async fn from_http_server(
+  request : @http.Request,
+  conn : @http.ServerConnection,
+) -> Conn raise WebSocketError {
+  let inner = @async_ws.from_http_server(
+    to_upstream_request(request),
+    conn.inner,
+  ) catch {
+    err => raise WebSocketError::InvalidHandshake(err.to_string())
+  }
+  Conn::{ inner, }
 }
 
 ///|

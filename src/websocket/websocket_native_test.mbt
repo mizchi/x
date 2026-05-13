@@ -1,4 +1,35 @@
 ///|
+async test "from_http_server accepts x/http server connection" {
+  @async.with_task_group(group => {
+    let server = @http.Server::new(host="127.0.0.1", port=0)
+    defer server.close()
+    let port = server.port()
+    group.spawn_bg(no_wait=true, allow_failure=true, () => {
+      server.run_forever((request, _body, conn) => {
+        let ws = @websocket.from_http_server(request, conn)
+        defer ws.close()
+        let msg = ws.recv()
+        guard msg is @websocket.Message::Text(text) else {
+          fail("expected Text")
+        }
+        ws.send_text("echo:" + text)
+        ws.send_close()
+      })
+    })
+    @async.sleep(20)
+    let client = @websocket.Conn::connect("ws://127.0.0.1:\{port}/ws")
+    defer client.close()
+    client.send_text("hello")
+    let msg = client.recv()
+    guard msg is @websocket.Message::Text(text) else {
+      fail("expected Text message")
+    }
+    assert_eq(text, "echo:hello")
+    client.send_close()
+  })
+}
+
+///|
 async test "websocket text echo" {
   @async.with_task_group(group => {
     let server = @http_server.Server(@socket.Addr::parse("127.0.0.1:0"))
