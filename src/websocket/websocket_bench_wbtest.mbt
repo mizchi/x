@@ -10,7 +10,7 @@
 let close_code_cases : Array[Int] = [
   1000, 1001, 1002, 1003, 1006, 1007, 1008, 1009, 1010, 1011,
   // A custom code that falls through to `Other(_)`.
-  4321,
+   4321,
 ]
 
 ///|
@@ -54,10 +54,10 @@ test "bench websocket close_code_to_int matrix" (b : @bench.T) {
 
 ///|
 test "bench websocket Message::Text construct" (b : @bench.T) {
-  b.bench(() => { b.keep(Message::Text(bench_text)) })
+  b.bench(() => b.keep(Message::Text(bench_text)))
 }
 
 ///|
 test "bench websocket Message::Binary construct" (b : @bench.T) {
-  b.bench(() => { b.keep(Message::Binary(bench_payload)) })
+  b.bench(() => b.keep(Message::Binary(bench_payload)))
 }
