@@ -5,7 +5,7 @@ pub suberror IOError {
 }
 
 ///|
-pub impl Show for IOError with output(self, logger) {
+pub impl Show for IOError with fn output(self, logger) {
   let IOError(msg) = self
   logger.write_string("IOError(\{msg})")
 }
@@ -26,7 +26,7 @@ pub(all) enum FileKind {
 } derive(Eq)
 
 ///|
-pub impl Show for FileKind with output(self, logger) {
+pub impl Show for FileKind with fn output(self, logger) {
   logger.write_string(
     match self {
       Unknown => "Unknown"

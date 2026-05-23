@@ -821,12 +821,12 @@ pub fn File::unlock(_self : File) -> Unit {
 }
 
 ///|
-pub impl @io.Reader for File with _get_internal_buffer(self) {
+pub impl @io.Reader for File with fn _get_internal_buffer(self) {
   self.read_buf
 }
 
 ///|
-pub impl @io.Reader for File with _direct_read(self, buf, offset~, max_len~) {
+pub impl @io.Reader for File with fn _direct_read(self, buf, offset~, max_len~) {
   if max_len <= 0 {
     0
   } else {
@@ -840,7 +840,7 @@ pub impl @io.Reader for File with _direct_read(self, buf, offset~, max_len~) {
 }
 
 ///|
-pub impl @io.Writer for File with write_once(self, buf, offset~, len~) {
+pub impl @io.Writer for File with fn write_once(self, buf, offset~, len~) {
   let available = buf.length() - offset
   let n = if len < available { len } else { available }
   if n <= 0 {

@@ -35,12 +35,12 @@ fn signal_to_async(signal : @signal.Signal) -> @async_signal.Signal {
 
 ///|
 pub(open) trait ProcessInput {
-  _process_input_native(Self) -> &@async_process.ProcessInput
+  fn _process_input_native(Self) -> &@async_process.ProcessInput
 }
 
 ///|
 pub(open) trait ProcessOutput {
-  _process_output_native(Self) -> &@async_process.ProcessOutput
+  fn _process_output_native(Self) -> &@async_process.ProcessOutput
 }
 
 ///|
@@ -49,7 +49,7 @@ priv struct NativeProcessInput {
 }
 
 ///|
-impl ProcessInput for NativeProcessInput with _process_input_native(self) {
+impl ProcessInput for NativeProcessInput with fn _process_input_native(self) {
   self.inner
 }
 
@@ -59,7 +59,7 @@ priv struct NativeProcessOutput {
 }
 
 ///|
-impl ProcessOutput for NativeProcessOutput with _process_output_native(self) {
+impl ProcessOutput for NativeProcessOutput with fn _process_output_native(self) {
   self.inner
 }
 
@@ -74,12 +74,12 @@ pub fn ReadFromProcess::close(self : ReadFromProcess) -> Unit {
 }
 
 ///|
-pub impl @async_io.Reader for ReadFromProcess with _get_internal_buffer(self) {
+pub impl @async_io.Reader for ReadFromProcess with fn _get_internal_buffer(self) {
   @async_io.Reader::_get_internal_buffer(self.inner)
 }
 
 ///|
-pub impl @async_io.Reader for ReadFromProcess with _direct_read(
+pub impl @async_io.Reader for ReadFromProcess with fn _direct_read(
   self,
   buf,
   offset~,
@@ -99,7 +99,7 @@ pub fn WriteToProcess::close(self : WriteToProcess) -> Unit {
 }
 
 ///|
-pub impl @async_io.Writer for WriteToProcess with write_once(
+pub impl @async_io.Writer for WriteToProcess with fn write_once(
   self,
   buf,
   offset~,

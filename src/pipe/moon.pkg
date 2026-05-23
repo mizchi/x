@@ -1,7 +1,7 @@
 import {
   "moonbitlang/async/pipe" @async_pipe,
   "moonbitlang/async/io",
-  "mizchi/x/process" @process,
+  "mizchi/x/process",
 }
 
 import {

@@ -88,18 +88,18 @@ pub fn Tls::server_endpoint_channel_binding(_self : Tls) -> Bytes raise {
 }
 
 ///|
-pub impl @io.Reader for Tls with _get_internal_buffer(_self) {
+pub impl @io.Reader for Tls with fn _get_internal_buffer(_self) {
   @io.ReaderBuffer::new()
 }
 
 ///|
-pub impl @io.Reader for Tls with _direct_read(_self, _buf, offset~, max_len~) {
+pub impl @io.Reader for Tls with fn _direct_read(_self, _buf, offset~, max_len~) {
   ignore((offset, max_len))
   abort("tls is not supported on this target")
 }
 
 ///|
-pub impl @io.Writer for Tls with write_once(_self, _buf, offset~, len~) {
+pub impl @io.Writer for Tls with fn write_once(_self, _buf, offset~, len~) {
   ignore((offset, len))
   abort("tls is not supported on this target")
 }

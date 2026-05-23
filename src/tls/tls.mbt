@@ -11,7 +11,7 @@ pub suberror ConnectionClosed derive(ToJson, @debug.Debug)
 pub impl Show for TlsError
 
 ///|
-pub impl Show for TlsError with output(self, logger) {
+pub impl Show for TlsError with fn output(self, logger) {
   match self {
     TlsError(msg) =>
       logger..write_string("TlsError(")..write_object(msg).write_string(")")
@@ -23,7 +23,7 @@ pub impl Show for TlsError with output(self, logger) {
 pub impl Show for ConnectionClosed
 
 ///|
-pub impl Show for ConnectionClosed with output(_self, logger) {
+pub impl Show for ConnectionClosed with fn output(_self, logger) {
   logger.write_string("ConnectionClosed")
 }
 

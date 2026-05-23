@@ -55,19 +55,19 @@ pub fn Tcp::enable_keepalive(
 }
 
 ///|
-pub impl @io.Reader for Tcp with _get_internal_buffer(self) {
+pub impl @io.Reader for Tcp with fn _get_internal_buffer(self) {
   ignore(self)
   @io.ReaderBuffer::new()
 }
 
 ///|
-pub impl @io.Reader for Tcp with _direct_read(self, _buf, offset~, max_len~) {
+pub impl @io.Reader for Tcp with fn _direct_read(self, _buf, offset~, max_len~) {
   ignore((self, offset, max_len))
   abort("tcp is not supported on wasm target")
 }
 
 ///|
-pub impl @io.Writer for Tcp with write_once(self, _buf, offset~, len~) {
+pub impl @io.Writer for Tcp with fn write_once(self, _buf, offset~, len~) {
   ignore((self, offset, len))
   abort("tcp is not supported on wasm target")
 }

@@ -587,19 +587,19 @@ pub fn File::unlock(self : File) -> Unit {
 }
 
 ///|
-pub impl @io.Reader for File with _get_internal_buffer(self) {
+pub impl @io.Reader for File with fn _get_internal_buffer(self) {
   ignore(self)
   @io.ReaderBuffer::new()
 }
 
 ///|
-pub impl @io.Reader for File with _direct_read(self, _buf, offset~, max_len~) {
+pub impl @io.Reader for File with fn _direct_read(self, _buf, offset~, max_len~) {
   ignore((self, offset, max_len))
   raise IOError::IOError("File::read is not supported on wasm target")
 }
 
 ///|
-pub impl @io.Writer for File with write_once(self, _buf, offset~, len~) {
+pub impl @io.Writer for File with fn write_once(self, _buf, offset~, len~) {
   ignore((self, offset, len))
   raise IOError::IOError("File::write is not supported on wasm target")
 }

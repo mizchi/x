@@ -2,12 +2,12 @@ import {
   "moonbitlang/async/stdio" @async_stdio,
   "moonbitlang/async/io",
   "moonbitlang/async/js_async",
-  "mizchi/x/process" @process,
+  "mizchi/x/process",
 }
 
 import {
   "moonbitlang/async",
-  "mizchi/x/fs" @fs,
+  "mizchi/x/fs",
 } for "test"
 
 warnings = "-0029-0014"

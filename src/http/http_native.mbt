@@ -248,12 +248,17 @@ pub async fn Client::put(
 }
 
 ///|
-pub impl @io.Reader for Client with _get_internal_buffer(self) {
+pub impl @io.Reader for Client with fn _get_internal_buffer(self) {
   @io.Reader::_get_internal_buffer(self.inner)
 }
 
 ///|
-pub impl @io.Reader for Client with _direct_read(self, buf, offset~, max_len~) {
+pub impl @io.Reader for Client with fn _direct_read(
+  self,
+  buf,
+  offset~,
+  max_len~,
+) {
   if self.response_has_no_body {
     0
   } else {
@@ -262,7 +267,7 @@ pub impl @io.Reader for Client with _direct_read(self, buf, offset~, max_len~) {
 }
 
 ///|
-pub impl @io.Writer for Client with write_once(self, buf, offset~, len~) {
+pub impl @io.Writer for Client with fn write_once(self, buf, offset~, len~) {
   @io.Writer::write_once(self.inner, buf, offset~, len~)
 }
 
@@ -666,12 +671,12 @@ pub async fn ServerConnection::enter_passthrough_mode(
 }
 
 ///|
-pub impl @io.Reader for ServerConnection with _get_internal_buffer(self) {
+pub impl @io.Reader for ServerConnection with fn _get_internal_buffer(self) {
   @io.Reader::_get_internal_buffer(self.inner)
 }
 
 ///|
-pub impl @io.Reader for ServerConnection with _direct_read(
+pub impl @io.Reader for ServerConnection with fn _direct_read(
   self,
   buf,
   offset~,
@@ -681,7 +686,7 @@ pub impl @io.Reader for ServerConnection with _direct_read(
 }
 
 ///|
-pub impl @io.Writer for ServerConnection with write_once(
+pub impl @io.Writer for ServerConnection with fn write_once(
   self,
   buf,
   offset~,
