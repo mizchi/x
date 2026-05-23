@@ -2,7 +2,7 @@
   "name": "mizchi/x",
   "version": "0.3.1",
   "deps": {
-    "moonbitlang/async": "0.19.0",
+    "moonbitlang/async": "0.19.1",
     "moonbitlang/x": "0.4.43"
   },
   "readme": "README.md",
