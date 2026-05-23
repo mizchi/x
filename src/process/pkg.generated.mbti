@@ -75,10 +75,10 @@ pub impl @io.Writer for WriteToProcess
 
 // Traits
 pub(open) trait ProcessInput {
-  _process_input_native(Self) -> &@moonbitlang/async/process.ProcessInput
+  fn _process_input_native(Self) -> &@moonbitlang/async/process.ProcessInput
 }
 
 pub(open) trait ProcessOutput {
-  _process_output_native(Self) -> &@moonbitlang/async/process.ProcessOutput
+  fn _process_output_native(Self) -> &@moonbitlang/async/process.ProcessOutput
 }
 
