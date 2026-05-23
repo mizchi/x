@@ -1,6 +1,7 @@
 import {
   "moonbitlang/async",
   "moonbitlang/async/semaphore" @async_semaphore,
+  "moonbitlang/core/bench",
 }
 
 warnings = "-0029"
