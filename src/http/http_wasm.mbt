@@ -196,13 +196,18 @@ pub fn Client::put(
 }
 
 ///|
-pub impl @io.Reader for Client with _get_internal_buffer(self) {
+pub impl @io.Reader for Client with fn _get_internal_buffer(self) {
   ignore(self)
   abort("Client reader not supported on wasm target")
 }
 
 ///|
-pub impl @io.Reader for Client with _direct_read(self, _buf, offset~, max_len~) {
+pub impl @io.Reader for Client with fn _direct_read(
+  self,
+  _buf,
+  offset~,
+  max_len~,
+) {
   ignore(self)
   ignore(offset)
   ignore(max_len)
@@ -210,7 +215,7 @@ pub impl @io.Reader for Client with _direct_read(self, _buf, offset~, max_len~) 
 }
 
 ///|
-pub impl @io.Writer for Client with write_once(self, _buf, offset~, len~) {
+pub impl @io.Writer for Client with fn write_once(self, _buf, offset~, len~) {
   ignore(self)
   ignore(offset)
   ignore(len)
@@ -365,13 +370,13 @@ pub fn ServerConnection::enter_passthrough_mode(
 }
 
 ///|
-pub impl @io.Reader for ServerConnection with _get_internal_buffer(self) {
+pub impl @io.Reader for ServerConnection with fn _get_internal_buffer(self) {
   ignore(self)
   abort("ServerConnection reader not supported on wasm target")
 }
 
 ///|
-pub impl @io.Reader for ServerConnection with _direct_read(
+pub impl @io.Reader for ServerConnection with fn _direct_read(
   self,
   _buf,
   offset~,
@@ -384,7 +389,7 @@ pub impl @io.Reader for ServerConnection with _direct_read(
 }
 
 ///|
-pub impl @io.Writer for ServerConnection with write_once(
+pub impl @io.Writer for ServerConnection with fn write_once(
   self,
   _buf,
   offset~,

@@ -5,7 +5,7 @@ pub(all) enum MessageKind {
 } derive(@debug.Debug)
 
 ///|
-pub impl Show for MessageKind with output(self, logger) {
+pub impl Show for MessageKind with fn output(self, logger) {
   logger.write_string(@debug.to_string(self))
 }
 
@@ -25,7 +25,7 @@ pub(all) enum CloseCode {
 } derive(Eq, @debug.Debug)
 
 ///|
-pub impl Show for CloseCode with output(self, logger) {
+pub impl Show for CloseCode with fn output(self, logger) {
   logger.write_string(@debug.to_string(self))
 }
 
@@ -37,7 +37,7 @@ pub suberror WebSocketError {
 } derive(@debug.Debug)
 
 ///|
-pub impl Show for WebSocketError with output(self, logger) {
+pub impl Show for WebSocketError with fn output(self, logger) {
   logger.write_string(@debug.to_string(self))
 }
 

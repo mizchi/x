@@ -5,12 +5,12 @@ import {
   "moonbitlang/async/tls" @async_tls,
   "moonbitlang/core/cmp",
   "moonbitlang/core/debug",
-  "moonbitlang/x/crypto" @crypto,
+  "moonbitlang/x/crypto",
 }
 
 import {
-  "mizchi/x/fs" @fs,
-  "mizchi/x/pipe" @pipe,
+  "mizchi/x/fs",
+  "mizchi/x/pipe",
   "moonbitlang/core/encoding/utf8",
 } for "test"
 

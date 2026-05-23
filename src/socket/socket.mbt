@@ -122,7 +122,7 @@ pub fn Addr::is_multicast(self : Addr) -> Bool {
 }
 
 ///|
-pub impl Show for Addr with output(self, logger) {
+pub impl Show for Addr with fn output(self, logger) {
   if self.is_ipv6 {
     logger
     ..write_char('[')

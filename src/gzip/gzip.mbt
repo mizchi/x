@@ -10,14 +10,14 @@ pub fn[R : @io.Reader] Decoder::Decoder(inner : R) -> Decoder[R] {
 }
 
 ///|
-pub impl[R : @io.Reader] @io.Reader for Decoder[R] with _get_internal_buffer(
+pub impl[R : @io.Reader] @io.Reader for Decoder[R] with fn _get_internal_buffer(
   self,
 ) {
   @io.Reader::_get_internal_buffer(self.inner)
 }
 
 ///|
-pub impl[R : @io.Reader] @io.Reader for Decoder[R] with _direct_read(
+pub impl[R : @io.Reader] @io.Reader for Decoder[R] with fn _direct_read(
   self,
   dst,
   offset~,
@@ -53,7 +53,7 @@ pub async fn[W : @io.Writer] Encoder::end(self : Encoder[W]) -> Unit {
 }
 
 ///|
-pub impl[W : @io.Writer] @io.Writer for Encoder[W] with write_once(
+pub impl[W : @io.Writer] @io.Writer for Encoder[W] with fn write_once(
   self,
   buf,
   offset~,

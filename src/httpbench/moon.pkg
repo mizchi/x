@@ -1,6 +1,6 @@
 import {
-  "mizchi/x/http" @http,
-  "mizchi/x/sys" @sys,
+  "mizchi/x/http",
+  "mizchi/x/sys",
   "moonbitlang/async",
 }
 

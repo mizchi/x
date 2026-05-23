@@ -10,7 +10,7 @@ pub(all) enum Kind {
 pub suberror QueueAlreadyClosed derive(ToJson, @debug.Debug)
 
 ///|
-pub impl Show for QueueAlreadyClosed with output(_self, logger) {
+pub impl Show for QueueAlreadyClosed with fn output(_self, logger) {
   logger.write_string("QueueAlreadyClosed")
 }
 

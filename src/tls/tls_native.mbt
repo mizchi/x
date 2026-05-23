@@ -162,19 +162,19 @@ pub fn Tls::server_endpoint_channel_binding(self : Tls) -> Bytes raise {
 }
 
 ///|
-pub impl @io.Reader for Tls with _get_internal_buffer(self) {
+pub impl @io.Reader for Tls with fn _get_internal_buffer(self) {
   self.inner._get_internal_buffer()
 }
 
 ///|
-pub impl @io.Reader for Tls with _direct_read(self, buf, offset~, max_len~) {
+pub impl @io.Reader for Tls with fn _direct_read(self, buf, offset~, max_len~) {
   self.inner._direct_read(buf, offset~, max_len~) catch {
     err => raise_tls_error(err)
   }
 }
 
 ///|
-pub impl @io.Writer for Tls with write_once(self, buf, offset~, len~) {
+pub impl @io.Writer for Tls with fn write_once(self, buf, offset~, len~) {
   self.inner.write_once(buf, offset~, len~) catch {
     err => raise_tls_error(err)
   }

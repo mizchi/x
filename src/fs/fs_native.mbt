@@ -427,17 +427,17 @@ pub fn File::unlock(self : File) -> Unit {
 }
 
 ///|
-pub impl @io.Reader for File with _get_internal_buffer(self) {
+pub impl @io.Reader for File with fn _get_internal_buffer(self) {
   @io.Reader::_get_internal_buffer(self.inner)
 }
 
 ///|
-pub impl @io.Reader for File with _direct_read(self, buf, offset~, max_len~) {
+pub impl @io.Reader for File with fn _direct_read(self, buf, offset~, max_len~) {
   @io.Reader::_direct_read(self.inner, buf, offset~, max_len~)
 }
 
 ///|
-pub impl @io.Writer for File with write_once(self, buf, offset~, len~) {
+pub impl @io.Writer for File with fn write_once(self, buf, offset~, len~) {
   @io.Writer::write_once(self.inner, buf, offset~, len~)
 }
 

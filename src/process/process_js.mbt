@@ -6,12 +6,12 @@ priv struct ProcessStart {
 
 ///|
 pub(open) trait ProcessInput {
-  _process_input_js(Self) -> Int
+  fn _process_input_js(Self) -> Int
 }
 
 ///|
 pub(open) trait ProcessOutput {
-  _process_output_js(Self) -> Int
+  fn _process_output_js(Self) -> Int
 }
 
 ///|
@@ -417,7 +417,7 @@ priv struct JsProcessInput {
 }
 
 ///|
-impl ProcessInput for JsProcessInput with _process_input_js(self) {
+impl ProcessInput for JsProcessInput with fn _process_input_js(self) {
   self.id
 }
 
@@ -427,7 +427,7 @@ priv struct JsProcessOutput {
 }
 
 ///|
-impl ProcessOutput for JsProcessOutput with _process_output_js(self) {
+impl ProcessOutput for JsProcessOutput with fn _process_output_js(self) {
   self.id
 }
 
@@ -443,12 +443,12 @@ pub fn ReadFromProcess::close(self : ReadFromProcess) -> Unit {
 }
 
 ///|
-pub impl @async_io.Reader for ReadFromProcess with _get_internal_buffer(self) {
+pub impl @async_io.Reader for ReadFromProcess with fn _get_internal_buffer(self) {
   self.read_buf
 }
 
 ///|
-pub impl @async_io.Reader for ReadFromProcess with _direct_read(
+pub impl @async_io.Reader for ReadFromProcess with fn _direct_read(
   self,
   buf,
   offset~,
@@ -473,7 +473,7 @@ pub fn WriteToProcess::close(self : WriteToProcess) -> Unit {
 }
 
 ///|
-pub impl @async_io.Writer for WriteToProcess with write_once(
+pub impl @async_io.Writer for WriteToProcess with fn write_once(
   self,
   buf,
   offset~,

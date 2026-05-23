@@ -1,11 +1,11 @@
 ///|
 pub(open) trait ProcessInput {
-  _process_input_wasmgc(Self) -> Unit
+  fn _process_input_wasmgc(Self) -> Unit
 }
 
 ///|
 pub(open) trait ProcessOutput {
-  _process_output_wasmgc(Self) -> Unit
+  fn _process_output_wasmgc(Self) -> Unit
 }
 
 ///|
@@ -19,12 +19,12 @@ pub fn ReadFromProcess::close(_self : ReadFromProcess) -> Unit {
 }
 
 ///|
-pub impl @async_io.Reader for ReadFromProcess with _get_internal_buffer(self) {
+pub impl @async_io.Reader for ReadFromProcess with fn _get_internal_buffer(self) {
   self.read_buf
 }
 
 ///|
-pub impl @async_io.Reader for ReadFromProcess with _direct_read(
+pub impl @async_io.Reader for ReadFromProcess with fn _direct_read(
   _self,
   _buf,
   offset~ : Int,
@@ -43,7 +43,7 @@ pub fn WriteToProcess::close(_self : WriteToProcess) -> Unit {
 }
 
 ///|
-pub impl @async_io.Writer for WriteToProcess with write_once(
+pub impl @async_io.Writer for WriteToProcess with fn write_once(
   _self,
   _buf,
   offset~ : Int,

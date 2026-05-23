@@ -17,19 +17,19 @@ pub fn Output::fd(self : Output) -> Int {
 }
 
 ///|
-pub impl @io.Reader for Input with _get_internal_buffer(self) {
+pub impl @io.Reader for Input with fn _get_internal_buffer(self) {
   ignore(self)
   abort("stdio not supported on wasm target")
 }
 
 ///|
-pub impl @io.Reader for Input with _direct_read(self, buf, offset~, max_len~) {
+pub impl @io.Reader for Input with fn _direct_read(self, buf, offset~, max_len~) {
   ignore((self, buf, offset, max_len))
   abort("stdio not supported on wasm target")
 }
 
 ///|
-pub impl @io.Writer for Output with write_once(self, buf, offset~, len~) {
+pub impl @io.Writer for Output with fn write_once(self, buf, offset~, len~) {
   ignore((self, buf, offset, len))
   abort("stdio not supported on wasm target")
 }

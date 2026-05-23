@@ -19,27 +19,27 @@ pub fn Output::fd(self : Output) -> Int {
 }
 
 ///|
-pub impl @io.Reader for Input with _get_internal_buffer(self) {
+pub impl @io.Reader for Input with fn _get_internal_buffer(self) {
   @io.Reader::_get_internal_buffer(self.inner)
 }
 
 ///|
-pub impl @io.Reader for Input with _direct_read(self, buf, offset~, max_len~) {
+pub impl @io.Reader for Input with fn _direct_read(self, buf, offset~, max_len~) {
   @io.Reader::_direct_read(self.inner, buf, offset~, max_len~)
 }
 
 ///|
-pub impl @process.ProcessInput for Input with _process_input_native(self) {
+pub impl @process.ProcessInput for Input with fn _process_input_native(self) {
   self.inner
 }
 
 ///|
-pub impl @io.Writer for Output with write_once(self, buf, offset~, len~) {
+pub impl @io.Writer for Output with fn write_once(self, buf, offset~, len~) {
   @io.Writer::write_once(self.inner, buf, offset~, len~)
 }
 
 ///|
-pub impl @process.ProcessOutput for Output with _process_output_native(self) {
+pub impl @process.ProcessOutput for Output with fn _process_output_native(self) {
   self.inner
 }
 

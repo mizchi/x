@@ -1,5 +1,5 @@
 import {
-  "mizchi/x/gzip" @gzip,
+  "mizchi/x/gzip",
   "mizchi/x/socket" @x_socket,
   "moonbitlang/async",
   "moonbitlang/async/http" @async_http,
