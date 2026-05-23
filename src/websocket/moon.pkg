@@ -1,5 +1,5 @@
 import {
-  "mizchi/x/http" @http,
+  "mizchi/x/http",
   "moonbitlang/async/http" @async_http,
   "moonbitlang/async/websocket" @async_ws,
   "moonbitlang/async/io",

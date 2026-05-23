@@ -243,7 +243,7 @@ pub(all) enum RequestMethod {
 } derive(Eq, Compare, Hash, @debug.Debug)
 
 ///|
-pub impl Show for RequestMethod with output(self, logger) {
+pub impl Show for RequestMethod with fn output(self, logger) {
   logger.write_string(@debug.to_string(self))
 }
 
@@ -263,7 +263,7 @@ pub suberror HttpError {
 } derive(@debug.Debug)
 
 ///|
-pub impl Show for HttpError with output(self, logger) {
+pub impl Show for HttpError with fn output(self, logger) {
   logger.write_string(@debug.to_string(self))
 }
 
