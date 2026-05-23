@@ -1,6 +1,7 @@
 import {
   "moonbitlang/async",
   "moonbitlang/async/aqueue" @async_aqueue,
+  "moonbitlang/core/bench",
   "moonbitlang/core/debug",
 }
 

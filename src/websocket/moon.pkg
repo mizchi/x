@@ -4,6 +4,7 @@ import {
   "moonbitlang/async/websocket" @async_ws,
   "moonbitlang/async/io",
   "moonbitlang/async/js_async",
+  "moonbitlang/core/bench",
   "moonbitlang/core/debug",
 }
 

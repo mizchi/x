@@ -215,12 +215,70 @@ fn parse_cookies_value(value : Json) -> Array[Cookie] {
 }
 
 ///|
-fn cookies_to_json(cookies : Array[Cookie]) -> String {
-  let items : Array[Json] = []
-  for cookie in cookies {
-    items.push(Json::string(cookie.to_header_value()))
+/// Append `s` to `buf` as a JSON string literal (quotes + escape).
+///
+/// Replaces a previous `Json::string(s).stringify()` round-trip: building
+/// a Json AST + a fresh `String` per value was the bulk of http's hot
+/// path on the JS target. The fast path here just walks the source
+/// chars; only `"`, `\`, and ASCII controls trigger an escape branch.
+fn write_json_string(buf : StringBuilder, s : String) -> Unit {
+  buf.write_char('"')
+  let len = s.length()
+  let mut i = 0
+  while i < len {
+    let c = s.get_char(i).unwrap_or('\u{0}')
+    let code = c.to_int()
+    if code == '"'.to_int() {
+      buf.write_string("\\\"")
+    } else if code == '\\'.to_int() {
+      buf.write_string("\\\\")
+    } else if code == '\n'.to_int() {
+      buf.write_string("\\n")
+    } else if code == '\r'.to_int() {
+      buf.write_string("\\r")
+    } else if code == '\t'.to_int() {
+      buf.write_string("\\t")
+    } else if code == 0x08 {
+      buf.write_string("\\b")
+    } else if code == 0x0C {
+      buf.write_string("\\f")
+    } else if code < 0x20 {
+      buf.write_string("\\u00")
+      let hi = code >> 4
+      let lo = code & 0xF
+      buf.write_char(hex_digit(hi))
+      buf.write_char(hex_digit(lo))
+    } else {
+      buf.write_char(c)
+    }
+    i = i + 1
   }
-  Json::array(items).stringify()
+  buf.write_char('"')
+}
+
+///|
+fn hex_digit(n : Int) -> Char {
+  if n < 10 {
+    (n + '0'.to_int()).unsafe_to_char()
+  } else {
+    (n - 10 + 'a'.to_int()).unsafe_to_char()
+  }
+}
+
+///|
+fn cookies_to_json(cookies : Array[Cookie]) -> String {
+  let buf = StringBuilder::new()
+  buf.write_char('[')
+  let mut first = true
+  for cookie in cookies {
+    if !first {
+      buf.write_char(',')
+    }
+    first = false
+    write_json_string(buf, cookie.to_header_value())
+  }
+  buf.write_char(']')
+  buf.to_string()
 }
 
 ///|
@@ -291,9 +349,18 @@ fn response_has_no_body(code : Int, meth : RequestMethod?) -> Bool {
 
 ///|
 fn headers_to_json(headers : Map[String, String]) -> String {
-  let entries : Map[String, Json] = {}
+  let buf = StringBuilder::new()
+  buf.write_char('{')
+  let mut first = true
   for k, v in headers {
-    entries[k] = Json::string(v)
+    if !first {
+      buf.write_char(',')
+    }
+    first = false
+    write_json_string(buf, k)
+    buf.write_char(':')
+    write_json_string(buf, v)
   }
-  Json::object(entries).stringify()
+  buf.write_char('}')
+  buf.to_string()
 }
