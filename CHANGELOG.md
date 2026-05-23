@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.3 - 2026-05-24
+
+### Added
+
+- `process.kill(pid, signal)` — native `kill(2)` wrapper. Pass a negative `pid` to target a process group, mirroring POSIX semantics. Avoids spawning `/bin/kill` subprocesses for signal delivery.
+- `Process::kill_tree(self, signal)` — sends `signal` to the process group whose leader is this process. Effective only when the spawn was set up as a pgid leader (see `new_process_group` below).
+- `spawn(..., new_process_group~ : Bool = false)` — best-effort `setpgid(child, child)` after the child returns from posix_spawn. Documented as best-effort because the underlying `moonbitlang/async/process` doesn't expose `POSIX_SPAWN_SETPGROUP`, so there is a sub-millisecond race window where the child may exec before the parent calls setpgid. Callers that need guaranteed pgid-leader semantics should wrap the cmd in a shell that sets its own pgid (or wait for upstream to land the kernel-level flag).
+
+Native FFI for both lives in `src/process/process_native.c`. wasm / wasm-gc / js stubs unchanged — process control on those targets is platform-specific.
+
 ## 0.3.2 - 2026-05-24
 
 ### Changed

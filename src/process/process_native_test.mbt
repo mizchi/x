@@ -16,3 +16,25 @@ async test "collect_output" {
   assert_eq(exit_code, 0)
   assert_eq(stdout.text().trim_end(), "hello")
 }
+
+///|
+async test "kill sends signal to direct child" {
+  // Even without process-group semantics, `@process.kill(pid, ...)`
+  // hits the immediate child. Use `sleep` so we have a deterministic
+  // long-running target.
+  @async.with_task_group(group => {
+    let proc = @process.spawn(
+      group,
+      "bash",
+      ["-c", "sleep 30"],
+      no_wait=true,
+    )
+    @async.sleep(50)
+    @process.kill(proc.pid, @signal.SIGTERM)
+    @async.sleep(150)
+    match (try? proc.try_wait()) {
+      Ok(Some(_)) => ()
+      _ => assert_true(false)
+    }
+  })
+}
