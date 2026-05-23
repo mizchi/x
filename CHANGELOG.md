@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.2 - 2026-05-24
+
+### Changed
+
+- Skipped intermediate `Json` AST allocation in `headers_to_json` and `cookies_to_json`. Writes JSON straight into a `StringBuilder` instead of building a `Json::object` / `Json::array` and running `Json::stringify`. Measured under `moon bench --target=js --release`: `headers_to_json` -64% (3.36 µs → 1.21 µs, 8 headers), `cookies_to_json` -52% (1.94 µs → 0.92 µs, 4 cookies). Parse-side benches also improve ~30-40% due to lower GC pressure on the same process.
+- Bumped `moonbitlang/async` to 0.19.1.
+- Migrated module manifest from `moon.mod.json` to the new `moon.mod` format and ran `moon fmt` across the source tree (new `with fn output(...)` syntax for trait method impls, redundant `@<basename>` import aliases dropped).
+
+### Added
+
+- Microbenchmarks for the sync surface of `aqueue` / `cond_var` / `semaphore` / `websocket` so regressions in those wrappers can be caught by `moon bench`.
+
 ## 0.3.1 - 2026-05-13
 
 ### Added
