@@ -3,6 +3,7 @@ priv enum Backend {
   Polling(PollingState)
   FSEvents(FSEventsState)
   Inotify(InotifyState)
+  RDCW(RDCWState)
 }
 
 ///|
@@ -10,8 +11,9 @@ priv enum Backend {
 /// observed, then return the batch of events seen during that scan.
 ///
 /// The watcher transparently picks the fastest available backend at start:
-/// FSEvents on macOS, inotify on Linux, polling fallback elsewhere. The
-/// public surface is identical across backends.
+/// FSEvents on macOS, inotify on Linux, ReadDirectoryChangesW on Windows,
+/// polling fallback elsewhere. The public surface is identical across
+/// backends.
 pub struct Watcher {
   priv backend : Backend
   priv mut closed : Bool
@@ -41,10 +43,14 @@ pub async fn start(
     None =>
       match inotify_start(roots, fast_interval, ex) {
         Some(state) => Watcher::{ backend: Inotify(state), closed: false }
-        None => {
-          let state = polling_start(roots, slow_interval, ex)
-          Watcher::{ backend: Polling(state), closed: false }
-        }
+        None =>
+          match rdcw_start(roots, fast_interval, ex) {
+            Some(state) => Watcher::{ backend: RDCW(state), closed: false }
+            None => {
+              let state = polling_start(roots, slow_interval, ex)
+              Watcher::{ backend: Polling(state), closed: false }
+            }
+          }
       }
   }
 }
@@ -76,6 +82,7 @@ pub async fn Watcher::next(self : Watcher) -> Array[Event] {
       Polling(s) => polling_next(s)
       FSEvents(s) => fsevents_next(s)
       Inotify(s) => inotify_next(s)
+      RDCW(s) => rdcw_next(s)
     }
     if self.closed {
       break []
@@ -97,6 +104,7 @@ pub fn Watcher::close(self : Watcher) -> Unit {
     Polling(_) => ()
     FSEvents(s) => fsevents_close(s)
     Inotify(s) => inotify_close(s)
+    RDCW(s) => rdcw_close(s)
   }
 }
 

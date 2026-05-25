@@ -8,6 +8,7 @@ Cross-platform filesystem watcher for [MoonBit](https://docs.moonbitlang.com).
 |---|---|---|
 | macOS | FSEvents (via `dlopen`, no `-framework` link dep) | ~50 ms drain interval, OS-driven detection |
 | Linux | inotify | ~50 ms drain interval, kernel-driven detection |
+| Windows | ReadDirectoryChangesW (per-root HANDLE + OVERLAPPED, single reader thread via `WaitForMultipleObjects`) | ~50 ms drain interval, kernel-driven detection |
 | Other native | Polling (mtime + size fingerprint) | ~500 ms scan interval |
 
 All backends share a single normalization layer (`watch_normalize.mbt`): OS-canonical paths (e.g. `/private/tmp/...` on macOS) are rewritten back to the user-supplied root form, and `Created` vs `Modified` is resolved against an initial directory walk so flag-bit quirks don't cross the API surface.
@@ -36,7 +37,7 @@ async fn watch_src() -> Unit raise {
 
 ## Limitations
 
-- Linux runtime is currently un-CI'd; tested only via syntax compile on macOS. Wire up Linux CI before depending on inotify in production.
+- Linux + Windows runtime is validated only via CI (developing on darwin). The first CI run after this commit is the first time inotify / RDCW execute end-to-end.
 - inotify's per-user watch limit (`/proc/sys/fs/inotify/max_user_watches`) caps deeply-recursive trees.
-- Windows backend (ReadDirectoryChangesW) not implemented yet — Windows native falls through to polling.
+- RDCW caps at 63 simultaneous roots per watcher (`MAXIMUM_WAIT_OBJECTS - 1` for the stop event). Most projects use 1–3 roots so this is moot in practice.
 - No event-time wakeup; the drain loop polls at `interval_ms`. Sub-50ms latency would need a pipe-wake bridge from the reader thread into the MoonBit async runtime.
