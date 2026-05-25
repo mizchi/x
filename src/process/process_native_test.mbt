@@ -27,9 +27,11 @@ async test "kill sends signal to direct child" {
     @async.sleep(50)
     @process.kill(proc.pid, @signal.SIGTERM)
     @async.sleep(150)
-    match (try? proc.try_wait()) {
-      Ok(Some(_)) => ()
+    try proc.try_wait() catch {
       _ => assert_true(false)
+    } noraise {
+      Some(_) => ()
+      None => assert_true(false)
     }
   })
 }
