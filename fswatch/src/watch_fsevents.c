@@ -241,6 +241,10 @@ MOONBIT_FFI_EXPORT int32_t mizchi_x_watch_fsevents_pop(
   uint32_t f = w->flags[w->head];
   int plen = p ? (int)strlen(p) : 0;
   if (plen + 4 > out_cap) {
+    // Drop the oversize entry so the caller doesn't loop on it forever.
+    free(w->paths[w->head]);
+    w->paths[w->head] = NULL;
+    w->head = (w->head + 1) % RING_CAP;
     pthread_mutex_unlock(&w->mu);
     return -1;
   }
