@@ -10,7 +10,7 @@ pub(all) enum EventKind {
 } derive(Eq)
 
 ///|
-pub impl Show for EventKind with output(self, logger) {
+pub impl Show for EventKind with fn output(self, logger) {
   logger.write_string(
     match self {
       Created => "Created"
@@ -27,7 +27,7 @@ pub(all) struct Event {
 }
 
 ///|
-pub impl Show for Event with output(self, logger) {
+pub impl Show for Event with fn output(self, logger) {
   logger.write_string("Event{path=")
   logger.write_string(self.path)
   logger.write_string(", kind=")

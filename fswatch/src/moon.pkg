@@ -1,6 +1,6 @@
 import {
   "moonbitlang/async",
-  "moonbitlang/core/encoding/utf8" @utf8,
+  "moonbitlang/core/encoding/utf8",
   "mizchi/x/fs" @xfs,
 }
 

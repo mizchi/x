@@ -11,18 +11,13 @@ async fn polling_start(
   roots : Array[String],
   interval_ms : Int,
   exclude : (String) -> Bool,
-) -> PollingState raise {
+) -> PollingState {
   let initial = polling_snapshot(roots, exclude)
-  PollingState::{
-    roots,
-    interval_ms,
-    exclude,
-    snapshot: initial,
-  }
+  PollingState::{ roots, interval_ms, exclude, snapshot: initial }
 }
 
 ///|
-async fn polling_next(state : PollingState) -> Array[Event] raise {
+async fn polling_next(state : PollingState) -> Array[Event] {
   @async.sleep(state.interval_ms)
   let fresh = polling_snapshot(state.roots, state.exclude)
   let events = polling_diff(state.snapshot, fresh)
@@ -34,13 +29,13 @@ async fn polling_next(state : PollingState) -> Array[Event] raise {
 async fn polling_snapshot(
   roots : Array[String],
   exclude : (String) -> Bool,
-) -> Map[String, Int64] raise {
+) -> Map[String, Int64] {
   let snap : Map[String, Int64] = Map([])
   for root in roots {
     if !@xfs.exists(root) {
       continue
     }
-    @xfs.walk(root, max_concurrency=4, exclude=exclude, async fn(dir, names) {
+    @xfs.walk(root, max_concurrency=4, exclude~, async fn(dir, names) {
       for name in names {
         let full = dir + "/" + name
         if exclude(full) {

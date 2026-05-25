@@ -35,7 +35,7 @@ async fn fsevents_start(
   interval_ms : Int,
   exclude : (String) -> Bool,
   latency_ms : Double,
-) -> FSEventsState? raise {
+) -> FSEventsState? {
   // Join roots as null-byte-separated UTF-8 buffer.
   let buf = StringBuilder::new()
   for root in roots {
@@ -57,7 +57,7 @@ async fn fsevents_start(
 }
 
 ///|
-async fn fsevents_drain(state : FSEventsState) -> Array[Event] raise {
+async fn fsevents_drain(state : FSEventsState) -> Array[Event] {
   let events : Array[Event] = []
   let cap = 4096
   let buf : FixedArray[Byte] = FixedArray::make(cap, b'\x00')
@@ -83,7 +83,7 @@ async fn fsevents_drain(state : FSEventsState) -> Array[Event] raise {
 }
 
 ///|
-async fn fsevents_next(state : FSEventsState) -> Array[Event] raise {
+async fn fsevents_next(state : FSEventsState) -> Array[Event] {
   @async.sleep(state.interval_ms)
   fsevents_drain(state)
 }

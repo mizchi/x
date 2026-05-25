@@ -6,8 +6,8 @@ import {
   "moonbitlang/async/js_async",
   "moonbitlang/async/signal" @async_signal,
   "mizchi/x/fs",
-  "mizchi/x/signal" @signal,
-  "mizchi/x/socket" @socket,
+  "mizchi/x/signal",
+  "mizchi/x/socket",
 }
 
 warnings = "-0029-0014-0024-0009-0067"

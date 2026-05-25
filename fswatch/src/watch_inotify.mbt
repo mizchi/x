@@ -33,7 +33,7 @@ async fn inotify_start(
   roots : Array[String],
   interval_ms : Int,
   exclude : (String) -> Bool,
-) -> InotifyState? raise {
+) -> InotifyState? {
   let buf = StringBuilder::new()
   for root in roots {
     buf.write_string(root)
@@ -49,7 +49,7 @@ async fn inotify_start(
 }
 
 ///|
-async fn inotify_drain(state : InotifyState) -> Array[Event] raise {
+async fn inotify_drain(state : InotifyState) -> Array[Event] {
   let events : Array[Event] = []
   let cap = 4096
   let buf : FixedArray[Byte] = FixedArray::make(cap, b'\x00')
@@ -75,7 +75,7 @@ async fn inotify_drain(state : InotifyState) -> Array[Event] raise {
 }
 
 ///|
-async fn inotify_next(state : InotifyState) -> Array[Event] raise {
+async fn inotify_next(state : InotifyState) -> Array[Event] {
   @async.sleep(state.interval_ms)
   inotify_drain(state)
 }

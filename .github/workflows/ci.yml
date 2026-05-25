@@ -30,22 +30,39 @@ jobs:
       - name: Moon version
         run: moon version --all
 
-      - name: Moon update
+      - name: Moon update (mizchi/x)
         run: moon update
 
-      - name: Check format
+      - name: Moon update (mizchi/fswatch)
+        working-directory: fswatch
+        run: moon update
+
+      - name: Check format (mizchi/x)
         run: moon fmt --check
 
-      - name: Check generated interfaces are up to date
+      - name: Check format (mizchi/fswatch)
+        working-directory: fswatch
+        run: moon fmt --check
+
+      - name: Check pkg.generated.mbti drift (mizchi/x)
         run: |
           moon info
           if ! git diff --exit-code -- '**/pkg.generated.mbti'; then
-            echo "::error::pkg.generated.mbti is out of date. Run 'moon info' and commit the changes."
+            echo "::error::pkg.generated.mbti (mizchi/x) is out of date. Run 'moon info' and commit the changes."
+            exit 1
+          fi
+
+      - name: Check pkg.generated.mbti drift (mizchi/fswatch)
+        working-directory: fswatch
+        run: |
+          moon info
+          if ! git diff --exit-code -- '**/pkg.generated.mbti'; then
+            echo "::error::pkg.generated.mbti (mizchi/fswatch) is out of date. Run 'moon info' and commit the changes."
             exit 1
           fi
 
   test:
-    name: Test (${{ matrix.os }}, ${{ matrix.target }})
+    name: Test ${{ matrix.module }} (${{ matrix.os }}, ${{ matrix.target }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     strategy:
@@ -53,6 +70,11 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest]
         target: [native, js]
+        module: [x, fswatch]
+        exclude:
+          # fswatch is native-only (C FFI for FSEvents/inotify).
+          - module: fswatch
+            target: js
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -73,9 +95,12 @@ jobs:
 
       - name: Moon update
         run: moon update
+        working-directory: ${{ matrix.module == 'x' && '.' || 'fswatch' }}
 
       - name: Moon check
         run: moon check --deny-warn --target ${{ matrix.target }}
+        working-directory: ${{ matrix.module == 'x' && '.' || 'fswatch' }}
 
       - name: Moon test
         run: moon test --target ${{ matrix.target }}
+        working-directory: ${{ matrix.module == 'x' && '.' || 'fswatch' }}

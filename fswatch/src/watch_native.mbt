@@ -32,7 +32,7 @@ pub async fn start(
   roots : Array[String],
   interval_ms? : Int,
   exclude? : (String) -> Bool,
-) -> Watcher raise {
+) -> Watcher {
   let ex = exclude.unwrap_or(default_exclude)
   let fast_interval = interval_ms.unwrap_or(50)
   let slow_interval = interval_ms.unwrap_or(500)
@@ -57,7 +57,7 @@ pub async fn start_polling(
   roots : Array[String],
   interval_ms? : Int,
   exclude? : (String) -> Bool,
-) -> Watcher raise {
+) -> Watcher {
   let ex = exclude.unwrap_or(default_exclude)
   let interval = interval_ms.unwrap_or(500)
   let state = polling_start(roots, interval, ex)
@@ -67,7 +67,7 @@ pub async fn start_polling(
 ///|
 /// Block until at least one event is observed (or the watcher is closed),
 /// then return all events from that scan. Returns `[]` only on close.
-pub async fn Watcher::next(self : Watcher) -> Array[Event] raise {
+pub async fn Watcher::next(self : Watcher) -> Array[Event] {
   for ;; {
     if self.closed {
       break []

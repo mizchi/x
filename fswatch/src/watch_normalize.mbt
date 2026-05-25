@@ -21,15 +21,12 @@ priv struct NormalizeState {
 async fn build_normalize_state(
   roots : Array[String],
   exclude : (String) -> Bool,
-) -> NormalizeState raise {
+) -> NormalizeState {
   let prefix_map : Array[(String, String)] = []
   for root in roots {
     let real = try? @xfs.realpath(root)
     match real {
-      Ok(r) =>
-        if r != root {
-          prefix_map.push((r, root))
-        }
+      Ok(r) => if r != root { prefix_map.push((r, root)) }
       Err(_) => ()
     }
   }
@@ -38,7 +35,7 @@ async fn build_normalize_state(
     if !@xfs.exists(root) {
       continue
     }
-    @xfs.walk(root, max_concurrency=4, exclude=exclude, async fn(dir, names) {
+    @xfs.walk(root, max_concurrency=4, exclude~, async fn(dir, names) {
       for name in names {
         let full = dir + "/" + name
         if exclude(full) {
@@ -55,10 +52,7 @@ async fn build_normalize_state(
 }
 
 ///|
-fn rewrite_path(
-  path : String,
-  prefix_map : Array[(String, String)],
-) -> String {
+fn rewrite_path(path : String, prefix_map : Array[(String, String)]) -> String {
   for entry in prefix_map {
     let canonical = entry.0
     let original = entry.1
@@ -79,10 +73,7 @@ fn rewrite_path(
 /// raw (canonical) path; we rewrite it for the user-facing path. Returns
 /// `None` to drop the event (excluded, or a phantom Remove for a path we
 /// never tracked, or a non-regular-file Create).
-async fn classify_event(
-  state : NormalizeState,
-  raw_path : String,
-) -> Event? raise {
+async fn classify_event(state : NormalizeState, raw_path : String) -> Event? {
   let path = rewrite_path(raw_path, state.prefix_map)
   if (state.exclude)(path) {
     return None

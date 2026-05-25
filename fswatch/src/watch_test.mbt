@@ -84,11 +84,9 @@ async test "watch exclude prunes paths" {
   @xfs.mkdir(dir, permission=0o755, recursive=true)
   @xfs.mkdir(dir + "/keep", permission=0o755)
   @xfs.mkdir(dir + "/skip", permission=0o755)
-  let watcher = @fswatch.start(
-    [dir],
-    interval_ms=120,
-    exclude=p => p.contains("/skip"),
-  )
+  let watcher = @fswatch.start([dir], interval_ms=120, exclude=p => {
+    p.contains("/skip")
+  })
   let mut skip_leaked = false
   @async.with_task_group(group => {
     group.spawn_bg(() => {
