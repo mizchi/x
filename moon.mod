@@ -1,6 +1,6 @@
 name = "mizchi/x"
 
-version = "0.4.0"
+version = "0.3.3"
 
 import {
   "moonbitlang/async@0.19.1",
@@ -33,7 +33,6 @@ keywords = [
   "semaphore",
   "websocket",
   "wasi",
-  "fswatch",
 ]
 
 description = "Node.js backend compatibility layer for moonbitlang/async in MoonBit, with native delegation and JS FFI implementations for process, fs, http, gzip, tls, socket, raw_fd, signal, sync primitives, websocket, stdio, pipe, and sys."

@@ -27,7 +27,6 @@ Node.js backend compatibility layer for `moonbitlang/async` in [MoonBit](https:/
 |---|---|
 | `mizchi/x/process` | Command execution (`run`, `spawn`, `spawn_orphan`, `wait_pid`, process pipes, file/stdio redirects, native pipe redirects, `collect_output`, `collect_stdout`, `collect_stderr`, `collect_output_merged`) |
 | `mizchi/x/fs` | File system operations (`open`, `create`, `File`, `read_file`, `write_file`, `tmpdir`, `walk`, `exists`, `mkdir`, `readdir`, `opendir`, `Directory::next`, `rename`, `remove`, `rmdir`) |
-| `mizchi/x/fs/watch` | Filesystem watcher with auto-dispatch backend (FSEvents on macOS, inotify on Linux, polling fallback elsewhere). `start`, `Watcher::next`, `Watcher::close`, `start_polling`, `Event`, `EventKind` |
 | `mizchi/x/http` | HTTP client/server (`get`, `post`, `put`, `get_stream`, `post_stream`, `put_stream`, `Client`, `Server`, `Cookie`) |
 | `mizchi/x/gzip` | Gzip stream encoder/decoder (`Encoder`, `Decoder`) |
 | `mizchi/x/tls` | TLS client/server streams (`Tls::client`, `Tls::server_from_pair`, peer certificate, channel binding, `rand_bytes`, `sha1`) |

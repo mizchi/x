@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "mizchi/x/fs/watch"
+package "mizchi/fswatch"
 
 // Values
 pub async fn start(Array[String], interval_ms? : Int, exclude? : (String) -> Bool) -> Watcher

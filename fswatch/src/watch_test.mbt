@@ -3,7 +3,7 @@ async test "watch detects created file" {
   let dir = "/tmp/mizchi_x_watch_create"
   ignore(try? @xfs.rmdir(dir, recursive=true))
   @xfs.mkdir(dir, permission=0o755, recursive=true)
-  let watcher = @watch.start([dir], interval_ms=120)
+  let watcher = @fswatch.start([dir], interval_ms=120)
   let mut saw_create = false
   @async.with_task_group(group => {
     group.spawn_bg(() => {
@@ -32,7 +32,7 @@ async test "watch detects modified file" {
   // bump mtime resolution: ensure the watcher's initial snapshot has
   // a second strictly before the upcoming modification.
   @async.sleep(1100)
-  let watcher = @watch.start([dir], interval_ms=120)
+  let watcher = @fswatch.start([dir], interval_ms=120)
   let mut saw_modify = false
   @async.with_task_group(group => {
     group.spawn_bg(() => {
@@ -58,7 +58,7 @@ async test "watch detects removed file" {
   @xfs.mkdir(dir, permission=0o755, recursive=true)
   let target = dir + "/doomed.txt"
   @xfs.write_file(target, "bye")
-  let watcher = @watch.start([dir], interval_ms=120)
+  let watcher = @fswatch.start([dir], interval_ms=120)
   let mut saw_remove = false
   @async.with_task_group(group => {
     group.spawn_bg(() => {
@@ -84,7 +84,7 @@ async test "watch exclude prunes paths" {
   @xfs.mkdir(dir, permission=0o755, recursive=true)
   @xfs.mkdir(dir + "/keep", permission=0o755)
   @xfs.mkdir(dir + "/skip", permission=0o755)
-  let watcher = @watch.start(
+  let watcher = @fswatch.start(
     [dir],
     interval_ms=120,
     exclude=p => p.contains("/skip"),
