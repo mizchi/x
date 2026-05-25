@@ -1,9 +1,19 @@
 ///|
+/// Per-file fingerprint: (mtime sec, mtime nsec). nsec is essential — many
+/// filesystems give nanosecond-resolution mtime, so successive writes within
+/// the same second still differ. Falling back to sec-only would silently
+/// drop those Modified events.
+priv struct Fingerprint {
+  sec : Int64
+  nsec : Int
+} derive(Eq)
+
+///|
 priv struct PollingState {
   roots : Array[String]
   interval_ms : Int
   exclude : (String) -> Bool
-  mut snapshot : Map[String, Int64]
+  mut snapshot : Map[String, Fingerprint]
 }
 
 ///|
@@ -29,8 +39,8 @@ async fn polling_next(state : PollingState) -> Array[Event] {
 async fn polling_snapshot(
   roots : Array[String],
   exclude : (String) -> Bool,
-) -> Map[String, Int64] {
-  let snap : Map[String, Int64] = Map([])
+) -> Map[String, Fingerprint] {
+  let snap : Map[String, Fingerprint] = Map([])
   for root in roots {
     if !@xfs.exists(root) {
       continue
@@ -46,7 +56,7 @@ async fn polling_snapshot(
           Ok(Regular) => {
             let m = try? @xfs.mtime(full)
             match m {
-              Ok((sec, _nsec)) => snap[full] = sec
+              Ok((sec, nsec)) => snap[full] = Fingerprint::{ sec, nsec }
               Err(_) => ()
             }
           }
@@ -60,15 +70,15 @@ async fn polling_snapshot(
 
 ///|
 fn polling_diff(
-  old : Map[String, Int64],
-  fresh : Map[String, Int64],
+  old : Map[String, Fingerprint],
+  fresh : Map[String, Fingerprint],
 ) -> Array[Event] {
   let events : Array[Event] = []
-  for path, mtime in fresh {
+  for path, fp in fresh {
     match old.get(path) {
       None => events.push(Event::{ path, kind: Created })
       Some(prev) =>
-        if prev != mtime {
+        if prev != fp {
           events.push(Event::{ path, kind: Modified })
         }
     }

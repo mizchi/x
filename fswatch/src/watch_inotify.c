@@ -109,13 +109,19 @@ static void remove_entry_locked(watcher_t *w, int wd) {
 }
 
 // Recursively add inotify watches for `path` and all sub-directories.
-// Caller holds w->mu.
-static void add_recursive_locked(watcher_t *w, const char *path) {
+// Caller holds w->mu. Returns 1 if at least one watch was registered (this
+// path or anywhere in its subtree), 0 otherwise — used by `start` to detect
+// the case where every add_watch fails with ENOSPC / EACCES and avoid
+// returning a live handle that observes nothing.
+static int add_recursive_locked(watcher_t *w, const char *path) {
+  int added_here = 0;
   int wd = inotify_add_watch(w->fd, path, IN_EVENT_MASK);
-  if (wd < 0) return;
-  add_entry_locked(w, wd, path);
+  if (wd >= 0) {
+    add_entry_locked(w, wd, path);
+    added_here = 1;
+  }
   DIR *d = opendir(path);
-  if (!d) return;
+  if (!d) return added_here;
   struct dirent *de;
   while ((de = readdir(d))) {
     if (de->d_name[0] == '.' &&
@@ -131,9 +137,12 @@ static void add_recursive_locked(watcher_t *w, const char *path) {
       struct stat st;
       if (stat(child, &st) == 0 && S_ISDIR(st.st_mode)) is_dir = 1;
     }
-    if (is_dir) add_recursive_locked(w, child);
+    if (is_dir && add_recursive_locked(w, child)) {
+      added_here = 1;
+    }
   }
   closedir(d);
+  return added_here;
 }
 
 static void *reader_loop(void *arg) {
@@ -218,14 +227,16 @@ MOONBIT_FFI_EXPORT int64_t mizchi_x_watch_inotify_start(
     tmp[len] = 0;
     struct stat st;
     if (stat(tmp, &st) == 0 && S_ISDIR(st.st_mode)) {
-      add_recursive_locked(w, tmp);
-      added++;
+      if (add_recursive_locked(w, tmp)) {
+        added++;
+      }
     }
     if (pos < total_len) pos++;
   }
   pthread_mutex_unlock(&w->mu);
 
   if (added == 0) {
+    close(wake_fd);
     close(fd);
     free(w);
     return 0;
@@ -261,6 +272,12 @@ MOONBIT_FFI_EXPORT int32_t mizchi_x_watch_inotify_pop(
   uint32_t f = w->flags[w->head];
   int plen = p ? (int)strlen(p) : 0;
   if (plen + 4 > out_cap) {
+    // Caller buffer is too small. Advance head so the caller doesn't loop
+    // on the same oversize entry forever; returning -1 still signals
+    // "couldn't deliver this event" so the MoonBit drain can skip it.
+    free(w->paths[w->head]);
+    w->paths[w->head] = NULL;
+    w->head = (w->head + 1) % RING_CAP;
     pthread_mutex_unlock(&w->mu);
     return -1;
   }
