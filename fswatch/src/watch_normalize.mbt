@@ -1,8 +1,9 @@
 ///|
-/// Helpers shared by the native backends (FSEvents, inotify). Each backend's
-/// drain function pulls raw `(path, flag_bits)` pairs from its FFI ringbuffer
-/// and feeds them through these helpers to produce coalesced Created /
-/// Modified / Removed events whose paths match the user-provided roots.
+/// Helpers shared by every backend (FSEvents / inotify / RDCW / Node fs.watch).
+/// Each backend's drain function pulls raw `(path, flag_bits_unused)` pairs
+/// from its source and feeds them through these helpers to produce coalesced
+/// Created / Modified / Removed events whose paths match the user-provided
+/// roots.
 
 ///|
 priv struct NormalizeState {

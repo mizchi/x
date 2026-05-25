@@ -1,8 +1,8 @@
 ///|
-/// Filesystem watcher. Polling-only for now (cross-platform); native
-/// fsevents/inotify/ReadDirectoryChangesW backends can replace the
-/// implementation behind the same `Watcher` / `Event` surface later
-/// without touching callers.
+/// Cross-target filesystem watcher event types. The concrete `Watcher`
+/// struct and its `start` / `next` / `close` methods are defined per
+/// target — native dispatches across FSEvents (macOS) / inotify (Linux)
+/// / ReadDirectoryChangesW (Windows) / polling; js uses Node `fs.watch`.
 pub(all) enum EventKind {
   Created
   Modified

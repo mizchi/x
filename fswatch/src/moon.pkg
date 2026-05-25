@@ -10,11 +10,11 @@ options(
   "native-stub": [ "watch_fsevents.c", "watch_inotify.c", "watch_rdcw.c" ],
   targets: {
     "watch_native.mbt": [ "native" ],
-    "watch_normalize.mbt": [ "native" ],
     "watch_polling.mbt": [ "native" ],
     "watch_fsevents.mbt": [ "native" ],
     "watch_inotify.mbt": [ "native" ],
     "watch_rdcw.mbt": [ "native" ],
-    "watch_test.mbt": [ "native" ],
+    "watch_js.mbt": [ "js" ],
+    "watch_test.mbt": [ "native", "js" ],
   },
 )

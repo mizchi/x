@@ -72,9 +72,6 @@ jobs:
         target: [native, js]
         module: [x, fswatch]
         exclude:
-          # fswatch is native-only (C FFI for FSEvents/inotify/RDCW).
-          - module: fswatch
-            target: js
           # mizchi/x has not been validated on Windows yet; scope the
           # Windows runner to fswatch (which is the cross-platform target).
           - module: x
