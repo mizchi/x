@@ -1,0 +1,13 @@
+import {
+  "moonbitlang/async",
+  "mizchi/x/fs" @xfs,
+}
+
+warnings = "-0029-0014"
+
+options(
+  targets: {
+    "watch_native.mbt": [ "native" ],
+    "watch_test.mbt": [ "native" ],
+  },
+)

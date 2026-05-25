@@ -21,6 +21,8 @@ pub fn graceful_cancel(timeout~ : Int, signal? : @signal.Signal) -> Cancellation
 
 pub fn hard_cancel() -> CancellationHandler
 
+pub fn kill(Int, @signal.Signal) -> Unit
+
 pub fn read_from_process() -> (ReadFromProcess, &ProcessOutput) raise
 
 pub async fn redirect_from_file(String) -> &ProcessInput
@@ -31,7 +33,7 @@ pub async fn run(StringView, ArrayView[String], extra_env? : Map[String, String]
 
 pub async fn run_inherit(StringView, ArrayView[String], extra_env? : Map[String, String], inherit_env? : Bool, cwd? : StringView) -> Int
 
-pub async fn[X] spawn(@async.TaskGroup[X], StringView, ArrayView[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stdout? : &ProcessOutput, stderr? : &ProcessOutput, cwd? : StringView, cancel_handler? : CancellationHandler, no_wait? : Bool) -> Process
+pub async fn[X] spawn(@async.TaskGroup[X], StringView, ArrayView[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stdout? : &ProcessOutput, stderr? : &ProcessOutput, cwd? : StringView, cancel_handler? : CancellationHandler, no_wait? : Bool, new_process_group? : Bool) -> Process
 
 pub async fn spawn_orphan(StringView, ArrayView[String], extra_env? : Map[String, String], inherit_env? : Bool, stdin? : &ProcessInput, stdout? : &ProcessOutput, stderr? : &ProcessOutput, cwd? : StringView) -> Int
 
@@ -56,6 +58,7 @@ pub struct Process {
   // private fields
 }
 pub fn Process::cancel(Self) -> Unit
+pub fn Process::kill_tree(Self, @signal.Signal) -> Unit
 pub fn Process::try_wait(Self) -> Int? raise
 pub async fn Process::wait(Self) -> Int
 

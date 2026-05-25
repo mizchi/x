@@ -1,0 +1,32 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "mizchi/x/fs/watch"
+
+// Values
+pub async fn start(Array[String], interval_ms? : Int, exclude? : (String) -> Bool) -> Watcher
+
+// Errors
+
+// Types and methods
+pub(all) struct Event {
+  path : String
+  kind : EventKind
+}
+pub impl Show for Event
+
+pub(all) enum EventKind {
+  Created
+  Modified
+  Removed
+} derive(Eq)
+pub impl Show for EventKind
+
+pub struct Watcher {
+  // private fields
+}
+pub fn Watcher::close(Self) -> Unit
+pub async fn Watcher::next(Self) -> Array[Event]
+
+// Type aliases
+
+// Traits
+
