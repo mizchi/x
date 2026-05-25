@@ -237,9 +237,13 @@ MOONBIT_FFI_EXPORT int64_t mizchi_x_watch_inotify_start(
 
 MOONBIT_FFI_EXPORT int32_t mizchi_x_watch_inotify_pop(
     int64_t handle, char *out_buf, int32_t out_cap) {
-  if (!handle) return -2;
+  static int pop_count = 0;
+  if (!handle) { fprintf(stderr, "[inotify] pop NULL handle\n"); return -2; }
   watcher_t *w = (watcher_t *)(intptr_t)handle;
   pthread_mutex_lock(&w->mu);
+  if (pop_count++ < 20 || w->head != w->tail) {
+    fprintf(stderr, "[inotify] pop head=%d tail=%d (call #%d)\n", w->head, w->tail, pop_count);
+  }
   if (w->head == w->tail) {
     pthread_mutex_unlock(&w->mu);
     return -2;
