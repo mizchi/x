@@ -4,6 +4,8 @@ package "mizchi/x/fs/watch"
 // Values
 pub async fn start(Array[String], interval_ms? : Int, exclude? : (String) -> Bool) -> Watcher
 
+pub async fn start_polling(Array[String], interval_ms? : Int, exclude? : (String) -> Bool) -> Watcher
+
 // Errors
 
 // Types and methods

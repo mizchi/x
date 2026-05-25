@@ -1,13 +1,17 @@
 import {
   "moonbitlang/async",
+  "moonbitlang/core/encoding/utf8" @utf8,
   "mizchi/x/fs" @xfs,
 }
 
 warnings = "-0029-0014"
 
 options(
+  "native-stub": [ "watch_fsevents.c" ],
   targets: {
     "watch_native.mbt": [ "native" ],
+    "watch_polling.mbt": [ "native" ],
+    "watch_fsevents.mbt": [ "native" ],
     "watch_test.mbt": [ "native" ],
   },
 )

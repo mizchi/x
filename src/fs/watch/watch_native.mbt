@@ -1,12 +1,18 @@
 ///|
-/// A filesystem watcher built on a polling backend. Calls to `next` block
-/// until at least one change is observed, then return the batch of events
-/// seen during that scan.
+priv enum Backend {
+  Polling(PollingState)
+  FSEvents(FSEventsState)
+}
+
+///|
+/// A filesystem watcher. Calls to `next` block until at least one change is
+/// observed, then return the batch of events seen during that scan.
+///
+/// The watcher transparently picks the fastest available backend at start:
+/// FSEvents on macOS (sub-second OS-driven detection), polling fallback
+/// elsewhere. Use the same surface either way.
 pub struct Watcher {
-  priv roots : Array[String]
-  priv interval_ms : Int
-  priv exclude : (String) -> Bool
-  priv mut snapshot : Map[String, Int64]
+  priv backend : Backend
   priv mut closed : Bool
 }
 
@@ -16,26 +22,43 @@ fn default_exclude(_ : String) -> Bool {
 }
 
 ///|
-/// Start a polling watcher rooted at `roots`. Each entry must be a
-/// directory; paths are tracked recursively. `interval_ms` controls the
-/// scan cadence (default 500 ms). `exclude` is applied per path; returning
-/// `true` drops both the entry and (for directories) its descendants from
-/// tracking, mirroring `@xfs.walk`'s exclusion semantics.
+/// Start a watcher rooted at `roots`. Each entry must be a directory; paths
+/// are tracked recursively. `interval_ms` controls how often `next` re-checks
+/// for events (default 500 ms for polling, 50 ms for FSEvents). `exclude` is
+/// applied per path; returning `true` drops both the entry and (for
+/// directories) its descendants from tracking.
 pub async fn start(
   roots : Array[String],
   interval_ms? : Int,
   exclude? : (String) -> Bool,
 ) -> Watcher raise {
-  let interval = interval_ms.unwrap_or(500)
   let ex = exclude.unwrap_or(default_exclude)
-  let initial = snapshot(roots, ex)
-  Watcher::{
-    roots,
-    interval_ms: interval,
-    exclude: ex,
-    snapshot: initial,
-    closed: false,
+  // FSEvents coalesces events for ~50ms by default; that's also a fine drain
+  // cadence so we use the same value for both.
+  let fast_interval = interval_ms.unwrap_or(50)
+  let slow_interval = interval_ms.unwrap_or(500)
+  match fsevents_start(roots, fast_interval, ex, fast_interval.to_double()) {
+    Some(state) => Watcher::{ backend: FSEvents(state), closed: false }
+    None => {
+      let state = polling_start(roots, slow_interval, ex)
+      Watcher::{ backend: Polling(state), closed: false }
+    }
   }
+}
+
+///|
+/// Force the polling backend, ignoring FSEvents/inotify/etc. Useful for tests
+/// that need deterministic snapshot semantics, or for environments where the
+/// native backend misbehaves.
+pub async fn start_polling(
+  roots : Array[String],
+  interval_ms? : Int,
+  exclude? : (String) -> Bool,
+) -> Watcher raise {
+  let ex = exclude.unwrap_or(default_exclude)
+  let interval = interval_ms.unwrap_or(500)
+  let state = polling_start(roots, interval, ex)
+  Watcher::{ backend: Polling(state), closed: false }
 }
 
 ///|
@@ -46,78 +69,54 @@ pub async fn Watcher::next(self : Watcher) -> Array[Event] raise {
     if self.closed {
       break []
     }
-    @async.sleep(self.interval_ms)
+    let events = match self.backend {
+      Polling(s) => polling_next(s)
+      FSEvents(s) => fsevents_next(s)
+    }
     if self.closed {
       break []
     }
-    let fresh = snapshot(self.roots, self.exclude)
-    let events = diff(self.snapshot, fresh)
-    self.snapshot = fresh
     if events.length() > 0 {
-      break events
+      break normalize(events)
     }
   }
 }
 
 ///|
-/// Mark the watcher closed. A blocked `next` returns `[]` on its next
-/// scheduled wake-up.
+/// Mark the watcher closed and release backend resources. Idempotent.
 pub fn Watcher::close(self : Watcher) -> Unit {
+  if self.closed {
+    return
+  }
   self.closed = true
+  match self.backend {
+    Polling(_) => ()
+    FSEvents(s) => fsevents_close(s)
+  }
 }
 
 ///|
-async fn snapshot(
-  roots : Array[String],
-  exclude : (String) -> Bool,
-) -> Map[String, Int64] raise {
-  let snap : Map[String, Int64] = Map([])
-  for root in roots {
-    if !@xfs.exists(root) {
-      continue
+/// Dedupe `(path, kind)` pairs while preserving first-seen order. FSEvents
+/// often emits the same Modified event twice in a single batch; polling
+/// won't, but it's cheap to apply uniformly.
+fn normalize(events : Array[Event]) -> Array[Event] {
+  let seen : Map[String, Bool] = Map([])
+  let out : Array[Event] = []
+  for e in events {
+    let key = e.path + "\u{00}" + e.kind.to_key()
+    if !seen.contains(key) {
+      seen[key] = true
+      out.push(e)
     }
-    @xfs.walk(root, max_concurrency=4, exclude=exclude, async fn(dir, names) {
-      for name in names {
-        let full = dir + "/" + name
-        if exclude(full) {
-          continue
-        }
-        let k = try? @xfs.kind(full)
-        match k {
-          Ok(Regular) => {
-            let m = try? @xfs.mtime(full)
-            match m {
-              Ok((sec, _nsec)) => snap[full] = sec
-              Err(_) => ()
-            }
-          }
-          _ => ()
-        }
-      }
-    })
   }
-  snap
+  out
 }
 
 ///|
-fn diff(
-  old : Map[String, Int64],
-  fresh : Map[String, Int64],
-) -> Array[Event] {
-  let events : Array[Event] = []
-  for path, mtime in fresh {
-    match old.get(path) {
-      None => events.push(Event::{ path, kind: Created })
-      Some(prev) =>
-        if prev != mtime {
-          events.push(Event::{ path, kind: Modified })
-        }
-    }
+fn EventKind::to_key(self : EventKind) -> String {
+  match self {
+    Created => "C"
+    Modified => "M"
+    Removed => "R"
   }
-  for path, _ in old {
-    if !fresh.contains(path) {
-      events.push(Event::{ path, kind: Removed })
-    }
-  }
-  events
 }
