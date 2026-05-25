@@ -112,7 +112,6 @@ static void remove_entry_locked(watcher_t *w, int wd) {
 // Caller holds w->mu.
 static void add_recursive_locked(watcher_t *w, const char *path) {
   int wd = inotify_add_watch(w->fd, path, IN_EVENT_MASK);
-  fprintf(stderr, "[inotify] add_watch path=%s wd=%d errno=%d\n", path, wd, wd < 0 ? errno : 0);
   if (wd < 0) return;
   add_entry_locked(w, wd, path);
   DIR *d = opendir(path);
@@ -139,7 +138,6 @@ static void add_recursive_locked(watcher_t *w, const char *path) {
 
 static void *reader_loop(void *arg) {
   watcher_t *w = (watcher_t *)arg;
-  fprintf(stderr, "[inotify] reader_loop started fd=%d wake_fd=%d\n", w->fd, w->wake_fd);
   char buf[4096] __attribute__((aligned(__alignof__(struct inotify_event))));
   struct pollfd pfds[2];
   while (!w->stop) {
@@ -160,7 +158,6 @@ static void *reader_loop(void *arg) {
     }
     if (!(pfds[0].revents & POLLIN)) continue;
     ssize_t n = read(w->fd, buf, sizeof(buf));
-    fprintf(stderr, "[inotify] read returned n=%zd errno=%d stop=%d\n", n, errno, w->stop);
     if (n < 0) {
       if (errno == EINTR) continue;
       break;
@@ -171,7 +168,6 @@ static void *reader_loop(void *arg) {
       struct inotify_event *e = (struct inotify_event *)p;
       pthread_mutex_lock(&w->mu);
       const char *dir = find_path_locked(w, e->wd);
-      fprintf(stderr, "[inotify] event wd=%d mask=0x%x len=%u dir=%s\n", e->wd, e->mask, e->len, dir ? dir : "(null)");
       if (dir) {
         char full[4096];
         if (e->len > 0) {
@@ -179,7 +175,6 @@ static void *reader_loop(void *arg) {
         } else {
           snprintf(full, sizeof(full), "%s", dir);
         }
-        fprintf(stderr, "[inotify]   pushing %s\n", full);
         push_event_locked(w, full, (uint32_t)e->mask);
         if ((e->mask & IN_CREATE) && (e->mask & IN_ISDIR) && e->len > 0) {
           add_recursive_locked(w, full);
@@ -192,16 +187,13 @@ static void *reader_loop(void *arg) {
       p += sizeof(struct inotify_event) + e->len;
     }
   }
-  fprintf(stderr, "[inotify] reader_loop exiting\n");
   return NULL;
 }
 
 MOONBIT_FFI_EXPORT int64_t mizchi_x_watch_inotify_start(
     char *paths_buf, int32_t total_len, int32_t num_paths) {
-  fprintf(stderr, "[inotify] start total_len=%d num=%d\n", total_len, num_paths);
   if (num_paths <= 0) return 0;
   int fd = inotify_init1(IN_CLOEXEC);
-  fprintf(stderr, "[inotify] inotify_init1 fd=%d errno=%d\n", fd, fd < 0 ? errno : 0);
   if (fd < 0) return 0;
   int wake_fd = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
   if (wake_fd < 0) { close(fd); return 0; }
@@ -239,9 +231,7 @@ MOONBIT_FFI_EXPORT int64_t mizchi_x_watch_inotify_start(
     return 0;
   }
 
-  fprintf(stderr, "[inotify] starting reader thread, added=%d\n", added);
   if (pthread_create(&w->reader, NULL, reader_loop, w) != 0) {
-    fprintf(stderr, "[inotify] pthread_create failed errno=%d\n", errno);
     pthread_mutex_lock(&w->mu);
     while (w->entries) {
       wd_entry_t *next = w->entries->next;
@@ -260,13 +250,9 @@ MOONBIT_FFI_EXPORT int64_t mizchi_x_watch_inotify_start(
 
 MOONBIT_FFI_EXPORT int32_t mizchi_x_watch_inotify_pop(
     int64_t handle, char *out_buf, int32_t out_cap) {
-  static int pop_count = 0;
-  if (!handle) { fprintf(stderr, "[inotify] pop NULL handle\n"); return -2; }
+  if (!handle) return -2;
   watcher_t *w = (watcher_t *)(intptr_t)handle;
   pthread_mutex_lock(&w->mu);
-  if (pop_count++ < 20 || w->head != w->tail) {
-    fprintf(stderr, "[inotify] pop head=%d tail=%d (call #%d)\n", w->head, w->tail, pop_count);
-  }
   if (w->head == w->tail) {
     pthread_mutex_unlock(&w->mu);
     return -2;
