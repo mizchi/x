@@ -8,6 +8,8 @@
 
 #include <sys/inotify.h>
 #include <sys/stat.h>
+#include <sys/eventfd.h>
+#include <poll.h>
 #include <dirent.h>
 #include <unistd.h>
 #include <errno.h>
@@ -42,6 +44,7 @@ typedef struct wd_entry {
 typedef struct {
   pthread_mutex_t mu;
   int fd;
+  int wake_fd; // eventfd used to interrupt poll() at close time
   wd_entry_t *entries;
   pthread_t reader;
   int reader_running;
@@ -136,9 +139,26 @@ static void add_recursive_locked(watcher_t *w, const char *path) {
 
 static void *reader_loop(void *arg) {
   watcher_t *w = (watcher_t *)arg;
-  fprintf(stderr, "[inotify] reader_loop started fd=%d\n", w->fd);
+  fprintf(stderr, "[inotify] reader_loop started fd=%d wake_fd=%d\n", w->fd, w->wake_fd);
   char buf[4096] __attribute__((aligned(__alignof__(struct inotify_event))));
+  struct pollfd pfds[2];
   while (!w->stop) {
+    pfds[0].fd = w->fd;
+    pfds[0].events = POLLIN;
+    pfds[0].revents = 0;
+    pfds[1].fd = w->wake_fd;
+    pfds[1].events = POLLIN;
+    pfds[1].revents = 0;
+    int pr = poll(pfds, 2, -1);
+    if (pr < 0) {
+      if (errno == EINTR) continue;
+      break;
+    }
+    if (pfds[1].revents & POLLIN) {
+      // close requested
+      break;
+    }
+    if (!(pfds[0].revents & POLLIN)) continue;
     ssize_t n = read(w->fd, buf, sizeof(buf));
     fprintf(stderr, "[inotify] read returned n=%zd errno=%d stop=%d\n", n, errno, w->stop);
     if (n < 0) {
@@ -183,11 +203,14 @@ MOONBIT_FFI_EXPORT int64_t mizchi_x_watch_inotify_start(
   int fd = inotify_init1(IN_CLOEXEC);
   fprintf(stderr, "[inotify] inotify_init1 fd=%d errno=%d\n", fd, fd < 0 ? errno : 0);
   if (fd < 0) return 0;
+  int wake_fd = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
+  if (wake_fd < 0) { close(fd); return 0; }
 
   watcher_t *w = (watcher_t *)calloc(1, sizeof(watcher_t));
-  if (!w) { close(fd); return 0; }
+  if (!w) { close(fd); close(wake_fd); return 0; }
   pthread_mutex_init(&w->mu, NULL);
   w->fd = fd;
+  w->wake_fd = wake_fd;
 
   // Decode null-separated paths and add recursive watches.
   pthread_mutex_lock(&w->mu);
@@ -282,14 +305,24 @@ MOONBIT_FFI_EXPORT void mizchi_x_watch_inotify_close(int64_t handle) {
   if (w->closed) return;
   w->closed = 1;
   w->stop = 1;
-  // close() makes the blocking read(2) in the reader thread return 0.
-  if (w->fd >= 0) {
-    close(w->fd);
-    w->fd = -1;
+  // Wake the reader thread via eventfd; close-of-fd-during-read is racy on
+  // Linux and may leave the reader blocked, deadlocking pthread_join.
+  if (w->wake_fd >= 0) {
+    uint64_t one = 1;
+    ssize_t r;
+    do { r = write(w->wake_fd, &one, sizeof(one)); } while (r < 0 && errno == EINTR);
   }
   if (w->reader_running) {
     pthread_join(w->reader, NULL);
     w->reader_running = 0;
+  }
+  if (w->wake_fd >= 0) {
+    close(w->wake_fd);
+    w->wake_fd = -1;
+  }
+  if (w->fd >= 0) {
+    close(w->fd);
+    w->fd = -1;
   }
   pthread_mutex_lock(&w->mu);
   while (w->entries) {
