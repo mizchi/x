@@ -7,11 +7,13 @@ import {
 warnings = "-0029-0014"
 
 options(
-  "native-stub": [ "watch_fsevents.c" ],
+  "native-stub": [ "watch_fsevents.c", "watch_inotify.c" ],
   targets: {
     "watch_native.mbt": [ "native" ],
+    "watch_normalize.mbt": [ "native" ],
     "watch_polling.mbt": [ "native" ],
     "watch_fsevents.mbt": [ "native" ],
+    "watch_inotify.mbt": [ "native" ],
     "watch_test.mbt": [ "native" ],
   },
 )

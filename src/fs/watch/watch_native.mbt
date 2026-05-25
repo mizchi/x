@@ -2,6 +2,7 @@
 priv enum Backend {
   Polling(PollingState)
   FSEvents(FSEventsState)
+  Inotify(InotifyState)
 }
 
 ///|
@@ -9,8 +10,8 @@ priv enum Backend {
 /// observed, then return the batch of events seen during that scan.
 ///
 /// The watcher transparently picks the fastest available backend at start:
-/// FSEvents on macOS (sub-second OS-driven detection), polling fallback
-/// elsewhere. Use the same surface either way.
+/// FSEvents on macOS, inotify on Linux, polling fallback elsewhere. The
+/// public surface is identical across backends.
 pub struct Watcher {
   priv backend : Backend
   priv mut closed : Bool
@@ -24,25 +25,27 @@ fn default_exclude(_ : String) -> Bool {
 ///|
 /// Start a watcher rooted at `roots`. Each entry must be a directory; paths
 /// are tracked recursively. `interval_ms` controls how often `next` re-checks
-/// for events (default 500 ms for polling, 50 ms for FSEvents). `exclude` is
-/// applied per path; returning `true` drops both the entry and (for
-/// directories) its descendants from tracking.
+/// for events (default 500 ms for polling, 50 ms for FSEvents/inotify).
+/// `exclude` is applied per path; returning `true` drops both the entry and
+/// (for directories) its descendants from tracking.
 pub async fn start(
   roots : Array[String],
   interval_ms? : Int,
   exclude? : (String) -> Bool,
 ) -> Watcher raise {
   let ex = exclude.unwrap_or(default_exclude)
-  // FSEvents coalesces events for ~50ms by default; that's also a fine drain
-  // cadence so we use the same value for both.
   let fast_interval = interval_ms.unwrap_or(50)
   let slow_interval = interval_ms.unwrap_or(500)
   match fsevents_start(roots, fast_interval, ex, fast_interval.to_double()) {
     Some(state) => Watcher::{ backend: FSEvents(state), closed: false }
-    None => {
-      let state = polling_start(roots, slow_interval, ex)
-      Watcher::{ backend: Polling(state), closed: false }
-    }
+    None =>
+      match inotify_start(roots, fast_interval, ex) {
+        Some(state) => Watcher::{ backend: Inotify(state), closed: false }
+        None => {
+          let state = polling_start(roots, slow_interval, ex)
+          Watcher::{ backend: Polling(state), closed: false }
+        }
+      }
   }
 }
 
@@ -72,6 +75,7 @@ pub async fn Watcher::next(self : Watcher) -> Array[Event] raise {
     let events = match self.backend {
       Polling(s) => polling_next(s)
       FSEvents(s) => fsevents_next(s)
+      Inotify(s) => inotify_next(s)
     }
     if self.closed {
       break []
@@ -92,6 +96,7 @@ pub fn Watcher::close(self : Watcher) -> Unit {
   match self.backend {
     Polling(_) => ()
     FSEvents(s) => fsevents_close(s)
+    Inotify(s) => inotify_close(s)
   }
 }
 
