@@ -8,9 +8,7 @@ warnings = "-0029-0014"
 
 options(
   "native-stub": [ "watch_fsevents.c", "watch_inotify.c", "watch_rdcw.c" ],
-  link: {
-    "native": { "cc-link-flags": "-lpthread" },
-  },
+  link: { "native": { "cc-link-flags": "-lpthread" } },
   targets: {
     "watch_native.mbt": [ "native" ],
     "watch_polling.mbt": [ "native" ],
