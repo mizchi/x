@@ -222,10 +222,10 @@ async test "read_response passthrough fallback (no length headers)" {
 
 ///|
 async test "read_response 204 No Content (no body)" {
-  let result = @async.with_timeout_opt(120, () => {
+  let result = @async.with_timeout_opt(1000, () => {
     raw_get(
       "HTTP/1.1 204 No Content\r\nConnection: keep-alive\r\nDate: Mon, 15 Feb 2026 00:00:00 GMT\r\n\r\n",
-      hold_open_ms=240,
+      hold_open_ms=2000,
     )
   })
   guard result is Some((resp, body, _)) else { fail("204 response blocked") }
@@ -235,10 +235,10 @@ async test "read_response 204 No Content (no body)" {
 
 ///|
 async test "read_response 205 Reset Content (no body)" {
-  let result = @async.with_timeout_opt(120, () => {
+  let result = @async.with_timeout_opt(1000, () => {
     raw_get(
       "HTTP/1.1 205 Reset Content\r\nConnection: keep-alive\r\nDate: Mon, 15 Feb 2026 00:00:00 GMT\r\n\r\n",
-      hold_open_ms=240,
+      hold_open_ms=2000,
     )
   })
   guard result is Some((resp, body, _)) else { fail("205 response blocked") }
@@ -248,10 +248,10 @@ async test "read_response 205 Reset Content (no body)" {
 
 ///|
 async test "read_response 304 Not Modified (no body)" {
-  let result = @async.with_timeout_opt(120, () => {
+  let result = @async.with_timeout_opt(1000, () => {
     raw_get(
       "HTTP/1.1 304 Not Modified\r\nConnection: keep-alive\r\nETag: \"abc123\"\r\n\r\n",
-      hold_open_ms=240,
+      hold_open_ms=2000,
     )
   })
   guard result is Some((resp, body, _)) else { fail("304 response blocked") }
@@ -261,8 +261,8 @@ async test "read_response 304 Not Modified (no body)" {
 
 ///|
 async test "read_response 100 Continue (no body)" {
-  let result = @async.with_timeout_opt(120, () => {
-    raw_get("HTTP/1.1 100 Continue\r\n\r\n", hold_open_ms=240)
+  let result = @async.with_timeout_opt(1000, () => {
+    raw_get("HTTP/1.1 100 Continue\r\n\r\n", hold_open_ms=2000)
   })
   guard result is Some((resp, body, _)) else { fail("100 response blocked") }
   assert_eq(resp.code, 100)
@@ -271,12 +271,12 @@ async test "read_response 100 Continue (no body)" {
 
 ///|
 async test "read_response CONNECT 200 (no body, tunnel mode)" {
-  let result = @async.with_timeout_opt(120, () => {
+  let result = @async.with_timeout_opt(1000, () => {
     raw_request(
       @http.Connect,
       "example.test:443",
       "HTTP/1.1 200 Connection Established\r\n\r\n",
-      hold_open_ms=240,
+      hold_open_ms=2000,
     )
   })
   guard result is Some((resp, body, request)) else {
@@ -289,12 +289,12 @@ async test "read_response CONNECT 200 (no body, tunnel mode)" {
 
 ///|
 async test "read_response HEAD 200 (no body)" {
-  let result = @async.with_timeout_opt(120, () => {
+  let result = @async.with_timeout_opt(1000, () => {
     raw_request(
       @http.Head,
       "/",
       "HTTP/1.1 200 OK\r\nContent-Length: 1234\r\nContent-Type: text/html\r\n\r\n",
-      hold_open_ms=240,
+      hold_open_ms=2000,
     )
   })
   guard result is Some((resp, body, request)) else {
@@ -320,10 +320,10 @@ async test "should_read_body_until_close - true cases" {
 ///|
 async test "should_read_body_until_close - false cases (bodyless status codes)" {
   for code in [100, 101, 199, 204, 205, 304] {
-    let result = @async.with_timeout_opt(120, () => {
+    let result = @async.with_timeout_opt(1000, () => {
       raw_get(
         "HTTP/1.1 \{code} OK\r\nConnection: keep-alive\r\n\r\n",
-        hold_open_ms=240,
+        hold_open_ms=2000,
       )
     })
     guard result is Some((resp, body, _)) else {
@@ -365,12 +365,12 @@ async test "should_read_body_until_close - false cases (body already determined)
 ///|
 async test "should_read_body_until_close - false cases (CONNECT requests)" {
   for code in [200, 201, 299] {
-    let result = @async.with_timeout_opt(120, () => {
+    let result = @async.with_timeout_opt(1000, () => {
       raw_request(
         @http.Connect,
         "example.test:443",
         "HTTP/1.1 \{code} OK\r\nConnection: keep-alive\r\n\r\n",
-        hold_open_ms=240,
+        hold_open_ms=2000,
       )
     })
     guard result is Some((resp, body, _)) else { fail("CONNECT 2xx blocked") }
@@ -390,12 +390,12 @@ async test "should_read_body_until_close - false cases (CONNECT requests)" {
 ///|
 async test "should_read_body_until_close - false cases (HEAD requests)" {
   for code in [200, 404, 500] {
-    let result = @async.with_timeout_opt(120, () => {
+    let result = @async.with_timeout_opt(1000, () => {
       raw_request(
         @http.Head,
         "/",
         "HTTP/1.1 \{code} OK\r\nConnection: keep-alive\r\n\r\n",
-        hold_open_ms=240,
+        hold_open_ms=2000,
       )
     })
     guard result is Some((resp, body, _)) else { fail("HEAD response blocked") }
