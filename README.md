@@ -20,6 +20,7 @@ Node.js backend compatibility layer for `moonbitlang/async` in [MoonBit](https:/
 |---|---|
 | `moonbitlang/async` | 0.19.0 |
 | `moonbitlang/x` | 0.4.43 |
+| `moonbitlang/regexp` | 0.3.5 |
 
 ## Packages
 
@@ -40,6 +41,9 @@ Node.js backend compatibility layer for `moonbitlang/async` in [MoonBit](https:/
 | `mizchi/x/stdio` | Standard I/O (`stdin`, `stdout`, `stderr` with `@io.Reader`/`@io.Writer`) |
 | `mizchi/x/pipe` | In-memory pipes (`pipe()` → `PipeRead`/`PipeWrite` with `@io.Reader`/`@io.Writer`; native process redirect support) |
 | `mizchi/x/sys` | Environment variables and CLI args (`get_env_var`, `get_cli_args`, `exit`) |
+| `mizchi/x/regexp` | Regular expressions mirroring `moonbitlang/regexp` (`compile`, `Regexp::execute`, `match_`, `group_by_name`, `group_count`, `group_names`, `MatchResult::matched`/`get`/`groups`/`results`/`before`/`after`) |
+| `mizchi/x/json` | JSON mirroring `moonbitlang/core/json` (`parse`, `valid`, `stringify`) over the builtin `Json` value type |
+| `mizchi/x/crypto` | Hashes / HMAC / hex mirroring `moonbitlang/x/crypto` (`md5`, `sha1`, `sha224`, `sha256`, `sm3`, `*_from_iter`, `hmac`, `MD5`/`SHA256`/`SM3` contexts, `bytes_to_hex_string`, `uints_to_hex_string`) |
 
 ## Platform Support
 
@@ -60,6 +64,9 @@ Node.js backend compatibility layer for `moonbitlang/async` in [MoonBit](https:/
 | `stdio` | Yes | Yes | stub | stub |
 | `pipe` | Yes | Yes | stub | stub |
 | `sys` | Yes | Yes | Yes | stub |
+| `regexp` | Yes | Yes (FFI) | Yes | Yes |
+| `json` | Yes | Yes (FFI) | Yes | Yes |
+| `crypto` | Yes | Yes | Yes | Yes |
 
 - **Yes** — Full implementation.
 - **stub** — Compiles but aborts at runtime with "not supported" message.
@@ -82,6 +89,27 @@ The wrapper re-exports upstream types and APIs with matching signatures. On nati
 `mizchi/x/http` includes async 0.19 response cookies and upstream-style streaming requests: `get_stream` returns a `Client`, while `post_stream`/`put_stream` return a writable `Client` whose response is obtained with `end_request()`. Native supports upstream proxy/trust options; JS returns `NotSupported` for proxy clients and custom TLS trust.
 
 `mizchi/x/gzip` mirrors `moonbitlang/async/gzip` and works across native, JS, wasm, and wasm-gc via the upstream stream encoder/decoder.
+
+`mizchi/x/regexp` mirrors the public surface of `moonbitlang/regexp`. On native, wasm, and wasm-gc it delegates to the pure-MoonBit engine. On JS it drives the host `RegExp` through FFI (using the `d` flag for capture offsets and scanning the source to number named/anonymous groups), returning the same `Regexp` / `MatchResult` API. Flag letters match upstream: `i` (ignore case), `m` (multiline), `s` (dot matches newline). The JS backend reports `Err::InternalError` for any pattern the host rejects, since it cannot classify parse failures as precisely as the native parser.
+
+`mizchi/x/json` mirrors `parse` / `valid` / `stringify` from `moonbitlang/core/json`, reusing the builtin `Json` value type. On native, wasm, and wasm-gc it delegates to the pure-MoonBit implementation. On JS it uses the host `JSON.parse` / `JSON.stringify` through FFI and converts to/from `Json`. `max_nesting_depth` (default 1024) and `escape_slash` / `indent` are honored on both backends; the JS backend maps `JSON.parse` failures to `ParseError::InvalidEof` or `InvalidChar` with a best-effort position. All backends pass the ported `moonbitlang/core/json` parse suite (`json_upstream_test.mbt`).
+
+`mizchi/x/crypto` re-exposes the synchronous hash / HMAC / hex surface of `moonbitlang/x/crypto` under the `mizchi/x` namespace, delegating to it on every target. Because `moonbitlang/x/crypto` is pure MoonBit it already runs on native, wasm, wasm-gc, and JS (including browsers), so the same synchronous signatures hold everywhere with no FFI. The `ByteSource` / `CryptoHasher` bounds and the `MD5` / `SHA256` / `SM3` contexts are the upstream types themselves (re-exported via `using`), so code written against `moonbitlang/x/crypto` is source-compatible. Note: the Web Crypto `crypto.subtle` API was intentionally **not** used — its `digest` / HMAC are async-only and cannot back this synchronous surface.
+
+### Benchmarks (JS target)
+
+`*_bench_wbtest.mbt` files compare each package against its upstream engine with `moon bench --target js`. On native both sit on the same engine, so the numbers there are at parity (confirming the wrapper cost is negligible); the speedups below come from delegating to the host engine on JS. Representative run (Node.js, mean ns/iter, lower is better):
+
+| Benchmark | `mizchi/x` (JS) | upstream (pure MoonBit) | Speedup |
+|---|---|---|---|
+| `regexp` execute (scan + match) | ~4.9 µs | ~167 µs | **~34×** |
+| `regexp` execute + capture | ~5.1 µs | ~181 µs | **~35×** |
+| `regexp` compile | ~0.95 µs | ~1.2 µs | ~1.3× |
+| `json` valid | ~26 µs | ~73 µs | **~2.8×** |
+| `json` stringify | ~30 µs | ~66 µs | **~2.2×** |
+| `json` parse | ~67 µs | ~74 µs | ~on par |
+
+`json` parse lands roughly on par rather than faster: `JSON.parse` is fast, but the dominant cost is rebuilding the MoonBit `Json` ADT (which the pure-MoonBit parser also pays), so the host parser's edge is largely consumed by marshalling. `valid` and `stringify` win clearly because they avoid that rebuild.
 
 `mizchi/x/tls` mirrors `moonbitlang/async/tls`. Native delegates to the upstream OpenSSL/Schannel implementation. JS maps to Node.js `node:tls` over any `@io.Reader`/`@io.Writer` pair and supports client/server handshakes, graceful shutdown, peer certificate access, `tls-unique`/`tls-server-end-point` style channel bindings, `rand_bytes`, and `sha1`. WASM targets compile as stubs.
 
