@@ -1,5 +1,6 @@
 import {
   "moonbitlang/core/json" @upstream,
+  "moonbitlang/core/bench",
 }
 
 // -0006: public ParseError variants are only constructed on the native delegate.
@@ -14,5 +15,6 @@ options(
     "json_default.mbt": [ "native", "wasm", "wasm-gc" ],
     "json_js.mbt": [ "js" ],
     "json_test.mbt": [ "native", "js" ],
+    "json_bench_wbtest.mbt": [ "native", "js" ],
   },
 )

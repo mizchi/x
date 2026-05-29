@@ -1,5 +1,11 @@
 // JS implementation: drive the host `JSON` through FFI and convert to/from the
 // builtin `Json` value type, presenting the same surface as the native engine.
+//
+// `JSON.parse` runs natively and the resulting tree is walked through FFI to
+// build the corresponding `Json`. The dominant cost on this path is building
+// the `Json` ADT in MoonBit (which the pure-MoonBit parser also pays), so parse
+// lands roughly on par with upstream; `valid` and `stringify`, which avoid
+// rebuilding the value, are the clear wins (see `json_bench_wbtest.mbt`).
 
 ///|
 #external
@@ -46,6 +52,13 @@ extern "js" fn js_parse(input : String) -> JsParseResult =
   #|     const ch_code = (pos >= 0 && pos < input.length) ? input.charCodeAt(pos) : -1;
   #|     return { ok: false, is_eof: false, line, column, ch_code, value: null };
   #|   }
+  #| }
+
+///|
+extern "js" fn js_valid(input : String) -> Bool =
+  #| (input) => {
+  #|   try { JSON.parse(input); return true; }
+  #|   catch { return false; }
   #| }
 
 ///|
@@ -142,7 +155,7 @@ pub fn parse(
 ///|
 /// Returns whether `input` is a well-formed JSON document.
 pub fn valid(input : StringView) -> Bool {
-  js_parse(input.to_owned()).ok
+  js_valid(input.to_owned())
 }
 
 ///|

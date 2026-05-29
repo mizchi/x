@@ -92,6 +92,21 @@ The wrapper re-exports upstream types and APIs with matching signatures. On nati
 
 `mizchi/x/json` mirrors `parse` / `valid` / `stringify` from `moonbitlang/core/json`, reusing the builtin `Json` value type. On native, wasm, and wasm-gc it delegates to the pure-MoonBit implementation. On JS it uses the host `JSON.parse` / `JSON.stringify` through FFI and converts to/from `Json`. `max_nesting_depth` (default 1024) and `escape_slash` / `indent` are honored on both backends; the JS backend maps `JSON.parse` failures to `ParseError::InvalidEof` or `InvalidChar` with a best-effort position.
 
+### Benchmarks (JS target)
+
+`*_bench_wbtest.mbt` files compare each package against its upstream engine with `moon bench --target js`. On native both sit on the same engine, so the numbers there are at parity (confirming the wrapper cost is negligible); the speedups below come from delegating to the host engine on JS. Representative run (Node.js, mean ns/iter, lower is better):
+
+| Benchmark | `mizchi/x` (JS) | upstream (pure MoonBit) | Speedup |
+|---|---|---|---|
+| `regexp` execute (scan + match) | ~4.9 µs | ~167 µs | **~34×** |
+| `regexp` execute + capture | ~5.1 µs | ~181 µs | **~35×** |
+| `regexp` compile | ~0.95 µs | ~1.2 µs | ~1.3× |
+| `json` valid | ~26 µs | ~73 µs | **~2.8×** |
+| `json` stringify | ~30 µs | ~66 µs | **~2.2×** |
+| `json` parse | ~67 µs | ~74 µs | ~on par |
+
+`json` parse lands roughly on par rather than faster: `JSON.parse` is fast, but the dominant cost is rebuilding the MoonBit `Json` ADT (which the pure-MoonBit parser also pays), so the host parser's edge is largely consumed by marshalling. `valid` and `stringify` win clearly because they avoid that rebuild.
+
 `mizchi/x/tls` mirrors `moonbitlang/async/tls`. Native delegates to the upstream OpenSSL/Schannel implementation. JS maps to Node.js `node:tls` over any `@io.Reader`/`@io.Writer` pair and supports client/server handshakes, graceful shutdown, peer certificate access, `tls-unique`/`tls-server-end-point` style channel bindings, `rand_bytes`, and `sha1`. WASM targets compile as stubs.
 
 `mizchi/x/websocket` mirrors the client API and exposes `from_http_server` for native `mizchi/x/http` server connections. JS currently supports the client API only.
