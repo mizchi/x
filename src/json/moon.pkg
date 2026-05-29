@@ -2,6 +2,9 @@ import {
   "moonbitlang/core/json" @upstream,
   "moonbitlang/core/bench",
   "moonbitlang/core/debug",
+  "moonbitlang/core/strconv",
+  "mizchi/simd/src/simdjson",
+  "mizchi/simd/src/simd_buffer",
 }
 
 // -0006: public ParseError variants are only constructed on the native delegate.
@@ -13,11 +16,13 @@ warnings = "-0029-0006-0020"
 
 options(
   targets: {
-    "json_default.mbt": [ "native", "wasm", "wasm-gc" ],
+    "json_delegate.mbt": [ "native", "wasm", "wasm-gc" ],
+    "json_native.mbt": [ "native" ],
+    "json_wasm.mbt": [ "wasm", "wasm-gc" ],
     "json_js.mbt": [ "js" ],
-    "json_test.mbt": [ "native", "js" ],
-    "json_bench_wbtest.mbt": [ "native", "js" ],
-    "json_upstream_test.mbt": [ "native", "js" ],
-    "json_upstream_native_test.mbt": [ "native" ],
+    "json_test.mbt": [ "native", "js", "wasm", "wasm-gc" ],
+    "json_bench_wbtest.mbt": [ "native", "js", "wasm", "wasm-gc" ],
+    "json_upstream_test.mbt": [ "native", "js", "wasm", "wasm-gc" ],
+    "json_upstream_nonjs_test.mbt": [ "native", "wasm", "wasm-gc" ],
   },
 )

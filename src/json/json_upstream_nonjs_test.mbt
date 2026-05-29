@@ -1,12 +1,14 @@
-// Native-only ports from `moonbitlang/core/json`.
+// Non-JS ports from `moonbitlang/core/json`.
 //
 // These assert an exact source position for an error that occurs where a JSON
 // *value* is expected (a stray token, or a form-feed control char inside an
-// array). The native delegate reports those positions exactly (it runs the
-// pure-MoonBit parser), but the JS host `JSON.parse` phrases such failures as
-// "Unexpected token X ... is not valid JSON" with no position, so the exact
-// `{ line, column }` cannot be recovered on JS. The variant-level behavior is
-// still covered cross-target in `json_upstream_test.mbt`.
+// array). On native and wasm/wasm-gc the error comes from the pure-MoonBit
+// parser (native delegates to it; wasm falls back to it when the simdjson fast
+// path bails), so the exact `{ line, column }` is reported. The JS host
+// `JSON.parse` phrases such failures as "Unexpected token X ... is not valid
+// JSON" with no position, so it cannot recover the exact position there; the
+// variant-level behavior stays covered cross-target in
+// `json_upstream_test.mbt`.
 
 ///|
 test "parse multi-lines json error" {

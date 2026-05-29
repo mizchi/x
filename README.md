@@ -21,6 +21,7 @@ Node.js backend compatibility layer for `moonbitlang/async` in [MoonBit](https:/
 | `moonbitlang/async` | 0.19.0 |
 | `moonbitlang/x` | 0.4.43 |
 | `moonbitlang/regexp` | 0.3.5 |
+| `mizchi/simd` | 0.3.0 |
 
 ## Packages
 
@@ -64,7 +65,7 @@ Node.js backend compatibility layer for `moonbitlang/async` in [MoonBit](https:/
 | `pipe` | Yes | Yes | stub | stub |
 | `sys` | Yes | Yes | Yes | stub |
 | `regexp` | Yes | Yes (FFI) | Yes | Yes |
-| `json` | Yes | Yes (FFI) | Yes | Yes |
+| `json` | Yes | Yes (FFI) | simdjson | simdjson |
 
 - **Yes** — Full implementation.
 - **stub** — Compiles but aborts at runtime with "not supported" message.
@@ -90,7 +91,15 @@ The wrapper re-exports upstream types and APIs with matching signatures. On nati
 
 `mizchi/x/regexp` mirrors the public surface of `moonbitlang/regexp`. On native, wasm, and wasm-gc it delegates to the pure-MoonBit engine. On JS it drives the host `RegExp` through FFI (using the `d` flag for capture offsets and scanning the source to number named/anonymous groups), returning the same `Regexp` / `MatchResult` API. Flag letters match upstream: `i` (ignore case), `m` (multiline), `s` (dot matches newline). The JS backend reports `Err::InternalError` for any pattern the host rejects, since it cannot classify parse failures as precisely as the native parser.
 
-`mizchi/x/json` mirrors `parse` / `valid` / `stringify` from `moonbitlang/core/json`, reusing the builtin `Json` value type. On native, wasm, and wasm-gc it delegates to the pure-MoonBit implementation. On JS it uses the host `JSON.parse` / `JSON.stringify` through FFI and converts to/from `Json`. `max_nesting_depth` (default 1024) and `escape_slash` / `indent` are honored on both backends; the JS backend maps `JSON.parse` failures to `ParseError::InvalidEof` or `InvalidChar` with a best-effort position.
+`mizchi/x/json` mirrors `parse` / `valid` / `stringify` from `moonbitlang/core/json`, reusing the builtin `Json` value type. Per target:
+
+- **native**: delegates to the pure-MoonBit `moonbitlang/core/json`.
+- **JS**: uses the host `JSON.parse` / `JSON.stringify` through FFI and converts to/from `Json`. `JSON.parse` failures are mapped to `ParseError::InvalidEof` or `InvalidChar` with a best-effort position.
+- **wasm / wasm-gc**: `parse` is driven by `mizchi/simd/src/simdjson` — its `find_structural_indices` (inline-WAT v128) locates structural punctuation, and a strict recursive-descent stage 2 walks the bytes using that index stream as its spine. Anything the fast path can't parse cleanly (malformed input, lone surrogates, depth overflow) falls back to `moonbitlang/core/json`, which keeps error positions/messages identical. `valid` / `stringify` delegate to `moonbitlang/core/json` (simdjson has no serializer).
+
+`max_nesting_depth` (default 1024) and `escape_slash` / `indent` are honored on every backend, and all backends pass the ported `moonbitlang/core/json` parse suite (`json_upstream_test.mbt`).
+
+> **Note on the simdjson path:** it is *correctness-preserving but not faster* for one-shot parsing. Measured on wasm-gc (≈2 KB document): simdjson-driven `parse` ≈98 µs vs `moonbitlang/core/json` ≈48 µs (~2× slower). The reasons are structural and match `mizchi/simd`'s own findings: its `find_structural_indices` pipeline is only ~1.27× vs scalar (`compute_quote_mask` has no wasm CLMUL and actually loses), and one-shot parsing additionally pays to marshal the input into linear memory and to run a separate scalar stage 2 on top of the scan — whereas `moonbitlang/core/json` parses the `StringView` directly in a single fused pass. simdjson-style wins need the data resident in a SIMD buffer and amortized over heavy processing, not a parse-and-marshal round trip. The wasm path is wired up because it was requested and is fully correct; switch the wasm/wasm-gc `parse` back to the `moonbitlang/core/json` delegate if you want raw speed there.
 
 ### Benchmarks (JS target)
 

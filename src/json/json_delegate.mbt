@@ -1,5 +1,11 @@
-// Native / wasm / wasm-gc implementation: delegate to the pure-MoonBit
-// `moonbitlang/core/json` package, which compiles to every non-JS target.
+// Shared non-JS surface (native / wasm / wasm-gc).
+//
+// `valid` and `stringify` delegate to the pure-MoonBit `moonbitlang/core/json`
+// on every non-JS target (simdjson has no serializer, and its native path is
+// scalar). `fallback_parse` is the exact-error source of truth: the native
+// `parse` delegates straight to it, and the wasm/wasm-gc `parse` falls back to
+// it whenever the simdjson fast path bails, so error positions/messages stay
+// identical to `moonbitlang/core/json`.
 
 ///|
 fn map_position(p : @upstream.Position) -> Position {
@@ -18,11 +24,10 @@ fn map_parse_error(e : @upstream.ParseError) -> ParseError {
 }
 
 ///|
-/// Parses a JSON document into a `Json` value. `max_nesting_depth` defaults to
-/// 1024, matching `moonbitlang/core/json`.
-pub fn parse(
+/// Parses via `moonbitlang/core/json`, translating its error type to ours.
+fn fallback_parse(
   input : StringView,
-  max_nesting_depth? : Int = 1024,
+  max_nesting_depth : Int,
 ) -> Json raise ParseError {
   @upstream.parse(input, max_nesting_depth~) catch {
     e => raise map_parse_error(e)

@@ -6,6 +6,7 @@ import {
   "moonbitlang/async@0.19.1",
   "moonbitlang/x@0.4.43",
   "moonbitlang/regexp@0.3.5",
+  "mizchi/simd@0.3.0",
 }
 
 readme = "README.md"
