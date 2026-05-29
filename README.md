@@ -19,7 +19,7 @@ Node.js backend compatibility layer for `moonbitlang/async` in [MoonBit](https:/
 | Dependency | Version |
 |---|---|
 | `moonbitlang/async` | 0.19.0 |
-| `moonbitlang/x` | 0.4.43 |
+| `moonbitlang/x` | 0.4.44 |
 | `moonbitlang/regexp` | 0.3.5 |
 
 ## Packages
@@ -74,7 +74,7 @@ Node.js backend compatibility layer for `moonbitlang/async` in [MoonBit](https:/
 
 ## Upstream Compatibility
 
-Compatibility with `moonbitlang/async` 0.19.0 / `moonbitlang/x` 0.4.43.
+Compatibility with `moonbitlang/async` 0.19.0 / `moonbitlang/x` 0.4.44.
 
 The wrapper re-exports upstream types and APIs with matching signatures. On native, each function delegates directly to the upstream implementation. On JS, equivalent behavior is provided via `extern "js"` FFI (Node.js).
 
