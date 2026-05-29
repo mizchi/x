@@ -30,27 +30,27 @@ extern "js" fn js_parse(input : String) -> JsParseResult =
   #|     return { ok: true, is_eof: false, line: 0, column: 0, ch_code: -1, value: JSON.parse(input) };
   #|   } catch (err) {
   #|     const msg = String((err && err.message) || err);
+  #|     // Explicit end-of-input is always EOF.
   #|     if (/end of (JSON|data|input)/i.test(msg)) {
   #|       return { ok: false, is_eof: true, line: 0, column: 0, ch_code: -1, value: null };
   #|     }
-  #|     let line = 1, column = 0, pos = -1;
-  #|     const lc = msg.match(/line (\d+) column (\d+)/i);
-  #|     if (lc) { line = lc[1] | 0; column = (lc[2] | 0) - 1; }
   #|     const pm = msg.match(/position (\d+)/i);
-  #|     if (pm) pos = pm[1] | 0;
-  #|     if (pos < 0 && lc) {
-  #|       const lines = input.split('\n');
-  #|       pos = 0;
-  #|       for (let i = 0; i < line - 1 && i < lines.length; i++) pos += lines[i].length + 1;
-  #|       pos += column;
-  #|     } else if (pos >= 0 && !lc) {
-  #|       line = 1; column = 0;
-  #|       for (let i = 0; i < pos && i < input.length; i++) {
-  #|         if (input[i] === '\n') { line++; column = 0; } else { column++; }
+  #|     if (pm) {
+  #|       const pos = pm[1] | 0;
+  #|       // A failure reported at or past the end of input is an EOF, e.g. a
+  #|       // dangling minus ("-"), an unterminated string, or "[1" — V8 phrases
+  #|       // these with a position rather than "end of input".
+  #|       if (pos >= input.length) {
+  #|         return { ok: false, is_eof: true, line: 0, column: 0, ch_code: -1, value: null };
   #|       }
+  #|       const lc = msg.match(/line (\d+) column (\d+)/i);
+  #|       const line = lc ? (lc[1] | 0) : 1;
+  #|       const column = lc ? ((lc[2] | 0) - 1) : pos;
+  #|       return { ok: false, is_eof: false, line, column, ch_code: input.codePointAt(pos), value: null };
   #|     }
-  #|     const ch_code = (pos >= 0 && pos < input.length) ? input.charCodeAt(pos) : -1;
-  #|     return { ok: false, is_eof: false, line, column, ch_code, value: null };
+  #|     // "Unexpected token X" without a position: the failure is at the start.
+  #|     const ch_code = input.length > 0 ? input.codePointAt(0) : -1;
+  #|     return { ok: false, is_eof: false, line: 1, column: 0, ch_code, value: null };
   #|   }
   #| }
 

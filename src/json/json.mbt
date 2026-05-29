@@ -6,6 +6,10 @@
 // JS target the host `JSON.parse` / `JSON.stringify` are driven through FFI and
 // the result is converted to/from the builtin `Json`, so the same code behaves
 // identically on every target.
+//
+// `Position` and `ParseError` mirror `moonbitlang/core/json` exactly (same
+// fields, variants, `Show` messages and derived `Debug` format) so the upstream
+// parse tests pass unchanged.
 
 ///|
 /// A position in the source text. `line` is 1-based, `column` is 0-based, the
@@ -13,55 +17,53 @@
 pub(all) struct Position {
   line : Int
   column : Int
-} derive(Eq)
-
-///|
-pub impl Show for Position with fn output(self, logger) {
-  logger.write_string("Position(line=")
-  logger.write_object(self.line)
-  logger.write_string(", column=")
-  logger.write_object(self.column)
-  logger.write_string(")")
-}
+} derive(Eq, ToJson, @debug.Debug)
 
 ///|
 /// Parsing error raised by `parse`.
 ///
 /// Same variants as `moonbitlang/core/json.ParseError`. The JS backend can only
-/// report what the host parser exposes, so it produces `InvalidChar` (with the
-/// reported position and offending character when recoverable) or `InvalidEof`
-/// for premature end of input.
+/// report what the host parser exposes: it produces `InvalidEof` when the host
+/// runs out of input and `InvalidChar` (with the reported position and
+/// offending character) otherwise. It never produces `InvalidNumber` /
+/// `InvalidIdentEscape`, which are native-parser specific.
 pub(all) suberror ParseError {
   InvalidChar(Position, Char)
   InvalidEof
   InvalidNumber(Position, String)
   InvalidIdentEscape(Position)
   DepthLimitExceeded
-}
+} derive(Eq, ToJson, @debug.Debug)
 
 ///|
 pub impl Show for ParseError with fn output(self, logger) {
   match self {
-    InvalidChar(pos, c) => {
-      logger.write_string("InvalidChar(")
-      logger.write_object(pos)
-      logger.write_string(", ")
-      logger.write_object(c)
-      logger.write_string(")")
+    InvalidChar({ line, column }, c) => {
+      logger.write_string("Invalid character ")
+      logger.write_string(c.escape())
+      logger.write_string(" at line ")
+      logger.write_object(line)
+      logger.write_string(", column ")
+      logger.write_object(column)
     }
-    InvalidEof => logger.write_string("InvalidEof")
-    InvalidNumber(pos, s) => {
-      logger.write_string("InvalidNumber(")
-      logger.write_object(pos)
-      logger.write_string(", ")
-      logger.write_object(s)
-      logger.write_string(")")
+    InvalidEof => logger.write_string("Unexpected end of file")
+    InvalidNumber({ line, column }, s) => {
+      logger.write_string("Invalid number ")
+      logger.write_string(s)
+      logger.write_string(" at line ")
+      logger.write_object(line)
+      logger.write_string(", column ")
+      logger.write_object(column)
     }
-    InvalidIdentEscape(pos) => {
-      logger.write_string("InvalidIdentEscape(")
-      logger.write_object(pos)
-      logger.write_string(")")
+    InvalidIdentEscape({ line, column }) => {
+      logger.write_string("Invalid escape sequence in identifier at line ")
+      logger.write_object(line)
+      logger.write_string(", column ")
+      logger.write_object(column)
     }
-    DepthLimitExceeded => logger.write_string("DepthLimitExceeded")
+    DepthLimitExceeded =>
+      logger.write_string(
+        "Depth limit exceeded, please increase the max_nesting_depth parameter",
+      )
   }
 }

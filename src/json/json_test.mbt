@@ -24,24 +24,6 @@ test "nested access" {
 }
 
 ///|
-test "valid" {
-  inspect(@json.valid("[1,2,3]"), content="true")
-  inspect(@json.valid("{bad}"), content="false")
-  inspect(@json.valid(""), content="false")
-}
-
-///|
-test "parse error" {
-  let failed = try {
-    @json.parse("{bad}") |> ignore
-    false
-  } catch {
-    _ => true
-  }
-  inspect(failed, content="true")
-}
-
-///|
 test "stringify scalars" {
   inspect(
     @json.stringify("hi".to_json()),

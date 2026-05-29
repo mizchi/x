@@ -1,6 +1,10 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "mizchi/x/json"
 
+import {
+  "moonbitlang/core/debug",
+}
+
 // Values
 pub fn parse(StringView, max_nesting_depth? : Int) -> Json raise ParseError
 
@@ -15,15 +19,14 @@ pub(all) suberror ParseError {
   InvalidNumber(Position, String)
   InvalidIdentEscape(Position)
   DepthLimitExceeded
-}
+} derive(Eq, ToJson, @debug.Debug)
 pub impl Show for ParseError
 
 // Types and methods
 pub(all) struct Position {
   line : Int
   column : Int
-} derive(Eq)
-pub impl Show for Position
+} derive(Eq, ToJson, @debug.Debug)
 
 // Type aliases
 
