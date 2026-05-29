@@ -32,6 +32,8 @@ just info      # generate type definition files
 - `src/websocket/` - WebSocket client (`connect`, `Conn::send`, `Conn::recv`, `Conn::close`)
 - `src/stdio/` - Standard I/O (`stdin`, `stdout`, `stderr` with `@io.Reader`/`@io.Writer`)
 - `src/pipe/` - Pipes (`pipe()` → `PipeRead`/`PipeWrite` with `@io.Reader`/`@io.Writer`)
+- `src/regexp/` - Regular expressions (`compile`, `Regexp::execute`/`match_`, `MatchResult`), mirroring `moonbitlang/regexp`; JS uses native `RegExp` via FFI
+- `src/json/` - JSON (`parse`, `valid`, `stringify`) over the builtin `Json` type, mirroring `moonbitlang/core/json`; JS uses native `JSON` via FFI
 
 ### Cross-platform targeting
 

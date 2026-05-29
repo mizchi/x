@@ -1,0 +1,18 @@
+import {
+  "moonbitlang/core/json" @upstream,
+}
+
+// -0006: public ParseError variants are only constructed on the native delegate.
+// -0020: forwarding `max_nesting_depth` to `@upstream.parse` hits an in-progress
+//        label migration (#label_migration) that deprecates every explicit form;
+//        suppressed here so the full interface keeps honoring the parameter.
+
+warnings = "-0029-0006-0020"
+
+options(
+  targets: {
+    "json_default.mbt": [ "native", "wasm", "wasm-gc" ],
+    "json_js.mbt": [ "js" ],
+    "json_test.mbt": [ "native", "js" ],
+  },
+)

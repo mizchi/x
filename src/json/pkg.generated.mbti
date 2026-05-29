@@ -1,0 +1,31 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "mizchi/x/json"
+
+// Values
+pub fn parse(StringView, max_nesting_depth? : Int) -> Json raise ParseError
+
+pub fn stringify(Json, escape_slash? : Bool, indent? : Int) -> String
+
+pub fn valid(StringView) -> Bool
+
+// Errors
+pub(all) suberror ParseError {
+  InvalidChar(Position, Char)
+  InvalidEof
+  InvalidNumber(Position, String)
+  InvalidIdentEscape(Position)
+  DepthLimitExceeded
+}
+pub impl Show for ParseError
+
+// Types and methods
+pub(all) struct Position {
+  line : Int
+  column : Int
+} derive(Eq)
+pub impl Show for Position
+
+// Type aliases
+
+// Traits
+
