@@ -43,6 +43,7 @@ Node.js backend compatibility layer for `moonbitlang/async` in [MoonBit](https:/
 | `mizchi/x/sys` | Environment variables and CLI args (`get_env_var`, `get_cli_args`, `exit`) |
 | `mizchi/x/regexp` | Regular expressions mirroring `moonbitlang/regexp` (`compile`, `Regexp::execute`, `match_`, `group_by_name`, `group_count`, `group_names`, `MatchResult::matched`/`get`/`groups`/`results`/`before`/`after`) |
 | `mizchi/x/json` | JSON mirroring `moonbitlang/core/json` (`parse`, `valid`, `stringify`) over the builtin `Json` value type |
+| `mizchi/x/crypto` | Hashes / HMAC / hex mirroring `moonbitlang/x/crypto` (`md5`, `sha1`, `sha224`, `sha256`, `sm3`, `*_from_iter`, `hmac`, `MD5`/`SHA256`/`SM3` contexts, `bytes_to_hex_string`, `uints_to_hex_string`) |
 
 ## Platform Support
 
@@ -65,6 +66,7 @@ Node.js backend compatibility layer for `moonbitlang/async` in [MoonBit](https:/
 | `sys` | Yes | Yes | Yes | stub |
 | `regexp` | Yes | Yes (FFI) | Yes | Yes |
 | `json` | Yes | Yes (FFI) | Yes | Yes |
+| `crypto` | Yes | Yes | Yes | Yes |
 
 - **Yes** — Full implementation.
 - **stub** — Compiles but aborts at runtime with "not supported" message.
@@ -91,6 +93,8 @@ The wrapper re-exports upstream types and APIs with matching signatures. On nati
 `mizchi/x/regexp` mirrors the public surface of `moonbitlang/regexp`. On native, wasm, and wasm-gc it delegates to the pure-MoonBit engine. On JS it drives the host `RegExp` through FFI (using the `d` flag for capture offsets and scanning the source to number named/anonymous groups), returning the same `Regexp` / `MatchResult` API. Flag letters match upstream: `i` (ignore case), `m` (multiline), `s` (dot matches newline). The JS backend reports `Err::InternalError` for any pattern the host rejects, since it cannot classify parse failures as precisely as the native parser.
 
 `mizchi/x/json` mirrors `parse` / `valid` / `stringify` from `moonbitlang/core/json`, reusing the builtin `Json` value type. On native, wasm, and wasm-gc it delegates to the pure-MoonBit implementation. On JS it uses the host `JSON.parse` / `JSON.stringify` through FFI and converts to/from `Json`. `max_nesting_depth` (default 1024) and `escape_slash` / `indent` are honored on both backends; the JS backend maps `JSON.parse` failures to `ParseError::InvalidEof` or `InvalidChar` with a best-effort position. All backends pass the ported `moonbitlang/core/json` parse suite (`json_upstream_test.mbt`).
+
+`mizchi/x/crypto` re-exposes the synchronous hash / HMAC / hex surface of `moonbitlang/x/crypto` under the `mizchi/x` namespace, delegating to it on every target. Because `moonbitlang/x/crypto` is pure MoonBit it already runs on native, wasm, wasm-gc, and JS (including browsers), so the same synchronous signatures hold everywhere with no FFI. The `ByteSource` / `CryptoHasher` bounds and the `MD5` / `SHA256` / `SM3` contexts are the upstream types themselves (re-exported via `using`), so code written against `moonbitlang/x/crypto` is source-compatible. Note: the Web Crypto `crypto.subtle` API was intentionally **not** used — its `digest` / HMAC are async-only and cannot back this synchronous surface.
 
 ### Benchmarks (JS target)
 
