@@ -1,6 +1,6 @@
 name = "mizchi/fswatch"
 
-version = "0.1.0"
+version = "0.1.1"
 
 import {
   "mizchi/x@0.4.0",
