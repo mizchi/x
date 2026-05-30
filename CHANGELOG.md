@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.4.0 - 2026-05-30
+
+### Added
+
+- `src/regexp/` — regular expressions (`compile`, `Regexp::execute` / `match_`, `MatchResult`) mirroring `moonbitlang/regexp`. JS target uses the native `RegExp` via `extern "js"` FFI; other targets delegate to `moonbitlang/regexp`.
+- `src/json/` — JSON (`parse`, `valid`, `stringify`) over the builtin `Json` type, mirroring `moonbitlang/core/json`. JS target uses the native `JSON` via FFI.
+- `src/crypto/` — hashes / HMAC / hex (`md5`, `sha1`, `sha224`, `sha256`, `sm3`, `hmac`, `bytes_to_hex_string`) mirroring `moonbitlang/x/crypto`. Pure-MoonBit delegation on all targets (synchronous, so no `crypto.subtle`).
+- `fswatch` sub-module — cross-platform filesystem watcher with native + JS backends.
+
+### Changed
+
+- Bumped `moonbitlang/x` 0.4.43 → 0.4.44.
+- Added `moonbitlang/regexp@0.3.5` to module imports.
+
 ## 0.3.3 - 2026-05-24
 
 ### Added
