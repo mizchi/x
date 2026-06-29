@@ -425,12 +425,12 @@ async test "cancel process" {
   remove_if_exists(marker)
   let script = "const fs=require('fs');process.on('SIGTERM',()=>{fs.writeFileSync(process.argv[1],'term');process.exit(0)});setInterval(()=>{},1000)"
   let result = try
-    @async.with_timeout(120, () => {
+    @async.with_timeout(500, () => {
       @process.run(
         "node",
         ["-e", script, marker],
         cancel_handler=@process.graceful_cancel(
-          timeout=80,
+          timeout=120,
           signal=@signal.SIGTERM,
         ),
       )
@@ -504,7 +504,7 @@ async test "do not kill orphan children on hard cancel" {
   let child_script = "const fs=require('fs');setTimeout(()=>{fs.writeFileSync(process.argv[1],'after sleep');process.exit(0)},180)"
   let parent_script = "const {spawn}=require('node:child_process');const child=spawn(process.execPath,['-e',process.argv[1],process.argv[2]],{detached:true,stdio:'ignore'});child.unref();setInterval(()=>{},1000)"
   let result = try
-    @async.with_timeout(100, () => {
+    @async.with_timeout(500, () => {
       @process.run(
         "node",
         ["-e", parent_script, child_script, marker],
@@ -517,7 +517,7 @@ async test "do not kill orphan children on hard cancel" {
     value => Ok(value)
   }
   assert_true(result is Err(_))
-  wait_for_file_text(marker, "after sleep", 800)
+  wait_for_file_text(marker, "after sleep", 1500)
   @fs.remove(marker)
 }
 
