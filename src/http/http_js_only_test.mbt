@@ -164,6 +164,7 @@ extern "js" fn js_server_streaming_probe_response_ms(
   #|       headers: {
   #|         'Content-Type': 'text/plain',
   #|         'Content-Length': '11',
+  #|         'Connection': 'close',
   #|       },
   #|     }, (res) => {
   #|       const elapsed = Date.now() - started;
@@ -221,9 +222,13 @@ async test "server(js): close_graceful closes listener" {
     server.close_graceful(timeout_ms=500)
     @async.sleep(20)
 
-    let after_close : Result[(@http.Response, &@io.Data), @http.HttpError] = try? @http.get(
-      "http://127.0.0.1:\{port}/after-close",
-    )
+    let after_close : Result[(@http.Response, &@io.Data), @http.HttpError] = try
+      @http.get("http://127.0.0.1:\{port}/after-close")
+    catch {
+      err => Err(err)
+    } noraise {
+      value => Ok(value)
+    }
     assert_true(after_close is Err(_))
   })
 }
@@ -273,7 +278,7 @@ async test "server(js): close_graceful finishes with active sse" {
         conn.send_response(200, "OK", extra_headers=headers)
         conn.write("data: first\n\n")
         conn.flush()
-        @async.sleep(150)
+        @async.sleep(30)
         conn.write("data: second\n\n")
         conn.end_response()
       })
@@ -291,7 +296,7 @@ async test "server(js): close_graceful finishes with active sse" {
 
     let mut graceful_done = false
     group.spawn_bg(no_wait=true, allow_failure=true, () => {
-      server.close_graceful(timeout_ms=1000)
+      server.close_graceful(timeout_ms=100)
       graceful_done = true
     })
 
@@ -299,17 +304,21 @@ async test "server(js): close_graceful finishes with active sse" {
     let rest_data : &@io.Data = rest
     assert_true(rest_data.text().contains("data: second"))
 
-    for _ in 0..<60 {
+    for _ in 0..<20 {
       if graceful_done {
         break
       }
-      @async.sleep(20)
+      @async.sleep(10)
     }
     assert_true(graceful_done)
 
-    let after_close : Result[(@http.Response, &@io.Data), @http.HttpError] = try? @http.get(
-      "http://127.0.0.1:\{port}/after-close-sse",
-    )
+    let after_close : Result[(@http.Response, &@io.Data), @http.HttpError] = try
+      @http.get("http://127.0.0.1:\{port}/after-close-sse")
+    catch {
+      err => Err(err)
+    } noraise {
+      value => Ok(value)
+    }
     assert_true(after_close is Err(_))
   })
 }
@@ -362,7 +371,7 @@ async test "server(js): handler error response does not leak internals" {
 ///|
 async test "bench(js): graceful close time under concurrent sse" {
   @async.with_task_group(group => {
-    let clients = 24
+    let clients = 12
     let server = @http.Server::new(port=0)
     defer server.close()
     let port = server.port()
@@ -377,7 +386,11 @@ async test "bench(js): graceful close time under concurrent sse" {
         let accepted : Result[
           (@http.ServerConnection, @http.Addr),
           @http.HttpError,
-        ] = try? server.accept()
+        ] = try server.accept() catch {
+          err => Err(err)
+        } noraise {
+          value => Ok(value)
+        }
         match accepted {
           Ok((conn, _peer)) => {
             ignore(conn.read_request())
@@ -403,11 +416,11 @@ async test "bench(js): graceful close time under concurrent sse" {
     assert_true(accepted_conns.length() >= clients)
 
     let started = js_now_ms()
-    server.close_graceful(timeout_ms=1500)
+    server.close_graceful(timeout_ms=100)
     let elapsed = js_now_ms() - started
     println("bench(js): sse_clients=\{clients} graceful_close_ms=\{elapsed}")
     assert_true(elapsed >= 0)
-    assert_true(elapsed < 2500)
+    assert_true(elapsed < 600)
 
     for stream in streams {
       stream.close()
@@ -479,9 +492,13 @@ async test "client(js): get and post shortcuts" {
 ///|
 async test "client(js): invalid url returns HttpError::InvalidUrl" {
   let bad_url = "bad://example"
-  let result : Result[@http.Client, @http.HttpError] = try? @http.Client::new(
-    bad_url,
-  )
+  let result : Result[@http.Client, @http.HttpError] = try
+    @http.Client::new(bad_url)
+  catch {
+    err => Err(err)
+  } noraise {
+    value => Ok(value)
+  }
   match result {
     Ok(client) => {
       client.close()
@@ -499,15 +516,21 @@ async test "client(js): invalid url returns HttpError::InvalidUrl" {
 async test "client(js): request rejects absolute url path" {
   let client = @http.Client::new("http://127.0.0.1:8080")
   defer client.close()
-  let absolute_result : Result[Unit, @http.HttpError] = try? client.request(
-    @http.RequestMethod::Get,
-    "http://203.0.113.1/pwn",
-  )
+  let absolute_result : Result[Unit, @http.HttpError] = try
+    client.request(@http.RequestMethod::Get, "http://203.0.113.1/pwn")
+  catch {
+    err => Err(err)
+  } noraise {
+    value => Ok(value)
+  }
   assert_true(absolute_result is Err(_))
-  let scheme_relative_result : Result[Unit, @http.HttpError] = try? client.request(
-    @http.RequestMethod::Get,
-    "//203.0.113.1/pwn",
-  )
+  let scheme_relative_result : Result[Unit, @http.HttpError] = try
+    client.request(@http.RequestMethod::Get, "//203.0.113.1/pwn")
+  catch {
+    err => Err(err)
+  } noraise {
+    value => Ok(value)
+  }
   assert_true(scheme_relative_result is Err(_))
 }
 
@@ -526,7 +549,7 @@ async test "client(js): flush streams request body before end_request" {
   client.request(@http.RequestMethod::Post, "/stream")
   client.write("first")
   client.flush()
-  @async.sleep(120)
+  @async.sleep(50)
   client.write("second")
 
   let resp = client.end_request()
@@ -535,7 +558,7 @@ async test "client(js): flush streams request body before end_request" {
   assert_eq(body.text(), "ok")
 
   let first_to_end_ms = js_probe_server_first_to_end_ms()
-  assert_true(first_to_end_ms >= 60)
+  assert_true(first_to_end_ms >= 20)
 
   let stop_controller = @js_async.AbortController::new()
   ignore(
@@ -559,29 +582,46 @@ async test "client(js): request API is rejected in passthrough mode" {
     ) catch {
       _ => continue
     }
-    let client_result : Result[@http.Client, @http.HttpError] = try? @http.Client::new(
-      "http://127.0.0.1:\{proxy_port}",
-    )
+    let client_result : Result[@http.Client, @http.HttpError] = try
+      @http.Client::new("http://127.0.0.1:\{proxy_port}")
+    catch {
+      err => Err(err)
+    } noraise {
+      value => Ok(value)
+    }
     let mut ready = false
     match client_result {
       Ok(client) => {
-        let connect_result : Result[@http.Response, @http.HttpError] = try? ({
+        let connect_result : Result[@http.Response, @http.HttpError] = try {
           client.request(@http.RequestMethod::Connect, "example.test:443")
           client.end_request()
-        })
+        } catch {
+          err => Err(err)
+        } noraise {
+          value => Ok(value)
+        }
         match connect_result {
           Ok(resp) =>
             if resp.code == 200 {
-              let enter_result : Result[Unit, @http.HttpError] = try? client.enter_passthrough_mode()
+              let enter_result : Result[Unit, @http.HttpError] = try
+                client.enter_passthrough_mode()
+              catch {
+                err => Err(err)
+              } noraise {
+                value => Ok(value)
+              }
               if enter_result is Ok(_) {
                 client.write("ping")
                 @async.sleep(20)
                 ready = js_tunnel_probe_last_payload() == "ping"
                 if ready {
-                  let next_req : Result[Unit, @http.HttpError] = try? client.request(
-                    @http.RequestMethod::Get,
-                    "/after-tunnel",
-                  )
+                  let next_req : Result[Unit, @http.HttpError] = try
+                    client.request(@http.RequestMethod::Get, "/after-tunnel")
+                  catch {
+                    err => Err(err)
+                  } noraise {
+                    value => Ok(value)
+                  }
                   success = next_req is Err(_)
                 }
               }

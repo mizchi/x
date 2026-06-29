@@ -18,7 +18,7 @@ async test "stream: GET read_some" {
       conn.end_response()
     })
     let (resp, stream) = @http.get_stream(
-      "http://localhost:\{addr.port()}/stream",
+      "http://127.0.0.1:\{addr.port()}/stream",
     )
     defer stream.close()
     assert_eq(resp.code, 200)
@@ -51,7 +51,7 @@ async test "stream: GET read_all" {
       conn.write("full body content")
       conn.end_response()
     })
-    let (resp, stream) = @http.get_stream("http://localhost:\{addr.port()}/all")
+    let (resp, stream) = @http.get_stream("http://127.0.0.1:\{addr.port()}/all")
     defer stream.close()
     assert_eq(resp.code, 200)
     let body = stream.read_all()
@@ -79,7 +79,7 @@ async test "stream: POST with body" {
       conn.end_response()
     })
     let post_body : String = "stream data"
-    let stream = @http.post_stream("http://localhost:\{addr.port()}/post")
+    let stream = @http.post_stream("http://127.0.0.1:\{addr.port()}/post")
     defer stream.close()
     stream.write(post_body)
     let resp = stream.end_request()
@@ -111,7 +111,7 @@ async test "stream: SSE-like chunked response" {
       conn.end_response()
     })
     let (resp, stream) = @http.get_stream(
-      "http://localhost:\{addr.port()}/events",
+      "http://127.0.0.1:\{addr.port()}/events",
     )
     defer stream.close()
     assert_eq(resp.code, 200)
@@ -185,7 +185,7 @@ async test "stream: OpenAI-like POST SSE" {
     }
     let body : String = "{\"model\":\"gpt-4\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"stream\":true}"
     let stream = @http.post_stream(
-      "http://localhost:\{addr.port()}/v1/chat/completions",
+      "http://127.0.0.1:\{addr.port()}/v1/chat/completions",
       headers~,
     )
     stream.write(body)
@@ -241,7 +241,7 @@ async test "stream: response headers available before body" {
       conn.end_response()
     })
     let (resp, stream) = @http.get_stream(
-      "http://localhost:\{addr.port()}/headers",
+      "http://127.0.0.1:\{addr.port()}/headers",
     )
     defer stream.close()
     // Headers are available immediately, before reading body
@@ -276,7 +276,7 @@ async test "smoke: stream matches upstream get_stream" {
     let port = addr.port()
     // Upstream: get_stream + read_some
     let (upstream_resp, upstream_client) = @async_http.get_stream(
-      "http://localhost:\{port}/test",
+      "http://127.0.0.1:\{port}/test",
     )
     defer upstream_client.close()
     let upstream_buf = StringBuilder::new()
@@ -287,7 +287,7 @@ async test "smoke: stream matches upstream get_stream" {
     }
     // Wrapper: get_stream + read_some
     let (wrapper_resp, wrapper_stream) = @http.get_stream(
-      "http://localhost:\{port}/test",
+      "http://127.0.0.1:\{port}/test",
     )
     defer wrapper_stream.close()
     let wrapper_buf = StringBuilder::new()
@@ -325,7 +325,7 @@ async test "http GET" {
       conn.write("hello from server")
       conn.end_response()
     })
-    let (resp, body) = @http.get("http://localhost:\{addr.port()}/test")
+    let (resp, body) = @http.get("http://127.0.0.1:\{addr.port()}/test")
     assert_eq(resp.code, 200)
     assert_eq(resp.reason, "OK")
     assert_eq(body.text(), "hello from server")
@@ -350,7 +350,7 @@ async test "http POST with body" {
     })
     let post_body : String = "test data"
     let (resp, body) = @http.post(
-      "http://localhost:\{addr.port()}/items",
+      "http://127.0.0.1:\{addr.port()}/items",
       post_body,
     )
     assert_eq(resp.code, 201)
@@ -377,7 +377,7 @@ async test "http PUT with body" {
     })
     let put_body : String = "updated data"
     let (resp, body) = @http.put(
-      "http://localhost:\{addr.port()}/items/1",
+      "http://127.0.0.1:\{addr.port()}/items/1",
       put_body,
     )
     assert_eq(resp.code, 200)
@@ -403,7 +403,7 @@ async test "http GET with custom headers" {
     })
     let headers : Map[String, String] = { "Authorization": "Bearer token123" }
     let (resp, body) = @http.get(
-      "http://localhost:\{addr.port()}/secure",
+      "http://127.0.0.1:\{addr.port()}/secure",
       headers~,
     )
     assert_eq(resp.code, 200)
@@ -430,7 +430,7 @@ async test "http response headers" {
       conn.write("ok")
       conn.end_response()
     })
-    let (resp, _) = @http.get("http://localhost:\{addr.port()}/")
+    let (resp, _) = @http.get("http://127.0.0.1:\{addr.port()}/")
     assert_eq(resp.code, 200)
     assert_eq(resp.headers.get("x-custom").unwrap_or(""), "custom-value")
     assert_eq(resp.headers.get("content-type").unwrap_or(""), "text/plain")
@@ -452,7 +452,7 @@ async test "http 404 response" {
       conn.write("not found")
       conn.end_response()
     })
-    let (resp, body) = @http.get("http://localhost:\{addr.port()}/missing")
+    let (resp, body) = @http.get("http://127.0.0.1:\{addr.port()}/missing")
     assert_eq(resp.code, 404)
     assert_eq(resp.reason, "Not Found")
     assert_eq(body.text(), "not found")
@@ -473,7 +473,7 @@ async test "http empty body" {
       conn.send_response(204, "No Content")
       conn.end_response()
     })
-    let (resp, body) = @http.get("http://localhost:\{addr.port()}/empty")
+    let (resp, body) = @http.get("http://127.0.0.1:\{addr.port()}/empty")
     assert_eq(resp.code, 204)
     assert_eq(body.text(), "")
   })
@@ -494,7 +494,7 @@ async test "http unicode body" {
       conn.write("\u{3053}\u{3093}\u{306B}\u{3061}\u{306F}\u{4E16}\u{754C}")
       conn.end_response()
     })
-    let (resp, body) = @http.get("http://localhost:\{addr.port()}/unicode")
+    let (resp, body) = @http.get("http://127.0.0.1:\{addr.port()}/unicode")
     assert_eq(resp.code, 200)
     assert_eq(
       body.text(),
@@ -521,9 +521,9 @@ async test "smoke: GET matches upstream" {
         conn.close()
       }
     })
-    let url = "http://localhost:\{addr.port()}/test"
+    let url = "http://127.0.0.1:\{addr.port()}/test"
     // Upstream
-    let upstream_client = @async_http.Client("http://localhost:\{addr.port()}")
+    let upstream_client = @async_http.Client("http://127.0.0.1:\{addr.port()}")
     defer upstream_client.close()
     let upstream_resp = upstream_client.get("/test")
     let upstream_body = upstream_client.read_all()
@@ -555,13 +555,13 @@ async test "smoke: POST matches upstream" {
     })
     let post_data : String = "payload"
     // Upstream
-    let upstream_client = @async_http.Client("http://localhost:\{addr.port()}")
+    let upstream_client = @async_http.Client("http://127.0.0.1:\{addr.port()}")
     defer upstream_client.close()
     let upstream_resp = upstream_client.post("/api", post_data)
     let upstream_body = upstream_client.read_all()
     // Wrapper
     let (wrapper_resp, wrapper_body) = @http.post(
-      "http://localhost:\{addr.port()}/api",
+      "http://127.0.0.1:\{addr.port()}/api",
       post_data,
     )
     // Compare
@@ -589,7 +589,7 @@ async test "client: generic request via Client::request" {
       conn.write("seen:" + request_body.text())
       conn.end_response()
     })
-    let client = @http.Client::new("http://localhost:\{addr.port()}")
+    let client = @http.Client::new("http://127.0.0.1:\{addr.port()}")
     defer client.close()
     client.request(@http.RequestMethod::Patch, "/generic", extra_headers={
       "Content-Type": "text/plain",
@@ -621,7 +621,7 @@ async test "http multi-part response" {
       conn.write("part2-" + req.path + "\n")
       conn.end_response()
     })
-    let (resp, body) = @http.get("http://localhost:\{addr.port()}/multi")
+    let (resp, body) = @http.get("http://127.0.0.1:\{addr.port()}/multi")
     assert_eq(resp.code, 200)
     assert_eq(body.text(), "part1-/multi\npart2-/multi\n")
   })
@@ -649,15 +649,15 @@ async test "http POST echo - request method and path" {
     })
     let port = addr.port()
     // GET
-    let (_, get_body) = @http.get("http://localhost:\{port}/get")
+    let (_, get_body) = @http.get("http://127.0.0.1:\{port}/get")
     assert_eq(get_body.text(), "Get /get body=")
     // POST
     let post_data : String = "data1"
-    let (_, post_body) = @http.post("http://localhost:\{port}/post", post_data)
+    let (_, post_body) = @http.post("http://127.0.0.1:\{port}/post", post_data)
     assert_eq(post_body.text(), "Post /post body=data1")
     // PUT
     let put_data : String = "data2"
-    let (_, put_body) = @http.put("http://localhost:\{port}/put", put_data)
+    let (_, put_body) = @http.put("http://127.0.0.1:\{port}/put", put_data)
     assert_eq(put_body.text(), "Put /put body=data2")
   })
 }
@@ -682,7 +682,7 @@ async test "http multiple sequential requests" {
     })
     let port = addr.port()
     for i = 0; i < 5; i = i + 1 {
-      let (resp, body) = @http.get("http://localhost:\{port}/path\{i}")
+      let (resp, body) = @http.get("http://127.0.0.1:\{port}/path\{i}")
       assert_eq(resp.code, 200)
       assert_eq(body.text(), "req-" + i.to_string() + "-/path" + i.to_string())
     }
@@ -722,13 +722,13 @@ async test "smoke: response headers match upstream" {
       }
     })
     // Upstream
-    let upstream_client = @async_http.Client("http://localhost:\{addr.port()}")
+    let upstream_client = @async_http.Client("http://127.0.0.1:\{addr.port()}")
     defer upstream_client.close()
     let upstream_resp = upstream_client.get("/")
     ignore(upstream_client.read_all())
     let upstream_header = upstream_resp.headers.get("x-test").unwrap_or("")
     // Wrapper
-    let (wrapper_resp, _) = @http.get("http://localhost:\{addr.port()}/")
+    let (wrapper_resp, _) = @http.get("http://127.0.0.1:\{addr.port()}/")
     let wrapper_header = wrapper_resp.headers.get("x-test").unwrap_or("")
     // Compare
     assert_eq(upstream_header, wrapper_header)

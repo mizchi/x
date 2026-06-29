@@ -472,23 +472,29 @@ async test "manual Accept-Encoding" {
 
 ///|
 async test "request cancel" {
-  let start = @async.now()
-  let result = try? @async.with_timeout_opt(120, () => {
-    @async.with_task_group(root => {
-      let server = @x_socket.TcpServer(@x_socket.Addr::parse("127.0.0.1:0"))
-      let port = server.addr.port()
-      root.spawn_bg(no_wait=true, allow_failure=true, () => {
-        defer server.close()
-        let (conn, _) = server.accept()
-        defer conn.close()
-        ignore(read_http_request(conn))
-        @async.sleep(240)
-        conn.write("HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok")
+  let start = @env.now()
+  let result = try
+    @async.with_timeout_opt(120, () => {
+      @async.with_task_group(root => {
+        let server = @x_socket.TcpServer(@x_socket.Addr::parse("127.0.0.1:0"))
+        let port = server.addr.port()
+        root.spawn_bg(no_wait=true, allow_failure=true, () => {
+          defer server.close()
+          let (conn, _) = server.accept()
+          defer conn.close()
+          ignore(read_http_request(conn))
+          @async.sleep(240)
+          conn.write("HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok")
+        })
+        @http.get("http://127.0.0.1:\{port}/")
       })
-      @http.get("http://127.0.0.1:\{port}/")
     })
-  })
-  let elapsed = (@async.now() - start).to_int()
+  catch {
+    err => Err(err)
+  } noraise {
+    value => Ok(value)
+  }
+  let elapsed = (@env.now() - start).to_int()
   match result {
     Ok(None) | Err(_) => ()
     Ok(Some(_)) => fail("request completed before timeout")
@@ -559,7 +565,11 @@ async test "send fixed length with flush" {
 async test "sender write incorrect length" {
   with_dummy_client(client => {
     client.request(@http.Post, "/bad", extra_headers={ "Content-Length": "1" })
-    let result = try? client.write("ab")
+    let result = try client.write("ab") catch {
+      err => Err(err)
+    } noraise {
+      value => Ok(value)
+    }
     assert_true(result is Err(_))
   })
 }
@@ -576,7 +586,11 @@ async test "sender write_reader incorrect length" {
         defer w.close()
         w.write("ab")
       })
-      let result = try? client.write_reader(r)
+      let result = try client.write_reader(r) catch {
+        err => Err(err)
+      } noraise {
+        value => Ok(value)
+      }
       assert_true(result is Err(_))
     })
   })
@@ -587,7 +601,11 @@ async test "sender end_body incorrect length" {
   with_dummy_client(client => {
     client.request(@http.Post, "/short", extra_headers={ "Content-Length": "4" })
     client.write("ab")
-    let result = try? client.end_request()
+    let result = try client.end_request() catch {
+      err => Err(err)
+    } noraise {
+      value => Ok(value)
+    }
     assert_true(result is Err(_))
   })
 }

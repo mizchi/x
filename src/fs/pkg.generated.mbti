@@ -129,6 +129,13 @@ pub(all) enum SyncMode {
   Full
 }
 
+pub struct Watcher {
+  // private fields
+}
+pub async fn Watcher::Watcher(String, debounce_timeout? : Int, max_debounce_delay? : Int, ignored_paths? : (String) -> Bool) -> Self raise IOError
+pub fn Watcher::close(Self) -> Unit
+pub async fn Watcher::wait_any(Self) -> Unit raise IOError
+
 // Type aliases
 
 // Traits

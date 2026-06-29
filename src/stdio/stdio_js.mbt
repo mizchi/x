@@ -9,13 +9,20 @@ pub struct Output {
 }
 
 ///|
-pub fn Input::fd(self : Input) -> Int {
+fn ensure_fd_available(ok : Bool) -> Unit raise {
+  guard ok else { raise Failure::Failure("stdio fd is not available") }
+}
+
+///|
+pub fn Input::fd(self : Input) -> Int raise {
   ignore(self)
+  ensure_fd_available(true)
   0
 }
 
 ///|
-pub fn Output::fd(self : Output) -> Int {
+pub fn Output::fd(self : Output) -> Int raise {
+  ensure_fd_available(self.target == 1 || self.target == 2)
   self.target
 }
 

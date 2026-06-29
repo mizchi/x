@@ -42,6 +42,12 @@ pub impl Show for WebSocketError with fn output(self, logger) {
 }
 
 ///|
+fn keep_websocket_error_constructors_used() -> Unit {
+  ignore(WebSocketError::ConnectionClosed(Normal, None))
+  ignore(WebSocketError::InvalidHandshake(""))
+}
+
+///|
 pub(all) enum Message {
   Text(String)
   Binary(Bytes)

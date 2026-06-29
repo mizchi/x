@@ -121,6 +121,15 @@ async fn write_other_test_keys() -> (String, String) {
 }
 
 ///|
+async fn remove_if_exists(path : String) -> Unit {
+  try @fs.remove(path) catch {
+    _ => ()
+  } noraise {
+    _ => ()
+  }
+}
+
+///|
 test "sha1" {
   inspect(
     @crypto.bytes_to_hex_string(@tls.sha1(b"abc")),
@@ -179,8 +188,8 @@ test "one way" {
       })
       inspect(server_task.wait(), content="abcdefghijkl")
     })
-    ignore(try? @fs.remove(key))
-    ignore(try? @fs.remove(cert))
+    remove_if_exists(key)
+    remove_if_exists(cert)
   })
 }
 
@@ -231,8 +240,8 @@ test "echo" {
         client.shutdown()
       })
     })
-    ignore(try? @fs.remove(key))
-    ignore(try? @fs.remove(cert))
+    remove_if_exists(key)
+    remove_if_exists(cert)
   })
 }
 
@@ -255,11 +264,17 @@ test "`connect` accidental close" {
           client_read_from_server.close()
           client_write_to_server.close()
         }
-        let client = try? @tls.Tls::client_from_pair(
-          client_read_from_server,
-          client_write_to_server,
-          trust=@tls.NoVerification,
-        )
+        let client = try
+          @tls.Tls::client_from_pair(
+            client_read_from_server,
+            client_write_to_server,
+            trust=@tls.NoVerification,
+          )
+        catch {
+          err => Err(err)
+        } noraise {
+          value => Ok(value)
+        }
         match client {
           Ok(client) => {
             client.close()
@@ -305,11 +320,16 @@ test "`read` already closed" {
           trust=@tls.NoVerification,
         )
         defer client.close()
-        debug_inspect(try? client.read_some(), content="Ok(None)")
+        let result = try client.read_some() catch {
+          err => Err(err)
+        } noraise {
+          value => Ok(value)
+        }
+        debug_inspect(result, content="Ok(None)")
       })
     })
-    ignore(try? @fs.remove(key))
-    ignore(try? @fs.remove(cert))
+    remove_if_exists(key)
+    remove_if_exists(cert)
   })
 }
 
@@ -354,8 +374,8 @@ test "get_peer_certificate" {
         client.shutdown()
       })
     })
-    ignore(try? @fs.remove(key))
-    ignore(try? @fs.remove(cert))
+    remove_if_exists(key)
+    remove_if_exists(cert)
   })
 }
 
@@ -400,8 +420,8 @@ test "client custom root certificate" {
         inspect(client.read_all().text(), content="")
       })
     })
-    ignore(try? @fs.remove(key))
-    ignore(try? @fs.remove(cert))
+    remove_if_exists(key)
+    remove_if_exists(cert)
   })
 }
 
@@ -418,14 +438,20 @@ test "client custom root certificate rejects different root" {
           server_read_from_client.close()
           server_write_to_client.close()
         }
-        let server = try? @tls.Tls::server_from_pair(
-          server_read_from_client,
-          server_write_to_client,
-          private_key_file=other_key,
-          private_key_type=@tls.PEM,
-          certificate_file=other_cert,
-          certificate_type=@tls.PEM,
-        )
+        let server = try
+          @tls.Tls::server_from_pair(
+            server_read_from_client,
+            server_write_to_client,
+            private_key_file=other_key,
+            private_key_type=@tls.PEM,
+            certificate_file=other_cert,
+            certificate_type=@tls.PEM,
+          )
+        catch {
+          err => Err(err)
+        } noraise {
+          value => Ok(value)
+        }
         assert_true(server is Err(_))
       })
       root.spawn_bg(() => {
@@ -433,19 +459,25 @@ test "client custom root certificate rejects different root" {
           client_read_from_server.close()
           client_write_to_server.close()
         }
-        let client = try? @tls.Tls::client_from_pair(
-          client_read_from_server,
-          client_write_to_server,
-          host="localhost",
-          trust=@tls.CustomPemFile(cert),
-        )
+        let client = try
+          @tls.Tls::client_from_pair(
+            client_read_from_server,
+            client_write_to_server,
+            host="localhost",
+            trust=@tls.CustomPemFile(cert),
+          )
+        catch {
+          err => Err(err)
+        } noraise {
+          value => Ok(value)
+        }
         assert_true(client is Err(_))
       })
     })
-    ignore(try? @fs.remove(key))
-    ignore(try? @fs.remove(cert))
-    ignore(try? @fs.remove(other_key))
-    ignore(try? @fs.remove(other_cert))
+    remove_if_exists(key)
+    remove_if_exists(cert)
+    remove_if_exists(other_key)
+    remove_if_exists(other_cert)
   })
 }
 
@@ -500,8 +532,8 @@ test "channel binding" {
       assert_eq(client_endpoint, server_endpoint)
       assert_true(client_endpoint.length() > 0)
     })
-    ignore(try? @fs.remove(key))
-    ignore(try? @fs.remove(cert))
+    remove_if_exists(key)
+    remove_if_exists(cert)
   })
 }
 
@@ -545,7 +577,7 @@ test "peer close connection" {
         client.close()
       })
     })
-    ignore(try? @fs.remove(key))
-    ignore(try? @fs.remove(cert))
+    remove_if_exists(key)
+    remove_if_exists(cert)
   })
 }

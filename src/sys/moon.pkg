@@ -2,6 +2,8 @@ import {
   "moonbitlang/x/sys" @x_sys,
 }
 
+warnings = "-0029"
+
 options(
   targets: {
     "env_default.mbt": [ "native", "js" ],

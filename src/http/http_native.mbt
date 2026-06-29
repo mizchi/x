@@ -197,16 +197,13 @@ pub async fn Client::get(
   extra_headers? : Map[String, String],
   body? : &@io.Data,
 ) -> Response raise HttpError {
-  let response = self.inner.get(
-    path,
-    extra_headers=extra_headers.unwrap_or({}),
-    body?,
-  ) catch {
-    err => raise classify_http_error(err.to_string())
-  }
-  let resp = to_response(response)
-  self.response_has_no_body = response_has_no_body(resp.code, Some(Get))
-  resp
+  self.request(Get, path, extra_headers=extra_headers.unwrap_or({}))
+  ignore(
+    self.write(body.unwrap_or("")) catch {
+      err => raise classify_http_error(err.to_string())
+    },
+  )
+  self.end_request()
 }
 
 ///|
@@ -279,17 +276,42 @@ async fn request_internal(
   body : &@io.Data,
   proxy? : Client,
 ) -> (Response, &@io.Data) raise HttpError {
-  let proxy = proxy.map(fn(proxy) { proxy.inner })
+  let upstream_proxy = proxy.map(fn(proxy) { proxy.inner })
   let (resp, body_data) = try {
     match meth {
-      "POST" => @async_http.post(url, body, headers~, proxy?)
-      "PUT" => @async_http.put(url, body, headers~, proxy?)
-      _ => @async_http.get(url, headers~, body~, proxy?)
+      "POST" => {
+        let (resp, body_data) = @async_http.post(
+          url,
+          body,
+          headers~,
+          proxy?=upstream_proxy,
+        )
+        (to_response(resp), body_data)
+      }
+      "PUT" => {
+        let (resp, body_data) = @async_http.put(
+          url,
+          body,
+          headers~,
+          proxy?=upstream_proxy,
+        )
+        (to_response(resp), body_data)
+      }
+      _ => {
+        let client = Client::new(extract_host_url(url), proxy?)
+        defer client.close()
+        let resp = client.get(
+          extract_path_from_url(url),
+          extra_headers=headers,
+          body~,
+        )
+        (resp, client.read_all())
+      }
     }
   } catch {
     err => raise classify_http_error(err.to_string())
   }
-  (to_response(resp), body_data)
+  (resp, body_data)
 }
 
 ///|
@@ -305,7 +327,15 @@ async fn create_stream_client(
   let client = Client::new(host_url, proxy?)
   let resp = try {
     match meth {
-      Get => client.get(path, extra_headers=headers, body~)
+      Get => {
+        client.request(Get, path, extra_headers=headers)
+        ignore(
+          client.write(body) catch {
+            err => raise classify_http_error(err.to_string())
+          },
+        )
+        client.end_request()
+      }
       _ => {
         client.request(meth, path, extra_headers=headers)
         ignore(

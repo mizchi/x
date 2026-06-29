@@ -5,6 +5,7 @@ import {
   "moonbitlang/async/io" @async_io,
   "moonbitlang/async/js_async",
   "moonbitlang/async/signal" @async_signal,
+  "moonbitlang/core/env",
   "mizchi/x/fs",
   "mizchi/x/signal",
   "mizchi/x/socket",

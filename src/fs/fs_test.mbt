@@ -1,9 +1,36 @@
 ///|
+async fn remove_if_exists(path : String) -> Unit {
+  try @fs.remove(path) catch {
+    _ => ()
+  } noraise {
+    _ => ()
+  }
+}
+
+///|
+async fn rmdir_if_exists(path : String) -> Unit {
+  try @fs.rmdir(path) catch {
+    _ => ()
+  } noraise {
+    _ => ()
+  }
+}
+
+///|
+async fn rmdir_tree_if_exists(path : String) -> Unit {
+  try @fs.rmdir(path, recursive=true) catch {
+    _ => ()
+  } noraise {
+    _ => ()
+  }
+}
+
+///|
 async test "rename replaces existing file by default" {
   let src = "/tmp/mizchi_x_fs_rename_src.txt"
   let dst = "/tmp/mizchi_x_fs_rename_dst.txt"
-  ignore(try? @fs.remove(src))
-  ignore(try? @fs.remove(dst))
+  remove_if_exists(src)
+  remove_if_exists(dst)
 
   @fs.write_file(src, "new")
   @fs.write_file(dst, "old")
@@ -18,16 +45,18 @@ async test "rename replaces existing file by default" {
 async test "rename replace false keeps existing target" {
   let src = "/tmp/mizchi_x_fs_rename_no_replace_src.txt"
   let dst = "/tmp/mizchi_x_fs_rename_no_replace_dst.txt"
-  ignore(try? @fs.remove(src))
-  ignore(try? @fs.remove(dst))
+  remove_if_exists(src)
+  remove_if_exists(dst)
 
   @fs.write_file(src, "new")
   @fs.write_file(dst, "old")
-  let result : Result[Unit, @fs.IOError] = try? @fs.rename(
-    src,
-    dst,
-    replace=false,
-  )
+  let result : Result[Unit, @fs.IOError] = try
+    @fs.rename(src, dst, replace=false)
+  catch {
+    err => Err(err)
+  } noraise {
+    value => Ok(value)
+  }
 
   assert_true(result is Err(_))
   assert_true(@fs.exists(src))
@@ -41,9 +70,9 @@ async test "directory next reports entry kind" {
   let dir = "/tmp/mizchi_x_fs_dir_next"
   let file = dir + "/file.txt"
   let subdir = dir + "/subdir"
-  ignore(try? @fs.remove(file))
-  ignore(try? @fs.rmdir(subdir))
-  ignore(try? @fs.rmdir(dir, recursive=true))
+  remove_if_exists(file)
+  rmdir_if_exists(subdir)
+  rmdir_tree_if_exists(dir)
 
   @fs.mkdir(dir, permission=0o755, recursive=true)
   @fs.write_file(file, "file")
@@ -73,7 +102,7 @@ async test "directory next reports entry kind" {
 ///|
 async test "file create open append and read all" {
   let path = "/tmp/mizchi_x_fs_file_create_open.txt"
-  ignore(try? @fs.remove(path))
+  remove_if_exists(path)
   {
     let file = @fs.create(path, sync=Full)
     defer file.close()
@@ -104,7 +133,7 @@ async test "file create open append and read all" {
 ///|
 async test "file random access read and write" {
   let path = "/tmp/mizchi_x_fs_random_access.txt"
-  ignore(try? @fs.remove(path))
+  remove_if_exists(path)
   @fs.write_file(path, "abcdef", create_mode=CreateOrTruncate)
   {
     let file = @fs.open(path, mode=ReadWrite)
@@ -132,7 +161,7 @@ async test "tmpdir creates unique directory" {
 ///|
 async test "walk visits nested directories" {
   let root = "/tmp/mizchi_x_fs_walk"
-  ignore(try? @fs.rmdir(root, recursive=true))
+  rmdir_tree_if_exists(root)
   @fs.mkdir(root + "/a/b", permission=0o755, recursive=true)
   @fs.write_file(root + "/root.txt", "root")
   @fs.write_file(root + "/a/child.txt", "child")
@@ -154,7 +183,7 @@ async test "walk visits nested directories" {
 ///|
 async test "access helpers and chmod" {
   let path = "/tmp/mizchi_x_fs_access.txt"
-  ignore(try? @fs.remove(path))
+  remove_if_exists(path)
   @fs.write_file(path, "access")
 
   assert_true(@fs.can_read(path))

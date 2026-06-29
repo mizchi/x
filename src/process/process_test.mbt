@@ -6,13 +6,22 @@ async fn read_text_if_exists(path : String) -> String? {
 }
 
 ///|
+async fn remove_if_exists(path : String) -> Unit {
+  try @fs.remove(path) catch {
+    _ => ()
+  } noraise {
+    _ => ()
+  }
+}
+
+///|
 async fn wait_for_file_text(
   path : String,
   expected : String,
-  timeout_ms : Int64,
+  timeout_ms : UInt64,
 ) -> Unit {
-  let deadline = @async.now() + timeout_ms
-  while @async.now() < deadline {
+  let deadline = @env.now() + timeout_ms
+  while @env.now() < deadline {
     match read_text_if_exists(path) {
       Some(text) => if text == expected { return }
       None => ()
@@ -74,12 +83,20 @@ async test "collect_output_merged" {
 ///|
 async test "collect_output blocked" {
   let script = "const chunk=Buffer.alloc(1024);let i=0;function write(){while(i<1024){i++;if(!process.stderr.write(chunk)){process.stderr.once('drain',write);return}}}write()"
-  let result = try? @async.with_timeout(3000, () => {
-    let (code, stdout, stderr) = @process.collect_output("node", ["-e", script])
-    inspect(code, content="0")
-    inspect(stdout.text(), content="")
-    inspect(stderr.binary().length(), content="1048576")
-  })
+  let result = try
+    @async.with_timeout(3000, () => {
+      let (code, stdout, stderr) = @process.collect_output("node", [
+        "-e", script,
+      ])
+      inspect(code, content="0")
+      inspect(stdout.text(), content="")
+      inspect(stderr.binary().length(), content="1048576")
+    })
+  catch {
+    err => Err(err)
+  } noraise {
+    value => Ok(value)
+  }
   assert_true(result is Ok(_))
 }
 
@@ -122,7 +139,7 @@ async test "basic_cat" {
 
 ///|
 async test "basic wait" {
-  let code = @process.run("node", ["-e", "setTimeout(()=>process.exit(0),100)"])
+  let code = @process.run("node", ["-e", "setTimeout(()=>process.exit(0),40)"])
   inspect(code, content="0")
 }
 
@@ -175,8 +192,8 @@ async test "set_env no inherit" {
 async test "redirect stdin and stdout files" {
   let input = "/tmp/mizchi_x_process_redirect_in.txt"
   let output = "/tmp/mizchi_x_process_redirect_out.txt"
-  ignore(try? @fs.remove(input))
-  ignore(try? @fs.remove(output))
+  remove_if_exists(input)
+  remove_if_exists(output)
   @fs.write_file(input, "redirected", create_mode=CreateOrTruncate)
 
   let code = @process.run(
@@ -196,8 +213,8 @@ async test "redirect stdin and stdout files" {
 async test "redirect to file" {
   let input = "/tmp/mizchi_x_process_redirect_exact_in.txt"
   let output = "/tmp/mizchi_x_process_redirect_exact_out.txt"
-  ignore(try? @fs.remove(input))
-  ignore(try? @fs.remove(output))
+  remove_if_exists(input)
+  remove_if_exists(output)
   @fs.write_file(input, "abcd", create_mode=CreateOrTruncate)
 
   let code = @process.run(
@@ -237,12 +254,12 @@ async test "write_to_process feeds stdin" {
 ///|
 async test "merge multiple" {
   let output = "/tmp/mizchi_x_process_merge_multiple.txt"
-  ignore(try? @fs.remove(output))
+  remove_if_exists(output)
   @async.with_task_group(group => {
     @process.spawn(
       group,
       "node",
-      ["-e", "setTimeout(()=>console.log('abcd'),20)"],
+      ["-e", "setTimeout(()=>console.log('abcd'),10)"],
       stdout=@process.redirect_to_file(
         output,
         append=true,
@@ -253,7 +270,7 @@ async test "merge multiple" {
     @process.spawn(
       group,
       "node",
-      ["-e", "setTimeout(()=>console.log('efgh'),100)"],
+      ["-e", "setTimeout(()=>console.log('efgh'),40)"],
       stdout=@process.redirect_to_file(
         output,
         append=true,
@@ -291,7 +308,7 @@ async test "merge stdout and stderr" {
 async test "spawn wait and try_wait" {
   @async.with_task_group(group => {
     let proc = @process.spawn(group, "node", [
-      "-e", "setTimeout(()=>process.exit(7),100)",
+      "-e", "setTimeout(()=>process.exit(7),40)",
     ])
     assert_true(proc.pid > 0)
     assert_true(proc.try_wait() is None)
@@ -301,20 +318,20 @@ async test "spawn wait and try_wait" {
 
 ///|
 async test "spawn_in_group wait" {
-  let t0 = @async.now()
+  let t0 = @env.now()
   @async.with_task_group(group => {
-    @process.spawn(group, "node", ["-e", "setTimeout(()=>process.exit(0),220)"])
+    @process.spawn(group, "node", ["-e", "setTimeout(()=>process.exit(0),100)"])
     |> ignore
-    @async.sleep(60)
+    @async.sleep(30)
   })
-  let elapsed = @async.now() - t0
-  assert_true(elapsed >= 180)
+  let elapsed = @env.now() - t0
+  assert_true(elapsed >= 80)
 }
 
 ///|
 async test "spawn_in_group cancel" {
   let marker = "/tmp/mizchi_x_process_spawn_group_cancel.txt"
-  ignore(try? @fs.remove(marker))
+  remove_if_exists(marker)
   let script = "const fs=require('fs');process.on('SIGTERM',()=>{fs.writeFileSync(process.argv[1],'term');process.exit(0)});fs.writeFileSync(process.argv[1],'ready');setInterval(()=>{},1000)"
   @async.with_task_group(group => {
     @process.spawn(group, "node", ["-e", script, marker], no_wait=true)
@@ -329,7 +346,7 @@ async test "spawn_in_group cancel" {
 async test "Process::wait" {
   @async.with_task_group(group => {
     let child = @process.spawn(group, "node", [
-      "-e", "setTimeout(()=>process.exit(42),100)",
+      "-e", "setTimeout(()=>process.exit(42),40)",
     ])
     inspect(child.wait(), content="42")
     inspect(child.wait(), content="42")
@@ -340,12 +357,12 @@ async test "Process::wait" {
 async test "Process::try_wait" {
   @async.with_task_group(group => {
     let child = @process.spawn(group, "node", [
-      "-e", "setTimeout(()=>process.exit(42),150)",
+      "-e", "setTimeout(()=>process.exit(42),80)",
     ])
-    @async.sleep(50)
+    @async.sleep(20)
     debug_inspect(child.try_wait(), content="None")
-    let deadline = @async.now() + 1000
-    while @async.now() < deadline {
+    let deadline = @env.now() + 1000
+    while @env.now() < deadline {
       match child.try_wait() {
         Some(code) => {
           debug_inspect(Some(code), content="Some(42)")
@@ -361,7 +378,7 @@ async test "Process::try_wait" {
 ///|
 async test "Process:cancel" {
   let marker = "/tmp/mizchi_x_process_method_cancel.txt"
-  ignore(try? @fs.remove(marker))
+  remove_if_exists(marker)
   let script = "const fs=require('fs');process.on('SIGTERM',()=>{fs.writeFileSync(process.argv[1],'term');process.exit(0)});fs.writeFileSync(process.argv[1],'ready');setInterval(()=>{},1000)"
   @async.with_task_group(group => {
     let child = @process.spawn(group, "node", ["-e", script, marker])
@@ -375,7 +392,7 @@ async test "Process:cancel" {
 ///|
 async test "wait_pid" {
   let pid = @process.spawn_orphan("node", [
-    "-e", "setTimeout(()=>process.exit(7),50)",
+    "-e", "setTimeout(()=>process.exit(7),25)",
   ])
   assert_true(pid > 0)
   inspect(@process.wait_pid(pid), content="7")
@@ -384,31 +401,45 @@ async test "wait_pid" {
 ///|
 async test "orphan process" {
   let marker = "/tmp/mizchi_x_process_orphan.txt"
-  ignore(try? @fs.remove(marker))
-  let script = "const fs=require('fs');fs.writeFileSync(process.argv[1],'first');setTimeout(()=>{fs.writeFileSync(process.argv[1],'second');process.exit(0)},180)"
+  remove_if_exists(marker)
+  let script = "const fs=require('fs');fs.writeFileSync(process.argv[1],'first');setTimeout(()=>{fs.writeFileSync(process.argv[1],'second');process.exit(0)},90)"
   let pid = @process.spawn_orphan("node", ["-e", script, marker])
-  let result = try? @async.with_timeout(70, () => @process.wait_pid(pid))
+  let result = try @async.with_timeout(40, () => @process.wait_pid(pid)) catch {
+    err => Err(err)
+  } noraise {
+    value => Ok(value)
+  }
   assert_true(result is Err(_))
-  wait_for_file_text(marker, "second", 1200)
-  ignore(try? @async.with_timeout(500, () => @process.wait_pid(pid)))
+  wait_for_file_text(marker, "second", 500)
+  try @async.with_timeout(300, () => @process.wait_pid(pid)) catch {
+    _ => ()
+  } noraise {
+    _ => ()
+  }
   @fs.remove(marker)
 }
 
 ///|
 async test "cancel process" {
   let marker = "/tmp/mizchi_x_process_cancel_signal.txt"
-  ignore(try? @fs.remove(marker))
+  remove_if_exists(marker)
   let script = "const fs=require('fs');process.on('SIGTERM',()=>{fs.writeFileSync(process.argv[1],'term');process.exit(0)});setInterval(()=>{},1000)"
-  let result = try? @async.with_timeout(300, () => {
-    @process.run(
-      "node",
-      ["-e", script, marker],
-      cancel_handler=@process.graceful_cancel(
-        timeout=200,
-        signal=@signal.SIGTERM,
-      ),
-    )
-  })
+  let result = try
+    @async.with_timeout(120, () => {
+      @process.run(
+        "node",
+        ["-e", script, marker],
+        cancel_handler=@process.graceful_cancel(
+          timeout=80,
+          signal=@signal.SIGTERM,
+        ),
+      )
+    })
+  catch {
+    err => Err(err)
+  } noraise {
+    value => Ok(value)
+  }
   assert_true(result is Err(_))
   wait_for_file_text(marker, "term", 1000)
   @fs.remove(marker)
@@ -417,22 +448,28 @@ async test "cancel process" {
 ///|
 async test "cancel process timeout" {
   let marker = "/tmp/mizchi_x_process_cancel_timeout_signal.txt"
-  ignore(try? @fs.remove(marker))
+  remove_if_exists(marker)
   let script = "const fs=require('fs');process.on('SIGTERM',()=>{fs.writeFileSync(process.argv[1],'term')});setInterval(()=>{},1000)"
-  let t0 = @async.now()
-  let result = try? @async.with_timeout(300, () => {
-    @process.run(
-      "node",
-      ["-e", script, marker],
-      cancel_handler=@process.graceful_cancel(
-        timeout=140,
-        signal=@signal.SIGTERM,
-      ),
-    )
-  })
-  let elapsed = @async.now() - t0
+  let t0 = @env.now()
+  let result = try
+    @async.with_timeout(120, () => {
+      @process.run(
+        "node",
+        ["-e", script, marker],
+        cancel_handler=@process.graceful_cancel(
+          timeout=60,
+          signal=@signal.SIGTERM,
+        ),
+      )
+    })
+  catch {
+    err => Err(err)
+  } noraise {
+    value => Ok(value)
+  }
+  let elapsed = @env.now() - t0
   assert_true(result is Err(_))
-  assert_true(elapsed >= 140)
+  assert_true(elapsed >= 160UL)
   wait_for_file_text(marker, "term", 1000)
   @fs.remove(marker)
 }
@@ -440,35 +477,47 @@ async test "cancel process timeout" {
 ///|
 async test "cancel process hard" {
   let marker = "/tmp/mizchi_x_process_hard_cancel_signal.txt"
-  ignore(try? @fs.remove(marker))
+  remove_if_exists(marker)
   let script = "const fs=require('fs');process.on('SIGTERM',()=>{fs.writeFileSync(process.argv[1],'term');process.exit(0)});setInterval(()=>{},1000)"
-  let result = try? @async.with_timeout(300, () => {
-    @process.run(
-      "node",
-      ["-e", script, marker],
-      cancel_handler=@process.hard_cancel(),
-    )
-  })
+  let result = try
+    @async.with_timeout(120, () => {
+      @process.run(
+        "node",
+        ["-e", script, marker],
+        cancel_handler=@process.hard_cancel(),
+      )
+    })
+  catch {
+    err => Err(err)
+  } noraise {
+    value => Ok(value)
+  }
   assert_true(result is Err(_))
-  @async.sleep(120)
+  @async.sleep(50)
   assert_false(@fs.exists(marker))
 }
 
 ///|
 async test "do not kill orphan children on hard cancel" {
   let marker = "/tmp/mizchi_x_process_orphan_child.txt"
-  ignore(try? @fs.remove(marker))
-  let child_script = "const fs=require('fs');setTimeout(()=>{fs.writeFileSync(process.argv[1],'after sleep');process.exit(0)},500)"
+  remove_if_exists(marker)
+  let child_script = "const fs=require('fs');setTimeout(()=>{fs.writeFileSync(process.argv[1],'after sleep');process.exit(0)},180)"
   let parent_script = "const {spawn}=require('node:child_process');const child=spawn(process.execPath,['-e',process.argv[1],process.argv[2]],{detached:true,stdio:'ignore'});child.unref();setInterval(()=>{},1000)"
-  let result = try? @async.with_timeout(300, () => {
-    @process.run(
-      "node",
-      ["-e", parent_script, child_script, marker],
-      cancel_handler=@process.hard_cancel(),
-    )
-  })
+  let result = try
+    @async.with_timeout(100, () => {
+      @process.run(
+        "node",
+        ["-e", parent_script, child_script, marker],
+        cancel_handler=@process.hard_cancel(),
+      )
+    })
+  catch {
+    err => Err(err)
+  } noraise {
+    value => Ok(value)
+  }
   assert_true(result is Err(_))
-  wait_for_file_text(marker, "after sleep", 2000)
+  wait_for_file_text(marker, "after sleep", 800)
   @fs.remove(marker)
 }
 

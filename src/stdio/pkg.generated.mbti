@@ -18,14 +18,14 @@ pub let stdout : Output
 pub struct Input {
   inner : @moonbitlang/async/stdio.Input
 }
-pub fn Input::fd(Self) -> Int
+pub fn Input::fd(Self) -> Int raise
 pub impl @mizchi/x/process.ProcessInput for Input
 pub impl @io.Reader for Input
 
 pub struct Output {
   inner : @moonbitlang/async/stdio.Output
 }
-pub fn Output::fd(Self) -> Int
+pub fn Output::fd(Self) -> Int raise
 pub impl @mizchi/x/process.ProcessOutput for Output
 pub impl @io.Writer for Output
 
