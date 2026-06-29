@@ -1,6 +1,6 @@
 name = "mizchi/fswatch"
 
-version = "0.2.0"
+version = "0.2.1"
 
 import {
   "mizchi/x@0.4.0",
@@ -27,4 +27,6 @@ description = "Cross-platform filesystem watcher for MoonBit: FSEvents on macOS,
 
 preferred_target = "native"
 
-source = "src"
+options(
+  source: "src",
+)

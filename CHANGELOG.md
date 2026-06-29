@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.1 - 2026-06-30
+
+### Changed
+
+- Bumped package patch versions for the release.
+- Restored manifest `options(source: ...)` form for `moon package` / `moon publish` compatibility.
+
 ## 0.5.0 - 2026-06-30
 
 ### Changed
