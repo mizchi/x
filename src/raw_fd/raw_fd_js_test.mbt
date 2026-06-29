@@ -21,6 +21,15 @@ extern "js" fn open_write_fixture() -> Int =
 let write_path = "/tmp/mizchi_x_raw_fd_write_js.txt"
 
 ///|
+async fn remove_if_exists(path : String) -> Unit {
+  try @fs.remove(path) catch {
+    _ => ()
+  } noraise {
+    _ => ()
+  }
+}
+
+///|
 async test "read file descriptor" {
   let raw = @raw_fd.RawFd(open_read_fixture())
   let buf = FixedArray::make(16, b'\x00')
@@ -32,11 +41,11 @@ async test "read file descriptor" {
 
 ///|
 async test "write file descriptor" {
-  ignore(try? @fs.remove(write_path))
+  remove_if_exists(write_path)
   let raw = @raw_fd.RawFd(open_write_fixture())
   let n = raw.write(b"written")
   inspect(n, content="7")
   raw.close()
   inspect(@fs.read_file(write_path).text(), content="written")
-  ignore(try? @fs.remove(write_path))
+  remove_if_exists(write_path)
 }

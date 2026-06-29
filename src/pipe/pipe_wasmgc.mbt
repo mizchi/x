@@ -1,8 +1,8 @@
 ///|
-pub struct PipeRead {}
+pub(all) struct PipeRead {}
 
 ///|
-pub struct PipeWrite {}
+pub(all) struct PipeWrite {}
 
 ///|
 pub fn pipe() -> (PipeRead, PipeWrite) raise {

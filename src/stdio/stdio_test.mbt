@@ -1,9 +1,18 @@
 ///|
+async fn remove_if_exists(path : String) -> Unit {
+  try @fs.remove(path) catch {
+    _ => ()
+  } noraise {
+    _ => ()
+  }
+}
+
+///|
 async test "redirect_file" {
   let in_file = "/tmp/mizchi_x_stdio_redirect_in.txt"
   let out_file = "/tmp/mizchi_x_stdio_redirect_out.txt"
-  ignore(try? @fs.remove(in_file))
-  ignore(try? @fs.remove(out_file))
+  remove_if_exists(in_file)
+  remove_if_exists(out_file)
   @fs.write_file(in_file, "stdio redirect\n", create_mode=CreateOrTruncate)
   let code = @process.run(
     "node",
@@ -58,7 +67,7 @@ async test "stdio cancel" {
       let code = @process.run(
         "node",
         [
-          "-e", "process.stdin.on('data',c=>process.stdout.write(c));setTimeout(()=>{process.stdout.write('TimeoutError\\n');process.exit(1)},300)",
+          "-e", "process.stdin.on('data',c=>process.stdout.write(c));setTimeout(()=>{process.stdout.write('TimeoutError\\n');process.exit(1)},100)",
         ],
         stdin=cat_read,
         stdout=cat_write,
@@ -74,7 +83,6 @@ async test "stdio cancel" {
         #|Some(<Bytes: [0x61, 0x62, 0x63, 0x64]>)
       ),
     )
-    @async.sleep(450)
     inspect(
       we_read.read_all().text().trim(chars="\r\n"),
       content="TimeoutError",

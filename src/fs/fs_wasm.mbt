@@ -665,3 +665,28 @@ pub fn Directory::read_all(
   ignore(include_special)
   self.entries
 }
+
+///|
+pub(all) struct Watcher {}
+
+///|
+pub fn Watcher::Watcher(
+  path : String,
+  debounce_timeout? : Int,
+  max_debounce_delay? : Int,
+  ignored_paths? : (String) -> Bool,
+) -> Watcher raise IOError {
+  ignore((path, debounce_timeout, max_debounce_delay, ignored_paths))
+  raise IOError::IOError("Watcher is not supported on wasm target")
+}
+
+///|
+pub fn Watcher::close(self : Watcher) -> Unit {
+  ignore(self)
+}
+
+///|
+pub fn Watcher::wait_any(self : Watcher) -> Unit raise IOError {
+  ignore(self)
+  raise IOError::IOError("Watcher::wait_any is not supported on wasm target")
+}

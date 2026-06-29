@@ -9,12 +9,12 @@ pub struct Output {
 }
 
 ///|
-pub fn Input::fd(self : Input) -> Int {
+pub fn Input::fd(self : Input) -> Int raise {
   self.inner.fd()
 }
 
 ///|
-pub fn Output::fd(self : Output) -> Int {
+pub fn Output::fd(self : Output) -> Int raise {
   self.inner.fd()
 }
 

@@ -5,15 +5,15 @@ pub struct Input {}
 pub struct Output {}
 
 ///|
-pub fn Input::fd(self : Input) -> Int {
+pub fn Input::fd(self : Input) -> Int raise {
   ignore(self)
-  abort("stdio not supported on wasm target")
+  raise Failure::Failure("stdio not supported on wasm target")
 }
 
 ///|
-pub fn Output::fd(self : Output) -> Int {
+pub fn Output::fd(self : Output) -> Int raise {
   ignore(self)
-  abort("stdio not supported on wasm target")
+  raise Failure::Failure("stdio not supported on wasm target")
 }
 
 ///|

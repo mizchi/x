@@ -51,10 +51,18 @@ async fn polling_snapshot(
         if exclude(full) {
           continue
         }
-        let k = try? @xfs.kind(full)
+        let k = try @xfs.kind(full) catch {
+          err => Err(err)
+        } noraise {
+          value => Ok(value)
+        }
         match k {
           Ok(Regular) => {
-            let m = try? @xfs.mtime(full)
+            let m = try @xfs.mtime(full) catch {
+              err => Err(err)
+            } noraise {
+              value => Ok(value)
+            }
             match m {
               Ok((sec, nsec)) => snap[full] = Fingerprint::{ sec, nsec }
               Err(_) => ()

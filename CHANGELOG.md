@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.5.0 - 2026-06-30
+
+### Changed
+
+- Bumped `moonbitlang/async` 0.19.1 -> 0.20.0 and `moonbitlang/x` 0.4.44 -> 0.4.46.
+- Bumped the `fswatch` sub-module to 0.2.0.
+- Integrated the filesystem watcher API into `mizchi/x/fs` as `Watcher`, `Watcher::wait_any`, and `Watcher::close`, matching `moonbitlang/async/fs`.
+- Reduced JS HTTP reader allocation churn by reusing `@io.ReaderBuffer` on `ServerConnection` and `Client`.
+
+### Fixed
+
+- Fixed warnings surfaced by `moon check --deny-warn`.
+- Tuned HTTP/process/stdio/fswatch tests to reduce profiling noise and long waits.
+
 ## 0.4.0 - 2026-05-30
 
 ### Added

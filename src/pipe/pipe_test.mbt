@@ -78,5 +78,10 @@ async test "reader closed" {
   let (r, w) = pipe()
   r.close()
   @async.sleep(100)
-  assert_true((try? w.write("abcd")) is Err(_))
+  let result = try w.write("abcd") catch {
+    err => Err(err)
+  } noraise {
+    value => Ok(value)
+  }
+  assert_true(result is Err(_))
 }

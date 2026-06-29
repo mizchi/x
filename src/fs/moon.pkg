@@ -13,6 +13,7 @@ options(
     "fs_native.mbt": [ "native" ],
     "fs_native_test.mbt": [ "native" ],
     "fs_test.mbt": [ "native", "js" ],
+    "fs_watch_test.mbt": [ "native", "js" ],
     "fs_wasm.mbt": [ "wasm" ],
     "fs_wasmgc.mbt": [ "wasm-gc" ],
   },

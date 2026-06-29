@@ -1286,6 +1286,7 @@ pub struct ServerConnection {
   mut request_body_drained : Bool
   conn_id : Int
   peer_addr : Addr
+  reader_buffer : @io.ReaderBuffer
   mut read_carry : Bytes
   mut read_carry_offset : Int
   mut passthrough_mode : Bool
@@ -1305,6 +1306,7 @@ fn new_server_connection(
     request_body_drained: false,
     conn_id,
     peer_addr,
+    reader_buffer: @io.ReaderBuffer::new(),
     read_carry: Bytes::new(0),
     read_carry_offset: 0,
     passthrough_mode: false,
@@ -1445,8 +1447,7 @@ pub fn ServerConnection::enter_passthrough_mode(
 
 ///|
 pub impl @io.Reader for ServerConnection with fn _get_internal_buffer(self) {
-  ignore(self)
-  @io.ReaderBuffer::new()
+  self.reader_buffer
 }
 
 ///|
@@ -2882,6 +2883,7 @@ pub struct Client {
   id : Int
   mut closed : Bool
   mut passthrough_mode : Bool
+  reader_buffer : @io.ReaderBuffer
 }
 
 ///|
@@ -2902,7 +2904,12 @@ pub async fn Client::new(
   if result.error != "" {
     raise HttpError::InvalidUrl(url)
   }
-  Client::{ id: result.id, closed: false, passthrough_mode: false }
+  Client::{
+    id: result.id,
+    closed: false,
+    passthrough_mode: false,
+    reader_buffer: @io.ReaderBuffer::new(),
+  }
 }
 
 ///|
@@ -3072,8 +3079,7 @@ pub async fn Client::put(
 
 ///|
 pub impl @io.Reader for Client with fn _get_internal_buffer(self) {
-  ignore(self)
-  @io.ReaderBuffer::new()
+  self.reader_buffer
 }
 
 ///|

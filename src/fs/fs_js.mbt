@@ -865,6 +865,169 @@ priv struct JsDirectoryEntry {
 }
 
 ///|
+#external
+type JsWatcherHandle
+
+///|
+extern "js" fn js_watcher_new(
+  root : String,
+  debounce_timeout : Int,
+  max_debounce_delay : Int,
+) -> JsPromise[JsWatcherHandle] =
+  #| async (root, debounceTimeout, maxDebounceDelay) => {
+  #|   const fs = await import('node:fs');
+  #|   const fsp = await import('node:fs/promises');
+  #|   const path = await import('node:path');
+  #|   const rootAbs = path.resolve(root);
+  #|   const stat = await fsp.stat(rootAbs);
+  #|   if (!stat.isDirectory()) {
+  #|     throw new Error(`not a directory: ${root}`);
+  #|   }
+  #|   const debounceMs = Math.max(0, Number(debounceTimeout || 0));
+  #|   const maxDelayMs = Math.max(debounceMs, Number(maxDebounceDelay || 0));
+  #|   const handle = {
+  #|     closed: false,
+  #|     queue: [],
+  #|     waiters: [],
+  #|     known: new Map(),
+  #|     timer: null,
+  #|     firstEventAt: 0,
+  #|     debounceMs,
+  #|     maxDelayMs,
+  #|     watcher: null,
+  #|   };
+  #|   const normalize = (filename) => {
+  #|     if (filename == null || filename === '') return '';
+  #|     const raw = Buffer.isBuffer(filename) ? filename.toString() : String(filename);
+  #|     const rel = path.normalize(raw).split(path.sep).join('/');
+  #|     return rel === '.' ? '' : (rel.startsWith('./') ? rel.slice(2) : rel);
+  #|   };
+  #|   const absForRel = (rel) => rel === '' ? rootAbs : path.join(rootAbs, ...rel.split('/'));
+  #|   const fileKey = (stat) => `${stat.isDirectory() ? 'd' : 'f'}:${Number(stat.size)}:${Number(stat.mtimeMs)}`;
+  #|   const snapshotPath = async (rel) => {
+  #|     try {
+  #|       const stat = await fsp.stat(absForRel(rel));
+  #|       return { exists: true, key: fileKey(stat), isDir: stat.isDirectory() };
+  #|     } catch (err) {
+  #|       if (err?.code === 'ENOENT' || err?.code === 'ENOTDIR') {
+  #|         return { exists: false, key: '', isDir: false };
+  #|       }
+  #|       throw err;
+  #|     }
+  #|   };
+  #|   const snapshotTree = async (dirAbs, relPrefix) => {
+  #|     let entries;
+  #|     try {
+  #|       entries = await fsp.readdir(dirAbs, { withFileTypes: true });
+  #|     } catch {
+  #|       return;
+  #|     }
+  #|     for (const entry of entries) {
+  #|       const rel = relPrefix ? `${relPrefix}/${entry.name}` : entry.name;
+  #|       const state = await snapshotPath(rel);
+  #|       if (!state.exists) continue;
+  #|       handle.known.set(rel, state.key);
+  #|       if (state.isDir) {
+  #|         await snapshotTree(absForRel(rel), rel);
+  #|       }
+  #|     }
+  #|   };
+  #|   const updatePath = async (rel) => {
+  #|     const state = await snapshotPath(rel);
+  #|     const prev = handle.known.get(rel);
+  #|     if (!state.exists) {
+  #|       if (prev === undefined) return false;
+  #|       handle.known.delete(rel);
+  #|       return true;
+  #|     }
+  #|     handle.known.set(rel, state.key);
+  #|     if (state.isDir) {
+  #|       await snapshotTree(absForRel(rel), rel);
+  #|     }
+  #|     return prev !== state.key;
+  #|   };
+  #|   const filterChanged = async (batch) => {
+  #|     const changed = [];
+  #|     for (const rel of batch) {
+  #|       if (await updatePath(rel)) {
+  #|         changed.push(rel);
+  #|       }
+  #|     }
+  #|     return changed;
+  #|   };
+  #|   const flush = () => {
+  #|     if (handle.timer) {
+  #|       clearTimeout(handle.timer);
+  #|       handle.timer = null;
+  #|     }
+  #|     if (handle.waiters.length === 0 || handle.queue.length === 0) return;
+  #|     const seen = new Set();
+  #|     const batch = [];
+  #|     for (const item of handle.queue.splice(0)) {
+  #|       if (seen.has(item)) continue;
+  #|       seen.add(item);
+  #|       batch.push(item);
+  #|     }
+  #|     handle.firstEventAt = 0;
+  #|     const waiters = handle.waiters.splice(0);
+  #|     for (const waiter of waiters) waiter.resolve(batch);
+  #|   };
+  #|   const schedule = () => {
+  #|     if (handle.closed || handle.waiters.length === 0 || handle.queue.length === 0) return;
+  #|     if (handle.timer) clearTimeout(handle.timer);
+  #|     const elapsed = Date.now() - handle.firstEventAt;
+  #|     const remainingMax = Math.max(0, handle.maxDelayMs - elapsed);
+  #|     const delay = Math.min(handle.debounceMs, remainingMax);
+  #|     handle.timer = setTimeout(flush, delay);
+  #|   };
+  #|   handle.watcher = fs.watch(rootAbs, { recursive: true, persistent: true }, (_eventType, filename) => {
+  #|     if (handle.closed) return;
+  #|     if (handle.firstEventAt === 0) handle.firstEventAt = Date.now();
+  #|     handle.queue.push(normalize(filename));
+  #|     schedule();
+  #|   });
+  #|   handle.flush = flush;
+  #|   handle.schedule = schedule;
+  #|   handle.filterChanged = filterChanged;
+  #|   handle.known.set('', fileKey(stat));
+  #|   await snapshotTree(rootAbs, '');
+  #|   return handle;
+  #| }
+
+///|
+extern "js" fn js_watcher_wait(
+  handle : JsWatcherHandle,
+) -> JsPromise[Array[String]] =
+  #| async (handle) => {
+  #|   if (!handle || handle.closed) throw new Error('watcher already closed');
+  #|   while (true) {
+  #|     const batch = await new Promise((resolve, reject) => {
+  #|       handle.waiters.push({ resolve, reject });
+  #|       handle.schedule();
+  #|     });
+  #|     if (!batch || batch.length === 0) return [];
+  #|     const changed = await handle.filterChanged(batch);
+  #|     if (changed.length > 0) return changed;
+  #|     if (handle.closed) return [];
+  #|   }
+  #| }
+
+///|
+extern "js" fn js_watcher_close(handle : JsWatcherHandle) -> Unit =
+  #| (handle) => {
+  #|   if (!handle || handle.closed) return;
+  #|   handle.closed = true;
+  #|   if (handle.timer) {
+  #|     clearTimeout(handle.timer);
+  #|     handle.timer = null;
+  #|   }
+  #|   try { handle.watcher?.close?.(); } catch {}
+  #|   const waiters = handle.waiters.splice(0);
+  #|   for (const waiter of waiters) waiter.resolve([]);
+  #|   handle.queue.length = 0;
+  #| }
+
+///|
 extern "js" fn js_opendir(path : String) -> JsPromise[Int] =
   #| async (path) => {
   #|   const fs = await import('node:fs/promises');
@@ -956,6 +1119,77 @@ pub async fn Directory::read_all(
     result.push(entry.name)
   }
   result
+}
+
+///|
+pub struct Watcher {
+  handle : JsWatcherHandle
+  ignored_paths : (String) -> Bool
+  mut closed : Bool
+}
+
+///|
+pub async fn Watcher::Watcher(
+  path : String,
+  debounce_timeout? : Int,
+  max_debounce_delay? : Int,
+  ignored_paths? : (String) -> Bool,
+) -> Watcher raise IOError {
+  let handle = run_js_promise(
+    js_watcher_new(
+      path,
+      debounce_timeout.unwrap_or(20),
+      max_debounce_delay.unwrap_or(200),
+    ),
+  )
+  Watcher::{
+    handle,
+    ignored_paths: ignored_paths.unwrap_or(_ => false),
+    closed: false,
+  }
+}
+
+///|
+fn watcher_path_ignored(path : String, ignored : (String) -> Bool) -> Bool {
+  if path == "" {
+    return ignored(path)
+  }
+  let mut prefix = ""
+  for part in path.split("/") {
+    let owned = part.to_owned()
+    prefix = if prefix == "" { owned } else { prefix + "/" + owned }
+    if ignored(prefix) {
+      return true
+    }
+  }
+  false
+}
+
+///|
+pub fn Watcher::close(self : Watcher) -> Unit {
+  if self.closed {
+    return
+  }
+  self.closed = true
+  js_watcher_close(self.handle)
+}
+
+///|
+pub async fn Watcher::wait_any(self : Watcher) -> Unit raise IOError {
+  if self.closed {
+    raise IOError::IOError("watcher already closed")
+  }
+  for ;; {
+    let paths = run_js_promise(js_watcher_wait(self.handle))
+    if self.closed {
+      raise IOError::IOError("watcher already closed")
+    }
+    for path in paths {
+      if !watcher_path_ignored(path, self.ignored_paths) {
+        return
+      }
+    }
+  }
 }
 
 ///|

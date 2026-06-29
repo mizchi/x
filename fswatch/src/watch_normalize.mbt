@@ -25,7 +25,11 @@ async fn build_normalize_state(
 ) -> NormalizeState {
   let prefix_map : Array[(String, String)] = []
   for root in roots {
-    let real = try? @xfs.realpath(root)
+    let real = try @xfs.realpath(root) catch {
+      err => Err(err)
+    } noraise {
+      value => Ok(value)
+    }
     match real {
       Ok(r) => if r != root { prefix_map.push((r, root)) }
       Err(_) => ()
@@ -42,7 +46,11 @@ async fn build_normalize_state(
         if exclude(full) {
           continue
         }
-        let k = try? @xfs.kind(full)
+        let k = try @xfs.kind(full) catch {
+          err => Err(err)
+        } noraise {
+          value => Ok(value)
+        }
         if k is Ok(Regular) {
           known[full] = true
         }
@@ -87,7 +95,11 @@ async fn classify_event(state : NormalizeState, raw_path : String) -> Event? {
     }
     return None
   }
-  let kind_ok = (try? @xfs.kind(raw_path)) is Ok(Regular)
+  let kind_ok = try @xfs.kind(raw_path) catch {
+    _ => false
+  } noraise {
+    kind => kind is Regular
+  }
   if !kind_ok {
     return None
   }

@@ -1,10 +1,10 @@
 name = "mizchi/x"
 
-version = "0.4.0"
+version = "0.5.0"
 
 import {
-  "moonbitlang/async@0.19.1",
-  "moonbitlang/x@0.4.44",
+  "moonbitlang/async@0.20.0",
+  "moonbitlang/x@0.4.46",
   "moonbitlang/regexp@0.3.5",
 }
 
@@ -40,6 +40,4 @@ description = "Node.js backend compatibility layer for moonbitlang/async in Moon
 
 preferred_target = "native"
 
-options(
-  source: "src",
-)
+source = "src"
