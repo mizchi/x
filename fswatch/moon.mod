@@ -27,6 +27,4 @@ description = "Cross-platform filesystem watcher for MoonBit: FSEvents on macOS,
 
 preferred_target = "native"
 
-options(
-  source: "src",
-)
+source = "src"
