@@ -49,30 +49,32 @@ Node.js backend compatibility layer for `moonbitlang/async` in [MoonBit](https:/
 
 | Package | native | js | wasm | wasm-gc |
 |---|---|---|---|---|
-| `process` | Yes | Yes | stub | stub |
-| `fs` | Yes | Yes | WASI P1 | stub |
-| `http` | Yes | Yes | stub | stub |
+| `process` | Yes | Yes | Yes* | stub |
+| `fs` | Yes | Yes | Yes* | stub |
+| `http` | Yes | Yes | Yes | stub |
 | `gzip` | Yes | Yes | Yes | Yes |
-| `tls` | Yes | Yes | stub | stub |
-| `socket` | TCP/UDP | TCP/UDP | stub | stub |
-| `signal` | Yes | constants/no-op | constants/no-op | constants/no-op |
+| `tls` | Yes | Yes | Yes | stub |
+| `socket` | TCP/UDP | TCP/UDP | TCP/UDP | stub |
+| `signal` | Yes | constants/no-op | Yes | constants/no-op |
 | `raw_fd` | Yes | Yes | stub | stub |
 | `aqueue` | Yes | Yes | Yes | Yes |
 | `cond_var` | Yes | Yes | Yes | Yes |
 | `semaphore` | Yes | Yes | Yes | Yes |
-| `websocket` | Yes | Yes | stub | stub |
-| `stdio` | Yes | Yes | stub | stub |
-| `pipe` | Yes | Yes | stub | stub |
-| `sys` | Yes | Yes | Yes | stub |
+| `websocket` | Yes | Yes | client | stub |
+| `stdio` | Yes | Yes | Yes | stub |
+| `pipe` | Yes | Yes | Yes | stub |
+| `sys` | Yes | Yes | WASI P1 | stub |
 | `regexp` | Yes | Yes (FFI) | Yes | Yes |
 | `json` | Yes | Yes (FFI) | Yes | Yes |
 | `crypto` | Yes | Yes | Yes | Yes |
 
-- **Yes** — Full implementation.
+- **Yes** — Full upstream-backed implementation.
+- **Yes\*** — Implemented, with explicitly unsupported host-specific APIs.
+- **client** — WebSocket client support; HTTP server upgrades are unavailable on wasm.
 - **stub** — Compiles but aborts at runtime with "not supported" message.
-- **WASI P1** — Partial implementation using WASI Preview 1 syscalls. It requires a host preopen at descriptor 3.
+- **WASI P1** — Uses WASI Preview 1 environment, arguments, and exit syscalls.
 
-On `wasm`, the usable `fs` operations (`read_file`, `write_file`, access checks, directory creation/listing, remove, rename, and `rmdir`) now retain the native/JS **async signatures** so shared async code compiles. WASI Preview 1 calls are nevertheless synchronous and require host-granted filesystem capabilities; this release does not provide an async event loop, timers, networking, processes, or browser APIs. Unsupported filesystem operations return explicit `IOError`s.
+On `wasm`, filesystem, process, socket, TLS, HTTP, WebSocket client, stdio, and pipe operations delegate to `moonbitlang/async`'s WASM host integration and retain the native/JS async signatures. They require capabilities granted by the WASM host (for example, `moonrun --policy` for filesystem, networking, and process spawning). `fs.Watcher`, `raw_fd`, and process groups, tree termination, and signal-based process termination are explicitly unsupported. Opaque WASM handles exposed as public `Int` file descriptors abort if they cannot be represented without truncation.
 
 ## Upstream Compatibility
 
@@ -113,11 +115,11 @@ The wrapper re-exports upstream types and APIs with matching signatures. On nati
 
 `json` parse lands roughly on par rather than faster: `JSON.parse` is fast, but the dominant cost is rebuilding the MoonBit `Json` ADT (which the pure-MoonBit parser also pays), so the host parser's edge is largely consumed by marshalling. `valid` and `stringify` win clearly because they avoid that rebuild.
 
-`mizchi/x/tls` mirrors `moonbitlang/async/tls`. Native delegates to the upstream OpenSSL/Schannel implementation. JS maps to Node.js `node:tls` over any `@io.Reader`/`@io.Writer` pair and supports client/server handshakes, graceful shutdown, peer certificate access, `tls-unique`/`tls-server-end-point` style channel bindings, `rand_bytes`, and `sha1`. WASM targets compile as stubs.
+`mizchi/x/tls` mirrors `moonbitlang/async/tls`. Native delegates to the upstream OpenSSL/Schannel implementation. JS maps to Node.js `node:tls` over any `@io.Reader`/`@io.Writer` pair and supports client/server handshakes, graceful shutdown, peer certificate access, `tls-unique`/`tls-server-end-point` style channel bindings, `rand_bytes`, and `sha1`. WASM delegates to the upstream host-backed implementation; wasm-gc remains a stub.
 
-`mizchi/x/websocket` mirrors the client API and exposes `from_http_server` for native `mizchi/x/http` server connections. JS currently supports the client API only.
+`mizchi/x/websocket` mirrors the client API and exposes `from_http_server` for native `mizchi/x/http` server connections. JS and WASM support the client API; HTTP server upgrades are native-only.
 
-`mizchi/x/signal` mirrors the async signal constants on native and provides portable numeric constants on JS/wasm targets. Global cancellation signal setup delegates to upstream on native and is a no-op on JS/wasm.
+`mizchi/x/signal` mirrors the async signal constants and delegates global cancellation signal setup to upstream on native and WASM. JS exposes portable numeric constants with a no-op global setup.
 
 `mizchi/x/raw_fd` owns an existing OS file descriptor and provides single read/write operations. Native uses a small C FFI shim; JS maps to Node.js `fs.read`/`fs.write`/`fs.closeSync`. WASM targets compile as stubs.
 
