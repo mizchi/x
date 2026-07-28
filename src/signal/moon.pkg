@@ -8,9 +8,8 @@ warnings = "-0029-0067"
 options(
   targets: {
     "signal_js.mbt": [ "js" ],
-    "signal_native.mbt": [ "native" ],
+    "signal_native.mbt": [ "native", "wasm" ],
     "signal_test.mbt": [ "native", "js", "wasm", "wasm-gc" ],
-    "signal_wasm.mbt": [ "wasm" ],
     "signal_wasmgc.mbt": [ "wasm-gc" ],
   },
 )

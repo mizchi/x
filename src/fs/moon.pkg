@@ -1,20 +1,24 @@
 import {
+  "moonbitlang/core/debug",
   "moonbitlang/async",
   "moonbitlang/async/fs" @async_fs,
   "moonbitlang/async/io",
   "moonbitlang/async/js_async",
 }
 
-warnings = "-0029-0014"
+warnings = "-0029-0014-0067"
 
 options(
   targets: {
     "fs_js.mbt": [ "js" ],
-    "fs_native.mbt": [ "native" ],
+    "fs_fd_native.mbt": [ "native" ],
+    "fs_fd_wasm.mbt": [ "wasm" ],
+    "fs_native.mbt": [ "native", "wasm" ],
     "fs_native_test.mbt": [ "native" ],
     "fs_test.mbt": [ "native", "js" ],
     "fs_watch_test.mbt": [ "native", "js" ],
-    "fs_wasm.mbt": [ "wasm" ],
+    "fs_watcher_native.mbt": [ "native" ],
+    "fs_watcher_wasm.mbt": [ "wasm" ],
     "fs_wasmgc.mbt": [ "wasm-gc" ],
   },
 )

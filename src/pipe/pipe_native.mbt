@@ -26,12 +26,14 @@ pub fn PipeWrite::close(self : PipeWrite) -> Unit {
 
 ///|
 pub fn PipeRead::fd(self : PipeRead) -> Int {
-  self.inner.fd()
+  let fd = self.inner.fd()
+  pipe_fd_to_int(fd)
 }
 
 ///|
 pub fn PipeWrite::fd(self : PipeWrite) -> Int {
-  self.inner.fd()
+  let fd = self.inner.fd()
+  pipe_fd_to_int(fd)
 }
 
 ///|

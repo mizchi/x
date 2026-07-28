@@ -16,10 +16,11 @@ options(
   targets: {
     "stdio_js.mbt": [ "js" ],
     "stdio_js_test.mbt": [ "js" ],
-    "stdio_native.mbt": [ "native" ],
+    "stdio_native.mbt": [ "native", "wasm" ],
+    "stdio_fd_native.mbt": [ "native" ],
+    "stdio_fd_wasm.mbt": [ "wasm" ],
     "stdio_native_test.mbt": [ "native" ],
     "stdio_test.mbt": [ "native", "js" ],
-    "stdio_wasm.mbt": [ "wasm" ],
     "stdio_wasmgc.mbt": [ "wasm-gc" ],
   },
 )

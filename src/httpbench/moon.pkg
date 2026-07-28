@@ -6,7 +6,8 @@ import {
 
 supported_targets = "-all+native+js"
 
+pkgtype(kind: "executable")
+
 options(
-  "is-main": true,
   targets: { "main.mbt": [ "native", "js" ] },
 )

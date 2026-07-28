@@ -19,8 +19,8 @@ warnings = "-0029-0067-0006-0009-0014-0053"
 options(
   targets: {
     "tls_js.mbt": [ "js" ],
-    "tls_native.mbt": [ "native" ],
-    "tls_stub.mbt": [ "wasm", "wasm-gc" ],
+    "tls_native.mbt": [ "native", "wasm" ],
+    "tls_stub.mbt": [ "wasm-gc" ],
     "tls_test.mbt": [ "native", "js" ],
   },
 )

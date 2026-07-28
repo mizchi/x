@@ -321,7 +321,7 @@ pub fn File::close(self : File) -> Unit {
 
 ///|
 pub fn File::fd(self : File) -> Int {
-  self.inner.fd()
+  file_fd_to_int(self.inner.fd())
 }
 
 ///|
@@ -501,41 +501,6 @@ pub async fn Directory::read_all(
   include_special? : Bool,
 ) -> Array[String] raise IOError {
   self.inner.read_all(include_hidden?, include_special?) catch {
-    err => raise IOError::IOError(err.to_string())
-  }
-}
-
-///|
-pub struct Watcher {
-  priv inner : @async_fs.Watcher
-}
-
-///|
-pub async fn Watcher::Watcher(
-  path : String,
-  debounce_timeout? : Int,
-  max_debounce_delay? : Int,
-  ignored_paths? : (String) -> Bool,
-) -> Watcher raise IOError {
-  let inner = @async_fs.Watcher(
-    path,
-    debounce_timeout?,
-    max_debounce_delay?,
-    ignored_paths?,
-  ) catch {
-    err => raise IOError::IOError(err.to_string())
-  }
-  Watcher::{ inner, }
-}
-
-///|
-pub fn Watcher::close(self : Watcher) -> Unit {
-  self.inner.close()
-}
-
-///|
-pub async fn Watcher::wait_any(self : Watcher) -> Unit raise IOError {
-  self.inner.wait_any() catch {
     err => raise IOError::IOError(err.to_string())
   }
 }

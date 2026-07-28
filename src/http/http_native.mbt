@@ -46,7 +46,7 @@ fn extract_path_from_url(url : String) -> String {
 
 ///|
 fn to_response(resp : @async_http.Response) -> Response {
-  let headers : Map[String, String] = {}
+  let headers : Map[String, String] = Map([])
   for k, v in resp.headers {
     headers[k.to_lower()] = v
   }
@@ -518,7 +518,7 @@ fn to_request_method(meth : @async_http.RequestMethod) -> RequestMethod {
 
 ///|
 fn to_request(req : @async_http.Request) -> Request {
-  let headers : Map[String, String] = {}
+  let headers : Map[String, String] = Map([])
   for k, v in req.headers {
     headers[k.to_lower()] = v
   }

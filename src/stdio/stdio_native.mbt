@@ -10,12 +10,14 @@ pub struct Output {
 
 ///|
 pub fn Input::fd(self : Input) -> Int raise {
-  self.inner.fd()
+  let fd = self.inner.fd()
+  stdio_fd_to_int(fd)
 }
 
 ///|
 pub fn Output::fd(self : Output) -> Int raise {
-  self.inner.fd()
+  let fd = self.inner.fd()
+  stdio_fd_to_int(fd)
 }
 
 ///|

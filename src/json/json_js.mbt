@@ -119,7 +119,7 @@ fn convert(v : JsValue, depth : Int, max_depth : Int) -> Json raise ParseError {
     }
     5 => {
       guard depth < max_depth else { raise DepthLimitExceeded }
-      let obj : Map[String, Json] = {}
+      let obj : Map[String, Json] = Map([])
       for k in js_object_keys(v) {
         obj[k] = convert(js_object_get(v, k), depth + 1, max_depth)
       }

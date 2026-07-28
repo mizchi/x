@@ -23,7 +23,7 @@ pub(all) enum FileKind {
   Pipe = 5
   BlockDevice = 6
   CharDevice = 7
-} derive(Eq)
+} derive(Eq, @debug.Debug)
 
 ///|
 pub impl Show for FileKind with fn output(self, logger) {

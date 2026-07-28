@@ -56,7 +56,7 @@ pub fn Tcp::close(self : Tcp) -> Unit {
 
 ///|
 pub fn Tcp::fd(self : Tcp) -> Int {
-  self.inner.fd()
+  socket_fd_to_int(self.inner.fd())
 }
 
 ///|
@@ -147,7 +147,7 @@ pub fn TcpServer::close(self : TcpServer) -> Unit {
 
 ///|
 pub fn TcpServer::fd(self : TcpServer) -> Int {
-  self.inner.fd()
+  socket_fd_to_int(self.inner.fd())
 }
 
 ///|
@@ -208,7 +208,7 @@ pub fn UdpClient::close(self : UdpClient) -> Unit {
 
 ///|
 pub fn UdpClient::fd(self : UdpClient) -> Int {
-  self.inner.fd()
+  socket_fd_to_int(self.inner.fd())
 }
 
 ///|
@@ -327,7 +327,7 @@ pub fn UdpServer::close(self : UdpServer) -> Unit {
 
 ///|
 pub fn UdpServer::fd(self : UdpServer) -> Int {
-  self.inner.fd()
+  socket_fd_to_int(self.inner.fd())
 }
 
 ///|

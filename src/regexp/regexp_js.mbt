@@ -109,7 +109,7 @@ pub fn compile(
   guard result.ok else {
     raise RegexpError(err=InternalError, source_fragment=pattern)
   }
-  let names : Map[String, Int] = {}
+  let names : Map[String, Int] = Map([])
   for i in 0..<result.group_names.length() {
     names[result.group_names[i]] = result.group_indices[i]
   }

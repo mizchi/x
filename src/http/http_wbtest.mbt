@@ -1,6 +1,6 @@
 ///|
 test "headers_to_json - empty" {
-  let headers : Map[String, String] = {}
+  let headers : Map[String, String] = Map([])
   let json = headers_to_json(headers)
   assert_eq(json, "{}")
 }
@@ -14,7 +14,7 @@ test "headers_to_json - single header" {
 
 ///|
 test "headers_to_json - multiple headers" {
-  let headers : Map[String, String] = {}
+  let headers : Map[String, String] = Map([])
   headers["Accept"] = "text/html"
   headers["Host"] = "example.com"
   let json = headers_to_json(headers)

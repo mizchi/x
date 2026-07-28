@@ -61,7 +61,7 @@ fn parse_response_json(json_str : String) -> (Response, &@io.Data) {
       }
     _ => ""
   }
-  let headers : Map[String, String] = {}
+  let headers : Map[String, String] = Map([])
   let cookies : Array[Cookie] = match parsed {
     Object(map) =>
       match map.get("cookies") {

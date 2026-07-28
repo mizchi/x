@@ -14,10 +14,11 @@ warnings = "-0029-0024"
 options(
   targets: {
     "pipe_js.mbt": [ "js" ],
-    "pipe_native.mbt": [ "native" ],
+    "pipe_native.mbt": [ "native", "wasm" ],
+    "pipe_fd_native.mbt": [ "native" ],
+    "pipe_fd_wasm.mbt": [ "wasm" ],
     "pipe_native_test.mbt": [ "native" ],
     "pipe_test.mbt": [ "native", "js" ],
-    "pipe_wasm.mbt": [ "wasm" ],
     "pipe_wasmgc.mbt": [ "wasm-gc" ],
   },
 )

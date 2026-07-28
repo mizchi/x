@@ -18,8 +18,8 @@ Node.js backend compatibility layer for `moonbitlang/async` in [MoonBit](https:/
 
 | Dependency | Version |
 |---|---|
-| `moonbitlang/async` | 0.19.0 |
-| `moonbitlang/x` | 0.4.44 |
+| `moonbitlang/async` | 0.20.3 |
+| `moonbitlang/x` | 0.4.46 |
 | `moonbitlang/regexp` | 0.3.5 |
 
 ## Packages
@@ -70,11 +70,13 @@ Node.js backend compatibility layer for `moonbitlang/async` in [MoonBit](https:/
 
 - **Yes** — Full implementation.
 - **stub** — Compiles but aborts at runtime with "not supported" message.
-- **WASI P1** — Partial implementation using WASI Preview 1 syscalls.
+- **WASI P1** — Partial implementation using WASI Preview 1 syscalls. It requires a host preopen at descriptor 3.
+
+On `wasm`, the usable `fs` operations (`read_file`, `write_file`, access checks, directory creation/listing, remove, rename, and `rmdir`) now retain the native/JS **async signatures** so shared async code compiles. WASI Preview 1 calls are nevertheless synchronous and require host-granted filesystem capabilities; this release does not provide an async event loop, timers, networking, processes, or browser APIs. Unsupported filesystem operations return explicit `IOError`s.
 
 ## Upstream Compatibility
 
-Compatibility with `moonbitlang/async` 0.19.0 / `moonbitlang/x` 0.4.44.
+Compatibility with `moonbitlang/async` 0.20.3 / `moonbitlang/x` 0.4.46.
 
 The wrapper re-exports upstream types and APIs with matching signatures. On native, each function delegates directly to the upstream implementation. On JS, equivalent behavior is provided via `extern "js"` FFI (Node.js).
 

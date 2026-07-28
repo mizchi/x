@@ -157,7 +157,7 @@ fn parse_cookies_json(json_str : String) -> Array[Cookie] {
 
 ///|
 fn parse_headers_json(json_str : String) -> Map[String, String] {
-  let headers : Map[String, String] = {}
+  let headers : Map[String, String] = Map([])
   let parsed = @json.parse(json_str) catch { _ => return headers }
   match parsed {
     Object(map) =>

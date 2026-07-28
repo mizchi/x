@@ -97,7 +97,7 @@ pub fn get_env_vars() -> Map[String, String] {
   if err2 != 0 {
     return {}
   }
-  let result : Map[String, String] = {}
+  let result : Map[String, String] = Map([])
   for i in 0..<count {
     let var_ptr = sys_wasm_i32_load(ptrs_ptr + i * 4)
     let offset = var_ptr - data_ptr
