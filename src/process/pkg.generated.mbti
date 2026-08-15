@@ -84,4 +84,3 @@ pub(open) trait ProcessInput {
 pub(open) trait ProcessOutput {
   fn _process_output_native(Self) -> &@moonbitlang/async/process.ProcessOutput
 }
-

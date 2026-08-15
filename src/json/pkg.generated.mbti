@@ -31,4 +31,3 @@ pub(all) struct Position {
 // Type aliases
 
 // Traits
-

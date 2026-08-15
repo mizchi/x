@@ -36,4 +36,3 @@ pub using @moonbitlang/x/crypto {type SHA256}
 pub using @moonbitlang/x/crypto {type SM3}
 
 // Traits
-

@@ -82,7 +82,7 @@ test "flags" {
 ///|
 test "match_ some" {
   let re = @regexp.compile("a(bc|de)f")
-  guard re.match_("abcfxx") is Some(result)
+  guard! re.match_("abcfxx") is Some(result)
   inspect(result.after().to_owned(), content="xx")
 }
 

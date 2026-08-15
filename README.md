@@ -18,8 +18,8 @@ Node.js backend compatibility layer for `moonbitlang/async` in [MoonBit](https:/
 
 | Dependency | Version |
 |---|---|
-| `moonbitlang/async` | 0.20.3 |
-| `moonbitlang/x` | 0.4.46 |
+| `moonbitlang/async` | 0.20.5 |
+| `moonbitlang/x` | 0.4.50 |
 | `moonbitlang/regexp` | 0.3.5 |
 
 ## Packages
@@ -63,7 +63,7 @@ Node.js backend compatibility layer for `moonbitlang/async` in [MoonBit](https:/
 | `websocket` | Yes | Yes | client | stub |
 | `stdio` | Yes | Yes | Yes | stub |
 | `pipe` | Yes | Yes | Yes | stub |
-| `sys` | Yes | Yes | WASI P1 | stub |
+| `sys` | Yes | Yes | Yes | Yes* |
 | `regexp` | Yes | Yes (FFI) | Yes | Yes |
 | `json` | Yes | Yes (FFI) | Yes | Yes |
 | `crypto` | Yes | Yes | Yes | Yes |
@@ -72,13 +72,13 @@ Node.js backend compatibility layer for `moonbitlang/async` in [MoonBit](https:/
 - **Yes\*** — Implemented, with explicitly unsupported host-specific APIs.
 - **client** — WebSocket client support; HTTP server upgrades are unavailable on wasm.
 - **stub** — Compiles but aborts at runtime with "not supported" message.
-- **WASI P1** — Uses WASI Preview 1 environment, arguments, and exit syscalls.
+- **Yes\*** — Environment variables and arguments use `moonbitlang/core/env`; process exit remains unavailable on wasm-gc.
 
 On `wasm`, filesystem, process, socket, TLS, HTTP, WebSocket client, stdio, and pipe operations delegate to `moonbitlang/async`'s WASM host integration and retain the native/JS async signatures. They require capabilities granted by the WASM host (for example, `moonrun --policy` for filesystem, networking, and process spawning). `fs.Watcher`, `raw_fd`, and process groups, tree termination, and signal-based process termination are explicitly unsupported. Opaque WASM handles exposed as public `Int` file descriptors abort if they cannot be represented without truncation.
 
 ## Upstream Compatibility
 
-Compatibility with `moonbitlang/async` 0.20.3 / `moonbitlang/x` 0.4.46.
+Compatibility with `moonbitlang/async` 0.20.5 / `moonbitlang/x` 0.4.50.
 
 The wrapper re-exports upstream types and APIs with matching signatures. On native, each function delegates directly to the upstream implementation. On JS, equivalent behavior is provided via `extern "js"` FFI (Node.js).
 

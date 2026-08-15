@@ -48,4 +48,3 @@ pub fn Regexp::match_(Self, StringView) -> MatchResult?
 // Type aliases
 
 // Traits
-

@@ -7,19 +7,19 @@ test "roundtrip compact" {
 ///|
 test "parse object" {
   let j = @json.parse("{\"name\":\"moon\",\"n\":42}")
-  guard j is Object(obj)
-  guard obj.get("name") is Some(String(s))
+  guard! j is Object(obj)
+  guard! obj.get("name") is Some(String(s))
   inspect(s, content="moon")
-  guard obj.get("n") is Some(Number(n, ..))
+  guard! obj.get("n") is Some(Number(n, ..))
   inspect(n.to_int(), content="42")
 }
 
 ///|
 test "nested access" {
-  guard @json.parse("{\"a\":{\"b\":[10]}}") is Object(o)
-  guard o.get("a") is Some(Object(inner))
-  guard inner.get("b") is Some(Array(arr))
-  guard arr[0] is Number(n, ..)
+  guard! @json.parse("{\"a\":{\"b\":[10]}}") is Object(o)
+  guard! o.get("a") is Some(Object(inner))
+  guard! inner.get("b") is Some(Array(arr))
+  guard! arr[0] is Number(n, ..)
   inspect(n.to_int(), content="10")
 }
 

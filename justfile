@@ -12,7 +12,7 @@ fmt:
 
 # Type check
 check:
-    moon check --target {{target}}
+    moon check --deny-warn --target {{target}}
 
 # Run tests
 test:
@@ -37,6 +37,11 @@ release-check: fmt info check test
 release-check-all:
     just release-check
     just target=js check
+    just target=wasm check
+    just target=wasm-gc check
+    just target=js test
+    moon test --target wasm src/aqueue src/cond_var src/crypto src/gzip src/http src/json src/semaphore src/signal src/socket src/sys src/websocket
+    just target=wasm-gc test
 
 # Check upstream test coverage gap
 sync-tests package="":

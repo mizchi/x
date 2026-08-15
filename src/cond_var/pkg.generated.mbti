@@ -18,4 +18,3 @@ pub async fn Cond::wait(Self) -> Unit
 // Type aliases
 
 // Traits
-
