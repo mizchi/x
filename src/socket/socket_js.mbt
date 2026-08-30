@@ -844,12 +844,8 @@ pub async fn UdpServer::multicast(
   interface_addr? : Addr,
 ) -> UdpServer {
   let server = UdpServer(Addr::new(0U, multi_addr.port))
-  server.join_multicast_group(multi_addr, interface_addr?) catch {
-    err => {
-      server.close()
-      raise err
-    }
-  }
+  errdefer server.close()
+  server.join_multicast_group(multi_addr, interface_addr?)
   server
 }
 

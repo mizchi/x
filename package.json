@@ -1,0 +1,14 @@
+{
+  "name": "mizchi-x-dev",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.34.5",
+  "optionalDependencies": {
+    "@mizchi/jsimd-moonbit-interop": "0.1.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "@mizchi/jsimd-moonbit-interop": "link:../jsimd/packages/moonbit-interop"
+    }
+  }
+}

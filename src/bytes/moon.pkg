@@ -1,0 +1,13 @@
+import {
+  "moonbitlang/core/bench",
+  "moonbitlang/core/debug",
+}
+
+options(
+  targets: {
+    "bytes_default.mbt": [ "native", "wasm", "wasm-gc" ],
+    "bytes_js.mbt": [ "js" ],
+    "bytes_test.mbt": [ "native", "js", "wasm", "wasm-gc" ],
+    "bytes_bench_wbtest.mbt": [ "native", "js" ],
+  },
+)

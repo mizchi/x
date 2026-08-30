@@ -34,7 +34,7 @@ async fn inotify_start(
   interval_ms : Int,
   exclude : (String) -> Bool,
 ) -> InotifyState? {
-  let buf = StringBuilder::new()
+  let buf = StringBuilder()
   for root in roots {
     buf.write_string(root)
     buf.write_char('\u{00}')

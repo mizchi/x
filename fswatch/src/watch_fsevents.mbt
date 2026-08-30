@@ -37,7 +37,7 @@ async fn fsevents_start(
   latency_ms : Double,
 ) -> FSEventsState? {
   // Join roots as null-byte-separated UTF-8 buffer.
-  let buf = StringBuilder::new()
+  let buf = StringBuilder()
   for root in roots {
     buf.write_string(root)
     buf.write_char('\u{00}')

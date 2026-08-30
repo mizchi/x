@@ -1,6 +1,6 @@
 ///|
 fn fixed_ascii(buf : FixedArray[Byte], len : Int) -> String {
-  let out = StringBuilder::new()
+  let out = StringBuilder()
   for i in 0..<len {
     out.write_char(buf[i].to_int().unsafe_to_char())
   }
@@ -9,7 +9,7 @@ fn fixed_ascii(buf : FixedArray[Byte], len : Int) -> String {
 
 ///|
 async fn read_http_headers(conn : @x_socket.Tcp) -> String {
-  let out = StringBuilder::new()
+  let out = StringBuilder()
   let buf = FixedArray::make(1024, b'\x00')
   for ;; {
     let n = conn.read(buf)

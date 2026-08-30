@@ -22,7 +22,7 @@ async test "stream: GET read_some" {
     )
     defer stream.close()
     assert_eq(resp.code, 200)
-    let buf = StringBuilder::new()
+    let buf = StringBuilder()
     for ;; {
       match stream.read_some() {
         Some(chunk) =>
@@ -120,7 +120,7 @@ async test "stream: SSE-like chunked response" {
       "text/event-stream",
     )
     // Read all chunks and verify complete SSE data
-    let buf = StringBuilder::new()
+    let buf = StringBuilder()
     for ;; {
       match stream.read_some() {
         Some(chunk) =>
@@ -198,7 +198,7 @@ async test "stream: OpenAI-like POST SSE" {
     )
     // Parse SSE events from stream
     let events : Array[String] = []
-    let buf = StringBuilder::new()
+    let buf = StringBuilder()
     for ;; {
       match stream.read_some() {
         Some(chunk) =>
@@ -279,7 +279,7 @@ async test "smoke: stream matches upstream get_stream" {
       "http://127.0.0.1:\{port}/test",
     )
     defer upstream_client.close()
-    let upstream_buf = StringBuilder::new()
+    let upstream_buf = StringBuilder()
     while upstream_client.read_some() is Some(chunk) {
       for i = 0; i < chunk.length(); i = i + 1 {
         upstream_buf.write_char(chunk[i].to_int().unsafe_to_char())
@@ -290,7 +290,7 @@ async test "smoke: stream matches upstream get_stream" {
       "http://127.0.0.1:\{port}/test",
     )
     defer wrapper_stream.close()
-    let wrapper_buf = StringBuilder::new()
+    let wrapper_buf = StringBuilder()
     for ;; {
       match wrapper_stream.read_some() {
         Some(chunk) =>

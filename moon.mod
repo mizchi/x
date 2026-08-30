@@ -1,6 +1,6 @@
 name = "mizchi/x"
 
-version = "0.5.3"
+version = "0.6.0"
 
 import {
   "moonbitlang/async@0.20.5",
@@ -34,9 +34,14 @@ keywords = [
   "semaphore",
   "websocket",
   "wasi",
+  "bytes",
+  "bytes-view",
+  "string-view",
+  "array-view",
+  "simd",
 ]
 
-description = "Node.js backend compatibility layer for moonbitlang/async in MoonBit, with native delegation and JS FFI implementations for process, fs, http, gzip, tls, socket, raw_fd, signal, sync primitives, websocket, stdio, pipe, and sys."
+description = "Cross-platform MoonBit compatibility facades with native delegation and accelerated JS implementations for async IO, bytes, regexp, and JSON."
 
 preferred_target = "native"
 

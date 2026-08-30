@@ -11,7 +11,7 @@ let bench_pattern : String = "([a-z]+)=([0-9]+)"
 
 ///|
 fn bench_input() -> String {
-  let sb = StringBuilder::new()
+  let sb = StringBuilder()
   for _ in 0..<20 {
     sb.write_string("lorem ipsum dolor sit amet ")
   }

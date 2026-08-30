@@ -9,7 +9,7 @@
 // A moderately sized document: an array of 50 small objects mixing strings,
 // integers, floats and booleans.
 fn bench_json() -> String {
-  let sb = StringBuilder::new()
+  let sb = StringBuilder()
   sb.write_string("[")
   for i in 0..<50 {
     if i > 0 {

@@ -21,6 +21,7 @@ Node.js backend compatibility layer for `moonbitlang/async` in [MoonBit](https:/
 | `moonbitlang/async` | 0.20.5 |
 | `moonbitlang/x` | 0.4.50 |
 | `moonbitlang/regexp` | 0.3.5 |
+| `@mizchi/jsimd-moonbit-interop` (npm, JS runtime) | 0.1.0 |
 
 ## Packages
 
@@ -44,6 +45,10 @@ Node.js backend compatibility layer for `moonbitlang/async` in [MoonBit](https:/
 | `mizchi/x/regexp` | Regular expressions mirroring `moonbitlang/regexp` (`compile`, `Regexp::execute`, `match_`, `group_by_name`, `group_count`, `group_names`, `MatchResult::matched`/`get`/`groups`/`results`/`before`/`after`) |
 | `mizchi/x/json` | JSON mirroring `moonbitlang/core/json` (`parse`, `valid`, `stringify`) over the builtin `Json` value type |
 | `mizchi/x/crypto` | Hashes / HMAC / hex mirroring `moonbitlang/x/crypto` (`md5`, `sha1`, `sha224`, `sha256`, `sm3`, `*_from_iter`, `hmac`, `MD5`/`SHA256`/`SM3` contexts, `bytes_to_hex_string`, `uints_to_hex_string`) |
+| `mizchi/x/bytes` | Byte search, reverse search, equality, shortlex comparison, and non-ASCII detection; JS uses `@mizchi/jsimd-moonbit-interop` |
+| `mizchi/x/bytes_view` | Copy-free `BytesView` byte/sequence search, reverse byte search, equality, shortlex comparison, and non-ASCII detection |
+| `mizchi/x/string_view` | `StringView` substring/code-unit search, reverse search, and UTF-16 shortlex comparison through native JS string operations |
+| `mizchi/x/array_view` | Byte-specialized `ArrayView` forward/reverse byte and sequence search through native JS array operations |
 
 ## Platform Support
 
@@ -67,6 +72,10 @@ Node.js backend compatibility layer for `moonbitlang/async` in [MoonBit](https:/
 | `regexp` | Yes | Yes (FFI) | Yes | Yes |
 | `json` | Yes | Yes (FFI) | Yes | Yes |
 | `crypto` | Yes | Yes | Yes | Yes |
+| `bytes` | Yes | Yes (Wasm SIMD) | Yes | Yes |
+| `bytes_view` | Yes | Yes (Wasm SIMD) | Yes | Yes |
+| `string_view` | Yes | Yes (native UTF-16) | Yes | Yes |
+| `array_view` | Yes | Yes (native byte search) | Yes | Yes |
 
 - **Yes** — Full upstream-backed implementation.
 - **Yes\*** — Implemented, with explicitly unsupported host-specific APIs.
@@ -100,6 +109,28 @@ The wrapper re-exports upstream types and APIs with matching signatures. On nati
 
 `mizchi/x/crypto` re-exposes the synchronous hash / HMAC / hex surface of `moonbitlang/x/crypto` under the `mizchi/x` namespace, delegating to it on every target. Because `moonbitlang/x/crypto` is pure MoonBit it already runs on native, wasm, wasm-gc, and JS (including browsers), so the same synchronous signatures hold everywhere with no FFI. The `ByteSource` / `CryptoHasher` bounds and the `MD5` / `SHA256` / `SM3` contexts are the upstream types themselves (re-exported via `using`), so code written against `moonbitlang/x/crypto` is source-compatible. Note: the Web Crypto `crypto.subtle` API was intentionally **not** used — its `digest` / HMAC are async-only and cannot back this synchronous surface.
 
+`mizchi/x/bytes` preserves the builtin `Bytes` contracts while replacing JS scalar hot paths with `@mizchi/jsimd-moonbit-interop`. The MoonBit JS backend imports this npm ESM package with `#module`; the interop package owns MoonBit-specific shortlex and reverse-substring semantics and delegates hot paths to `@mizchi/jsimd/bytes`. jsimd selects native JavaScript for small inputs and copies larger inputs into reusable prebuilt Wasm SIMD scratch memory.
+
+`mizchi/x/bytes_view` passes the MoonBit JS runtime's `{ buf, start, end }` view directly to the interop package. It creates a zero-copy `Uint8Array.subarray` and uses the same jsimd Wasm SIMD kernels. Multi-byte reverse search is intentionally omitted because benchmarks showed no improvement over the builtin implementation.
+
+`mizchi/x/string_view` preserves UTF-16 code-unit offsets and view bounds while using native JavaScript `indexOf` / `lastIndexOf` and string comparison. `mizchi/x/array_view` is byte-specialized and uses native array candidate searches without converting the backing JS Array to Wasm memory. Only measured wins are wrapped; `StringView` equality, generic `FixedArray`, and scalar-only ArrayView equality/comparison/non-ASCII scans are intentionally omitted.
+
+The SIMD facade packages are optional. Applications only need the runtime package when they import
+`mizchi/x/bytes`, `mizchi/x/bytes_view`, `mizchi/x/string_view`, or `mizchi/x/array_view` on the JS target:
+
+```sh
+pnpm add @mizchi/jsimd-moonbit-interop@0.1.0
+```
+
+Other `mizchi/x` packages neither resolve nor load this module, so applications that do not use these
+facades can leave it uninstalled. CI verifies that case with `pnpm install --no-optional` and
+`just test-js-without-jsimd`.
+
+This repository declares the same exact version as an `optionalDependency`. During development it
+overrides that dependency with the adjacent ghq checkout at `../jsimd/packages/moonbit-interop`;
+build that package with `just build-moonbit-interop-package` in `mizchi/jsimd`, then run `pnpm install`
+here.
+
 ### Benchmarks (JS target)
 
 `*_bench_wbtest.mbt` files compare each package against its upstream engine with `moon bench --target js`. On native both sit on the same engine, so the numbers there are at parity (confirming the wrapper cost is negligible); the speedups below come from delegating to the host engine on JS. Representative run (Node.js, mean ns/iter, lower is better):
@@ -112,6 +143,13 @@ The wrapper re-exports upstream types and APIs with matching signatures. On nati
 | `json` valid | ~26 µs | ~73 µs | **~2.8×** |
 | `json` stringify | ~30 µs | ~66 µs | **~2.2×** |
 | `json` parse | ~67 µs | ~74 µs | ~on par |
+| `bytes` find byte (4 KiB miss) | ~0.40 µs | ~1.94 µs | **~4.9×** |
+| `bytes` equality (equal 4 KiB) | ~0.35 µs | ~1.54 µs | **~4.4×** |
+| `bytes_view` find byte (4 KiB miss) | ~0.22 µs | ~1.14 µs | **~5.1×** |
+| `bytes_view` equality (equal 4 KiB) | ~0.25 µs | ~1.49 µs | **~6.1×** |
+| `string_view` find substring (4 KiB miss) | ~0.09 µs | ~3.57 µs | **~42×** |
+| `string_view` compare (late difference) | ~0.20 µs | ~2.94 µs | **~15×** |
+| `array_view` find sequence (4 KiB miss) | ~1.03 µs | ~2.01 µs | **~2.0×** |
 
 `json` parse lands roughly on par rather than faster: `JSON.parse` is fast, but the dominant cost is rebuilding the MoonBit `Json` ADT (which the pure-MoonBit parser also pays), so the host parser's edge is largely consumed by marshalling. `valid` and `stringify` win clearly because they avoid that rebuild.
 

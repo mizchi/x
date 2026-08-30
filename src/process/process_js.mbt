@@ -27,14 +27,16 @@ async fn[T] run_js_promise(promise : JsPromise[T]) -> T {
 }
 
 ///|
-fn env_to_arrays(env : Map[String, String]) -> (Array[String], Array[String]) {
+fn env_to_arrays(
+  env : Map[String, String],
+) -> (FixedArray[String], FixedArray[String]) {
   let keys : Array[String] = []
   let values : Array[String] = []
   for k, v in env {
     keys.push(k)
     values.push(v)
   }
-  (keys, values)
+  (FixedArray::from_iter(keys.iter()), FixedArray::from_iter(values.iter()))
 }
 
 ///|
@@ -166,10 +168,10 @@ extern "js" fn js_process_close_output(id : Int) -> Unit =
 ///|
 extern "js" fn js_process_start(
   cmd : String,
-  args : Array[String],
+  args : FixedArray[String],
   cwd : String?,
-  env_keys : Array[String],
-  env_values : Array[String],
+  env_keys : FixedArray[String],
+  env_values : FixedArray[String],
   inherit_env : Bool,
   stdin_id : Int,
   stdout_id : Int,
@@ -653,7 +655,7 @@ async fn start_process(
   run_js_promise(
     js_process_start(
       cmd.to_owned(),
-      Array::from_iter(args.iter().map(fn(s) { s })),
+      FixedArray::from_iter(args.iter().map(fn(s) { s })),
       cwd.map(fn(c) { c.to_owned() }),
       env_keys,
       env_values,

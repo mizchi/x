@@ -6,6 +6,10 @@ target := "native"
 # Default task: check and test
 default: check test
 
+# Install JavaScript runtime dependencies
+install:
+    pnpm install --frozen-lockfile
+
 # Format code
 fmt:
     moon fmt
@@ -17,6 +21,11 @@ check:
 # Run tests
 test:
     moon test --target {{target}}
+
+# Prove that JS packages unrelated to the SIMD facades work without jsimd.
+test-js-without-jsimd:
+    bash scripts/test-js-without-jsimd.sh
+    moon test --target js src/aqueue src/cond_var src/crypto src/fs src/gzip src/http src/httpbench src/json src/pipe src/process src/raw_fd src/regexp src/semaphore src/signal src/socket src/stdio src/sys src/tls src/websocket
 
 # Update snapshot tests
 test-update:
@@ -34,13 +43,13 @@ clean:
 release-check: fmt info check test
 
 # Pre-release check on all supported targets
-release-check-all:
+release-check-all: install
     just release-check
     just target=js check
     just target=wasm check
     just target=wasm-gc check
     just target=js test
-    moon test --target wasm src/aqueue src/cond_var src/crypto src/gzip src/http src/json src/semaphore src/signal src/socket src/sys src/websocket
+    moon test --target wasm src/aqueue src/array_view src/bytes src/bytes_view src/cond_var src/crypto src/gzip src/http src/json src/semaphore src/signal src/socket src/string_view src/sys src/websocket
     just target=wasm-gc test
 
 # Check upstream test coverage gap

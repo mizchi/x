@@ -116,7 +116,7 @@ fn Cookie::parse(line : StringView) -> Cookie raise {
 
 ///|
 fn Cookie::to_header_value(cookie : Cookie) -> String {
-  let buf = StringBuilder::new()
+  let buf = StringBuilder()
   buf.write_string(cookie.name)
   buf.write_char('=')
   buf.write_string(cookie.value)
@@ -267,7 +267,7 @@ fn hex_digit(n : Int) -> Char {
 
 ///|
 fn cookies_to_json(cookies : Array[Cookie]) -> String {
-  let buf = StringBuilder::new()
+  let buf = StringBuilder()
   buf.write_char('[')
   let mut first = true
   for cookie in cookies {
@@ -349,7 +349,7 @@ fn response_has_no_body(code : Int, meth : RequestMethod?) -> Bool {
 
 ///|
 fn headers_to_json(headers : Map[String, String]) -> String {
-  let buf = StringBuilder::new()
+  let buf = StringBuilder()
   buf.write_char('{')
   let mut first = true
   for k, v in headers {

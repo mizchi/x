@@ -89,11 +89,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
+      - name: Setup pnpm
+        if: matrix.target == 'js'
+        uses: pnpm/action-setup@v4
+
       - name: Setup Node.js
         if: matrix.target == 'js'
         uses: actions/setup-node@v5
         with:
           node-version: '24'
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install JS dependencies
+        if: matrix.target == 'js' && matrix.module == 'x'
+        run: pnpm install --frozen-lockfile --no-optional
 
       - name: Install MoonBit CLI (Unix)
         if: runner.os != 'Windows'
@@ -120,5 +130,10 @@ jobs:
         working-directory: ${{ matrix.module == 'x' && '.' || 'fswatch' }}
 
       - name: Moon test
+        if: matrix.module != 'x' || matrix.target != 'js'
         run: moon test --target ${{ matrix.target }}
         working-directory: ${{ matrix.module == 'x' && '.' || 'fswatch' }}
+
+      - name: Moon test without optional jsimd
+        if: matrix.module == 'x' && matrix.target == 'js'
+        run: just test-js-without-jsimd

@@ -1,0 +1,13 @@
+import {
+  "moonbitlang/core/bench",
+  "moonbitlang/core/debug",
+}
+
+options(
+  targets: {
+    "string_view_default.mbt": [ "native", "wasm", "wasm-gc" ],
+    "string_view_js.mbt": [ "js" ],
+    "string_view_test.mbt": [ "native", "js", "wasm", "wasm-gc" ],
+    "string_view_bench_wbtest.mbt": [ "native", "js" ],
+  },
+)

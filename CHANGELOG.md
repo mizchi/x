@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.6.0 - 2026-08-30
+
+### Added
+
+- Added `mizchi/x/bytes`, a cross-platform `Bytes` facade for find/reverse-find, equality, shortlex comparison, and non-ASCII detection. The JS target imports `@mizchi/jsimd-moonbit-interop` with MoonBit `#module`; that package preserves MoonBit semantics while using jsimd's prebuilt Wasm SIMD kernels for large inputs.
+- Added measured JS fast-path facades for `BytesView`, `StringView`, and byte-specialized `ArrayView`. BytesView reuses jsimd Wasm SIMD without copying surrounding bytes; StringView and ArrayView use bounded native JS operations. APIs that did not beat the builtin implementation are omitted.
+
+### Changed
+
+- Made `@mizchi/jsimd-moonbit-interop` optional. JS consumers that do not import the Bytes/BytesView/StringView/ArrayView fast-path packages no longer need to install it; CI verifies an installation with optional dependencies omitted.
+- Updated deprecated `StringBuilder`, JS FFI array, and async cleanup forms for the current MoonBit toolchain so `--deny-warn` checks remain green.
+
 ## 0.5.1 - 2026-06-30
 
 ### Changed

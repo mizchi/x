@@ -94,7 +94,7 @@ pub async fn start(
 ) -> Watcher {
   let ex = exclude.unwrap_or(default_exclude)
   let interval = interval_ms.unwrap_or(50)
-  let joined = StringBuilder::new()
+  let joined = StringBuilder()
   let mut first = true
   for root in roots {
     if !first {

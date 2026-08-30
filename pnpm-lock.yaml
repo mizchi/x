@@ -1,0 +1,16 @@
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+overrides:
+  '@mizchi/jsimd-moonbit-interop': link:../jsimd/packages/moonbit-interop
+
+importers:
+
+  .:
+    optionalDependencies:
+      '@mizchi/jsimd-moonbit-interop':
+        specifier: link:../jsimd/packages/moonbit-interop
+        version: link:../jsimd/packages/moonbit-interop

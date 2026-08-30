@@ -1,6 +1,6 @@
 ///|
 fn fixed_text(buf : FixedArray[Byte], len : Int) -> String {
-  let out = StringBuilder::new()
+  let out = StringBuilder()
   for i in 0..<len {
     out.write_char(buf[i].to_int().unsafe_to_char())
   }
