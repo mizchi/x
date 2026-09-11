@@ -38,7 +38,7 @@ pub(all) suberror ParseError {
 ///|
 pub impl Show for ParseError with fn output(self, logger) {
   match self {
-    InvalidChar({ line, column }, c) => {
+    InvalidChar({ line, column, }, c) => {
       logger.write_string("Invalid character ")
       logger.write_string(c.escape())
       logger.write_string(" at line ")
@@ -47,7 +47,7 @@ pub impl Show for ParseError with fn output(self, logger) {
       logger.write_object(column)
     }
     InvalidEof => logger.write_string("Unexpected end of file")
-    InvalidNumber({ line, column }, s) => {
+    InvalidNumber({ line, column, }, s) => {
       logger.write_string("Invalid number ")
       logger.write_string(s)
       logger.write_string(" at line ")
@@ -55,7 +55,7 @@ pub impl Show for ParseError with fn output(self, logger) {
       logger.write_string(", column ")
       logger.write_object(column)
     }
-    InvalidIdentEscape({ line, column }) => {
+    InvalidIdentEscape({ line, column, }) => {
       logger.write_string("Invalid escape sequence in identifier at line ")
       logger.write_object(line)
       logger.write_string(", column ")

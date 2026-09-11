@@ -63,7 +63,7 @@ test "parse_headers_json - normalizes only when needed" {
 
 ///|
 test "Response construction" {
-  let resp = Response::{ code: 200, reason: "OK", headers: {}, cookies: [] }
+  let resp = Response::{ code: 200, reason: "OK", headers: {}, cookies: [], }
   assert_eq(resp.code, 200)
   assert_eq(resp.reason, "OK")
   assert_eq(resp.headers.length(), 0)

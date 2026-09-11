@@ -1,4 +1,16 @@
 ///|
+// Keep the public String-keyed API while upstream compares HTTP names ignoring case.
+fn to_upstream_headers(
+  headers : Map[String, String],
+) -> Map[@async_http.CaseInsensitiveString, String] {
+  let result : Map[@async_http.CaseInsensitiveString, String] = Map([])
+  for name, value in headers {
+    result[@async_http.CaseInsensitiveString(name)] = value
+  }
+  result
+}
+
+///|
 fn extract_host_url(url : String) -> String {
   let start = if url.has_prefix("https://") {
     8
@@ -48,10 +60,10 @@ fn extract_path_from_url(url : String) -> String {
 fn to_response(resp : @async_http.Response) -> Response {
   let headers : Map[String, String] = Map([])
   for k, v in resp.headers {
-    headers[k.to_lower()] = v
+    headers[k.to_string().to_lower()] = v
   }
   let cookies = resp.cookies.map(to_cookie)
-  Response::{ code: resp.code, reason: resp.reason, headers, cookies }
+  Response::{ code: resp.code, reason: resp.reason, headers, cookies, }
 }
 
 ///|
@@ -121,13 +133,13 @@ pub async fn Client::new(
   }
   let client = @async_http.Client(
     url,
-    headers=headers.unwrap_or({}),
+    headers=to_upstream_headers(headers.unwrap_or({})),
     proxy?,
     trust~,
   ) catch {
     _ => raise HttpError::InvalidUrl(url)
   }
-  Client::{ inner: client, request_method: None, response_has_no_body: false }
+  Client::{ inner: client, request_method: None, response_has_no_body: false, }
 }
 
 ///|
@@ -147,7 +159,7 @@ pub async fn Client::request(
   self.inner.request(
     from_request_method(meth),
     path,
-    extra_headers=extra_headers.unwrap_or({}),
+    extra_headers=to_upstream_headers(extra_headers.unwrap_or({})),
   ) catch {
     err => raise classify_http_error(err.to_string())
   }
@@ -216,7 +228,7 @@ pub async fn Client::post(
   let response = self.inner.post(
     path,
     body,
-    extra_headers=extra_headers.unwrap_or({}),
+    extra_headers=to_upstream_headers(extra_headers.unwrap_or({})),
   ) catch {
     err => raise classify_http_error(err.to_string())
   }
@@ -235,7 +247,7 @@ pub async fn Client::put(
   let response = self.inner.put(
     path,
     body,
-    extra_headers=extra_headers.unwrap_or({}),
+    extra_headers=to_upstream_headers(extra_headers.unwrap_or({})),
   ) catch {
     err => raise classify_http_error(err.to_string())
   }
@@ -283,7 +295,7 @@ async fn request_internal(
         let (resp, body_data) = @async_http.post(
           url,
           body,
-          headers~,
+          headers=to_upstream_headers(headers),
           proxy?=upstream_proxy,
         )
         (to_response(resp), body_data)
@@ -292,7 +304,7 @@ async fn request_internal(
         let (resp, body_data) = @async_http.put(
           url,
           body,
-          headers~,
+          headers=to_upstream_headers(headers),
           proxy?=upstream_proxy,
         )
         (to_response(resp), body_data)
@@ -371,7 +383,10 @@ async fn stream_request_internal(
 ) -> (Response, Stream) raise HttpError {
   let host_url = extract_host_url(url)
   let path = extract_path_from_url(url)
-  let client = @async_http.Client(host_url, headers~) catch {
+  let client = @async_http.Client(
+    host_url,
+    headers=to_upstream_headers(headers),
+  ) catch {
     _ => raise HttpError::InvalidUrl(url)
   }
   let resp = try {
@@ -386,7 +401,7 @@ async fn stream_request_internal(
       raise classify_http_error(err.to_string())
     }
   }
-  (to_response(resp), Stream::{ inner: client })
+  (to_response(resp), Stream::{ inner: client, })
 }
 
 ///|
@@ -520,14 +535,14 @@ fn to_request_method(meth : @async_http.RequestMethod) -> RequestMethod {
 fn to_request(req : @async_http.Request) -> Request {
   let headers : Map[String, String] = Map([])
   for k, v in req.headers {
-    headers[k.to_lower()] = v
+    headers[k.to_string().to_lower()] = v
   }
-  Request::{ meth: to_request_method(req.meth), path: req.path, headers }
+  Request::{ meth: to_request_method(req.meth), path: req.path, headers, }
 }
 
 ///|
 fn to_addr(addr : @socket.Addr) -> Addr {
-  Addr::{ text: addr.to_string(), port: addr.port() }
+  Addr::{ text: addr.to_string(), port: addr.port(), }
 }
 
 ///|
@@ -559,11 +574,11 @@ pub async fn Server::new(
     addr,
     dual_stack?,
     reuse_addr?,
-    headers=headers.unwrap_or({}),
+    headers=to_upstream_headers(headers.unwrap_or({})),
   ) catch {
     err => raise classify_http_error(err.to_string())
   }
-  Server::{ inner: server }
+  Server::{ inner: server, }
 }
 
 ///|
@@ -603,7 +618,7 @@ pub async fn Server::accept(
   let (conn, addr) = self.inner.accept() catch {
     err => raise classify_http_error(err.to_string())
   }
-  (ServerConnection::{ inner: conn }, to_addr(addr))
+  (ServerConnection::{ inner: conn, }, to_addr(addr))
 }
 
 ///|
@@ -615,7 +630,7 @@ pub async fn Server::run_forever(
 ) -> Unit raise HttpError {
   self.inner.run_forever(
     (req, body, conn) => {
-      let wrapped = ServerConnection::{ inner: conn }
+      let wrapped = ServerConnection::{ inner: conn, }
       f(to_request(req), body, wrapped)
     },
     allow_failure?,
@@ -666,7 +681,7 @@ pub async fn ServerConnection::send_response(
   self.inner.send_response(
     code,
     reason,
-    extra_headers=extra_headers.unwrap_or({}),
+    extra_headers=to_upstream_headers(extra_headers.unwrap_or({})),
     cookies~,
   ) catch {
     err => raise classify_http_error(err.to_string())

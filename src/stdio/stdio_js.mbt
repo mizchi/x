@@ -113,10 +113,10 @@ pub impl @process.ProcessOutput for Output with fn _process_output_js(self) {
 }
 
 ///|
-pub let stdin : Input = Input::{ buf: @io.ReaderBuffer::new() }
+pub let stdin : Input = Input::{ buf: @io.ReaderBuffer::new(), }
 
 ///|
-pub let stdout : Output = Output::{ target: 1 }
+pub let stdout : Output = Output::{ target: 1, }
 
 ///|
-pub let stderr : Output = Output::{ target: 2 }
+pub let stderr : Output = Output::{ target: 2, }

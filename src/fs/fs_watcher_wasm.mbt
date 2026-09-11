@@ -10,7 +10,7 @@ pub async fn Watcher::Watcher(
   ignored_paths? : (String) -> Bool,
 ) -> Watcher raise IOError {
   ignore((path, debounce_timeout, max_debounce_delay, ignored_paths))
-  ignore(Watcher::{  })
+  ignore(Watcher::{ })
   raise IOError::IOError("Watcher is not supported on wasm target")
 }
 

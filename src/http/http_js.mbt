@@ -35,7 +35,7 @@ extern "js" fn js_fetch_internal(
 fn parse_response_json(json_str : String) -> (Response, &@io.Data) {
   let parsed = @json.parse(json_str) catch {
     _ =>
-      return (Response::{ code: 0, reason: "", headers: {}, cookies: [] }, "")
+      return (Response::{ code: 0, reason: "", headers: {}, cookies: [], }, "")
   }
   let code = match parsed {
     Object(map) =>
@@ -84,7 +84,7 @@ fn parse_response_json(json_str : String) -> (Response, &@io.Data) {
       }
     _ => ()
   }
-  (Response::{ code, reason, headers, cookies }, body)
+  (Response::{ code, reason, headers, cookies, }, body)
 }
 
 // Streaming API
@@ -1277,7 +1277,7 @@ fn to_addr(host : String, port : Int) -> Addr {
   } else {
     host
   }
-  Addr::{ text: "\{h}:\{port}", port }
+  Addr::{ text: "\{h}:\{port}", port, }
 }
 
 ///|
@@ -1586,7 +1586,7 @@ pub async fn Server::new(
   let result = @js_async.Promise::wait(promise, abort_controller=controller) catch {
     err => raise classify_http_error(err.to_string())
   }
-  Server::{ id: result.id, port: result.port, addr: to_addr(h, result.port) }
+  Server::{ id: result.id, port: result.port, addr: to_addr(h, result.port), }
 }
 
 ///|
@@ -1699,7 +1699,7 @@ async fn stream_request_internal_js(
     headers: parse_headers_json(result.headers_json),
     cookies: parse_cookies_json(result.cookies_json),
   }
-  (resp, Stream::{ id: result.id })
+  (resp, Stream::{ id: result.id, })
 }
 
 ///|
@@ -1822,7 +1822,7 @@ pub async fn Stream::read_all(self : Stream) -> Bytes raise HttpError {
   if chunks.length() == 1 {
     return chunks[0]
   }
-  let flat : Array[Byte] = Array::new(capacity=total)
+  let flat : Array[Byte] = Array(capacity=total)
   for chunk in chunks {
     for i = 0; i < chunk.length(); i = i + 1 {
       flat.push(chunk[i])

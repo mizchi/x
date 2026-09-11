@@ -113,7 +113,7 @@ pub fn compile(
   for i in 0..<result.group_names.length() {
     names[result.group_names[i]] = result.group_indices[i]
   }
-  { id: result.id, capture: result.capture, names }
+  { id: result.id, capture: result.capture, names, }
 }
 
 ///|
@@ -121,7 +121,7 @@ pub fn compile(
 pub fn Regexp::execute(self : Regexp, input : StringView) -> MatchResult {
   let owned = input.to_owned()
   let result = js_execute(self.id, owned)
-  { input: owned, captures: result.captures, names: self.names }
+  { input: owned, captures: result.captures, names: self.names, }
 }
 
 ///|

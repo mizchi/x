@@ -28,7 +28,7 @@ extern "C" fn raw_fd_close_ffi(fd : Int) -> Int = "mizchi_x_raw_fd_close"
 ///|
 #alias(new, deprecated)
 pub async fn RawFd::RawFd(fd : Int) -> RawFd {
-  { fd, closed: false }
+  { fd, closed: false, }
 }
 
 ///|

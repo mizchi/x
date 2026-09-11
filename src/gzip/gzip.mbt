@@ -6,7 +6,7 @@ pub struct Decoder[R] {
 ///|
 #alias(new, deprecated)
 pub fn[R : @io.Reader] Decoder::Decoder(inner : R) -> Decoder[R] {
-  { inner: @async_gzip.Decoder(inner) }
+  { inner: @async_gzip.Decoder(inner), }
 }
 
 ///|
@@ -39,7 +39,9 @@ pub fn[W] Encoder::Encoder(
   extra_flags? : Byte = b'\x00',
   operating_system? : Byte = b'\xff',
 ) -> Encoder[W] {
-  { inner: @async_gzip.Encoder(inner, mtime~, extra_flags~, operating_system~) }
+  {
+    inner: @async_gzip.Encoder(inner, mtime~, extra_flags~, operating_system~),
+  }
 }
 
 ///|

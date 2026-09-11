@@ -6,7 +6,7 @@ pub struct Cond {
 ///|
 #alias(new, deprecated)
 pub fn Cond::Cond() -> Cond {
-  { inner: @async_cond.Cond() }
+  { inner: @async_cond.Cond(), }
 }
 
 ///|

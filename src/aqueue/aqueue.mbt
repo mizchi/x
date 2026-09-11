@@ -43,7 +43,7 @@ pub struct Queue[X] {
 #alias(new, deprecated)
 #as_free_fn(new, deprecated)
 pub fn[X] Queue::Queue(kind~ : Kind) -> Queue[X] {
-  { kind, inner: @async_aqueue.Queue(kind=to_async_kind(kind)) }
+  { kind, inner: @async_aqueue.Queue(kind=to_async_kind(kind)), }
 }
 
 ///|

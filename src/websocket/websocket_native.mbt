@@ -1,4 +1,16 @@
 ///|
+// Keep the public String-keyed API while upstream compares HTTP names ignoring case.
+fn to_upstream_headers(
+  headers : Map[String, String],
+) -> Map[@async_http.CaseInsensitiveString, String] {
+  let result : Map[@async_http.CaseInsensitiveString, String] = Map([])
+  for name, value in headers {
+    result[@async_http.CaseInsensitiveString(name)] = value
+  }
+  result
+}
+
+///|
 pub struct Conn {
   inner : @async_ws.Conn
 }
@@ -25,7 +37,7 @@ fn to_upstream_request(request : @http.Request) -> @async_http.Request {
   {
     meth: to_upstream_request_method(request.meth),
     path: request.path,
-    headers: request.headers,
+    headers: to_upstream_headers(request.headers),
   }
 }
 
@@ -82,7 +94,10 @@ pub async fn Conn::connect(
   url : String,
   headers? : Map[String, String],
 ) -> Conn raise WebSocketError {
-  let inner = @async_ws.Conn::connect(url, headers?) catch {
+  let inner = @async_ws.Conn::connect(
+    url,
+    headers?=headers.map(to_upstream_headers),
+  ) catch {
     err => raise WebSocketError::InvalidHandshake(err.to_string())
   }
   Conn::{ inner, }

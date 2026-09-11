@@ -67,6 +67,16 @@ test "extract_path_from_url - with port" {
 }
 
 ///|
+test "upstream headers use case insensitive keys without mutating input" {
+  let headers : Map[String, String] = { "X-ReQuEsT-Id": "request-123" }
+  let upstream = to_upstream_headers(headers)
+  assert_eq(upstream.get("x-request-id"), Some("request-123"))
+  assert_eq(upstream.get("X-REQUEST-ID"), Some("request-123"))
+  assert_eq(headers.get("X-ReQuEsT-Id"), Some("request-123"))
+  assert_eq(headers.get("x-request-id"), None)
+}
+
+///|
 test "extract_path_from_url - with port no path" {
   assert_eq(extract_path_from_url("http://www.example.org:10042"), "/")
 }

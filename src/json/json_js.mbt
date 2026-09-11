@@ -141,7 +141,7 @@ pub fn parse(
     if result.is_eof {
       raise InvalidEof
     }
-    let pos = { line: result.line, column: result.column }
+    let pos = { line: result.line, column: result.column, }
     let c = if result.ch_code >= 0 {
       Char::from_int(result.ch_code)
     } else {

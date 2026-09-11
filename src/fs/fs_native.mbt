@@ -490,7 +490,7 @@ pub async fn Directory::next(
   }
   match entry {
     None => None
-    Some(entry) => Some({ name: entry.name, is_dir: entry.is_dir })
+    Some(entry) => Some({ name: entry.name, is_dir: entry.is_dir, })
   }
 }
 

@@ -11,7 +11,7 @@ pub struct PipeWrite {
 ///|
 pub fn pipe() -> (PipeRead, PipeWrite) raise {
   let (r, w) = @async_pipe.pipe()
-  (PipeRead::{ inner: r }, PipeWrite::{ inner: w })
+  (PipeRead::{ inner: r, }, PipeWrite::{ inner: w, })
 }
 
 ///|
@@ -52,6 +52,8 @@ pub impl @io.Reader for PipeRead with fn _direct_read(
 }
 
 ///|
+// Preserve reusable pipe redirection; upstream process pipes are consumed on spawn.
+#warnings("-deprecated")
 pub impl @process.ProcessInput for PipeRead with fn _process_input_native(self) {
   self.inner
 }
@@ -62,6 +64,8 @@ pub impl @io.Writer for PipeWrite with fn write_once(self, buf, offset~, len~) {
 }
 
 ///|
+// Preserve reusable pipe redirection; upstream process pipes are consumed on spawn.
+#warnings("-deprecated")
 pub impl @process.ProcessOutput for PipeWrite with fn _process_output_native(
   self,
 ) {

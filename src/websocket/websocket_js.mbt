@@ -127,7 +127,7 @@ pub async fn Conn::connect(
   }) catch {
     err => raise WebSocketError::InvalidHandshake(err.to_string())
   }
-  Conn::{ id: result.id }
+  Conn::{ id: result.id, }
 }
 
 ///|

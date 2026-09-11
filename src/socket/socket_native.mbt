@@ -23,7 +23,7 @@ fn addr_from_async(addr : @async_socket.Addr) -> Addr {
   Addr::parse("\{addr}") catch {
     _ =>
       if addr.is_ipv6() {
-        Addr::{ host: "::", port: addr.port(), ip: 0U, is_ipv6: true }
+        Addr::{ host: "::", port: addr.port(), ip: 0U, is_ipv6: true, }
       } else {
         Addr::new(addr.ip(), addr.port())
       }
@@ -71,7 +71,7 @@ pub async fn Tcp::connect(addr : Addr) -> Tcp {
       _ => abort("@socket.Tcp::connect: invalid address")
     },
   )
-  Tcp::{ addr: addr_from_async(inner.addr), inner }
+  Tcp::{ addr: addr_from_async(inner.addr), inner, }
 }
 
 ///|
@@ -85,7 +85,7 @@ pub async fn Tcp::connect_to_host(
     port~,
     protocol=to_async_protocol(protocol.unwrap_or(NoPreference)),
   )
-  Tcp::{ addr: addr_from_async(inner.addr), inner }
+  Tcp::{ addr: addr_from_async(inner.addr), inner, }
 }
 
 ///|
@@ -137,7 +137,7 @@ pub async fn TcpServer::TcpServer(
     dual_stack?,
     reuse_addr?,
   )
-  TcpServer::{ addr: addr_from_async(inner.addr), inner }
+  TcpServer::{ addr: addr_from_async(inner.addr), inner, }
 }
 
 ///|
@@ -160,7 +160,7 @@ pub fn TcpServer::addr(self : TcpServer) -> Addr {
 pub async fn TcpServer::accept(self : TcpServer) -> (Tcp, Addr) {
   let (conn, peer) = self.inner.accept()
   (
-    Tcp::{ addr: addr_from_async(conn.addr), inner: conn },
+    Tcp::{ addr: addr_from_async(conn.addr), inner: conn, },
     addr_from_async(peer),
   )
 }
@@ -175,7 +175,7 @@ pub async fn TcpServer::run_forever(
   self.inner.run_forever(
     (conn, peer) => {
       f(
-        Tcp::{ addr: addr_from_async(conn.addr), inner: conn },
+        Tcp::{ addr: addr_from_async(conn.addr), inner: conn, },
         addr_from_async(peer),
       )
     },
@@ -198,7 +198,7 @@ pub async fn UdpClient::UdpClient(addr : Addr) -> UdpClient {
       _ => abort("@socket.UdpClient: invalid address")
     },
   )
-  UdpClient::{ addr: addr_from_async(inner.addr), inner }
+  UdpClient::{ addr: addr_from_async(inner.addr), inner, }
 }
 
 ///|
@@ -297,7 +297,7 @@ pub async fn UdpServer::UdpServer(addr : Addr, dual_stack? : Bool) -> UdpServer 
     },
     dual_stack?,
   )
-  UdpServer::{ addr: addr_from_async(inner.addr), inner }
+  UdpServer::{ addr: addr_from_async(inner.addr), inner, }
 }
 
 ///|
@@ -317,7 +317,7 @@ pub async fn UdpServer::multicast(
       None => @async_socket.Addr::new(0U, 0)
     },
   )
-  UdpServer::{ addr: addr_from_async(inner.addr), inner }
+  UdpServer::{ addr: addr_from_async(inner.addr), inner, }
 }
 
 ///|

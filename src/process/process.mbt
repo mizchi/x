@@ -14,10 +14,10 @@ pub fn graceful_cancel(
   timeout~ : Int,
   signal? : @signal.Signal,
 ) -> CancellationHandler {
-  { kind: Graceful(timeout, signal) }
+  { kind: Graceful(timeout, signal), }
 }
 
 ///|
 pub fn hard_cancel() -> CancellationHandler {
-  { kind: Hard }
+  { kind: Hard, }
 }

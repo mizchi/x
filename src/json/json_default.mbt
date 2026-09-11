@@ -3,7 +3,7 @@
 
 ///|
 fn map_position(p : @upstream.Position) -> Position {
-  { line: p.line, column: p.column }
+  { line: p.line, column: p.column, }
 }
 
 ///|

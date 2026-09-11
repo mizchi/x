@@ -1104,7 +1104,7 @@ pub async fn Directory::next(
   if entry.done {
     None
   } else {
-    Some({ name: entry.name, is_dir: entry.is_dir })
+    Some({ name: entry.name, is_dir: entry.is_dir, })
   }
 }
 

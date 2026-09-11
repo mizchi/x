@@ -42,7 +42,7 @@ pub fn compile(
 ///|
 /// Executes the regular expression against `input`, returning a `MatchResult`.
 pub fn Regexp::execute(self : Regexp, input : StringView) -> MatchResult {
-  { inner: self.inner.execute(input) }
+  { inner: self.inner.execute(input), }
 }
 
 ///|

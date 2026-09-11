@@ -11,7 +11,7 @@ pub struct PipeWrite {
 ///|
 pub fn pipe() -> (PipeRead, PipeWrite) raise {
   let (r, w) = @io.pipe()
-  (PipeRead::{ inner: r }, PipeWrite::{ inner: w })
+  (PipeRead::{ inner: r, }, PipeWrite::{ inner: w, })
 }
 
 ///|

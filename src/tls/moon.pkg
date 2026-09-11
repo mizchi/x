@@ -11,6 +11,7 @@ import {
 import {
   "mizchi/x/fs",
   "mizchi/x/pipe",
+  "mizchi/x/socket",
   "moonbitlang/core/encoding/utf8",
 } for "test"
 

@@ -84,6 +84,25 @@ async test "tcp roundtrip" {
 }
 
 ///|
+async test "tcp write to closed connection raises instead of returning zero" {
+  @async.with_timeout(5000, () => {
+    let server = @socket.TcpServer(@socket.Addr::parse("127.0.0.1:0"))
+    defer server.close()
+    let conn = @socket.Tcp::connect(server.addr)
+    defer conn.close()
+    let (peer, _) = server.accept()
+    defer peer.close()
+    conn.close()
+    let result = try conn.write_once(b"x", offset=0, len=1) catch {
+      err => Err(err)
+    } noraise {
+      count => Ok(count)
+    }
+    assert_true(result is Err(_))
+  })
+}
+
+///|
 async test "tcp run_forever" {
   let mut seen = ""
   @async.with_task_group(root => {

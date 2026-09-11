@@ -111,13 +111,13 @@ pub impl @async_io.Writer for WriteToProcess with fn write_once(
 ///|
 pub fn read_from_process() -> (ReadFromProcess, &ProcessOutput) raise {
   let (r, w) = @async_process.read_from_process()
-  (ReadFromProcess::{ inner: r }, NativeProcessOutput::{ inner: w })
+  (ReadFromProcess::{ inner: r, }, NativeProcessOutput::{ inner: w, })
 }
 
 ///|
 pub fn write_to_process() -> (&ProcessInput, WriteToProcess) raise {
   let (r, w) = @async_process.write_to_process()
-  (NativeProcessInput::{ inner: r }, WriteToProcess::{ inner: w })
+  (NativeProcessInput::{ inner: r, }, WriteToProcess::{ inner: w, })
 }
 
 ///|
@@ -231,7 +231,7 @@ pub async fn collect_output_merged(
 
 ///|
 pub async fn redirect_from_file(path : String) -> &ProcessInput {
-  NativeProcessInput::{ inner: @async_process.redirect_from_file(path) }
+  NativeProcessInput::{ inner: @async_process.redirect_from_file(path), }
 }
 
 ///|
@@ -443,7 +443,7 @@ async fn[X] spawn_internal(
     cancel_handler=to_async_cancel(cancel_handler),
     no_wait?,
   )
-  Process::{ pid: inner.pid, inner }
+  Process::{ pid: inner.pid, inner, }
 }
 
 ///|

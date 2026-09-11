@@ -36,7 +36,7 @@ async fn[T] run_js_promise(promise : JsPromise[T]) -> T {
 ///|
 fn addr_from_js(host : String, port : Int, family : Int) -> Addr {
   if family == 6 {
-    Addr::{ host, port, ip: 0U, is_ipv6: true }
+    Addr::{ host, port, ip: 0U, is_ipv6: true, }
   } else {
     Addr::parse("\{host}:\{port}") catch {
       _ => Addr::new(0U, port)
@@ -592,9 +592,7 @@ pub impl @io.Writer for Tcp with fn write_once(self, buf, offset~, len~) {
   if n <= 0 {
     0
   } else {
-    run_js_promise(js_tcp_write(self.id, buf, offset, n)) catch {
-      _ => 0
-    }
+    run_js_promise(js_tcp_write(self.id, buf, offset, n))
   }
 }
 

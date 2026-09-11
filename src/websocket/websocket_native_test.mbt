@@ -4,20 +4,20 @@ async test "from_http_server accepts x/http server connection" {
     let server = @http.Server::new(host="127.0.0.1", port=0)
     defer server.close()
     let port = server.port()
-    group.spawn_bg(no_wait=true, allow_failure=true, () => {
-      server.run_forever((request, _body, conn) => {
-        let ws = @websocket.from_http_server(request, conn)
-        defer ws.close()
-        let msg = ws.recv()
-        guard msg is @websocket.Message::Text(text) else {
-          fail("expected Text")
-        }
-        ws.send_text("echo:" + text)
-        ws.send_close()
-      })
+    group.spawn_bg(() => {
+      let (conn, _) = server.accept()
+      defer conn.close()
+      let request = conn.read_request()
+      assert_eq(request.headers.get("x-handshake"), Some("custom-header"))
+      let ws = @websocket.from_http_server(request, conn)
+      defer ws.close()
+      let msg = ws.recv()
+      guard msg is @websocket.Message::Text(text) else { fail("expected Text") }
+      ws.send_text("echo:" + text)
+      ws.send_close()
     })
-    @async.sleep(20)
-    let client = @websocket.Conn::connect("ws://127.0.0.1:\{port}/ws")
+    let headers : Map[String, String] = { "X-HaNdShAkE": "custom-header" }
+    let client = @websocket.Conn::connect("ws://127.0.0.1:\{port}/ws", headers~)
     defer client.close()
     client.send_text("hello")
     let msg = client.recv()

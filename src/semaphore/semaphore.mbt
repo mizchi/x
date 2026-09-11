@@ -7,7 +7,7 @@ pub struct Semaphore {
 ///|
 #alias(new, deprecated)
 pub fn Semaphore::Semaphore(size : Int, initial_value? : Int) -> Semaphore {
-  { size, inner: @async_semaphore.Semaphore(size, initial_value?) }
+  { size, inner: @async_semaphore.Semaphore(size, initial_value?), }
 }
 
 ///|

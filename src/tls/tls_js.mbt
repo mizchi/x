@@ -108,29 +108,23 @@ extern "js" fn js_tls_init() -> Unit =
   #|         cb();
   #|       },
   #|       final(cb) {
-  #|         handle.ended = true;
   #|         cb();
   #|       },
   #|     });
-  #|     const tlsOptions = isServer
-  #|       ? { isServer: true, secureContext: tls.createSecureContext(options) }
-  #|       : { isServer: false, ...options };
-  #|     const socket = new tls.TLSSocket(transport, tlsOptions);
+  #|     // tls.connect performs client certificate/hostname verification and
+  #|     // supports generic Duplex transports; raw TLSSocket does neither here.
+  #|     const socket = isServer
+  #|       ? new tls.TLSSocket(transport, { isServer: true, secureContext: tls.createSecureContext(options) })
+  #|       : tls.connect({ socket: transport, ...options });
   #|     handle.socket = socket;
   #|     handle.transport = transport;
-  #|     socket.on('secure', () => { handle.secure = true; });
-  #|     socket.on('secureConnect', () => { handle.secure = true; });
+  #|     socket.on(isServer ? 'secure' : 'secureConnect', () => { handle.secure = true; });
   #|     socket.on('data', chunk => handle.plainIn.push(makeChunk(chunk)));
   #|     socket.on('end', () => { handle.ended = true; });
   #|     socket.on('close', () => { handle.ended = true; handle.closed = true; });
   #|     socket.on('error', err => fail(handle, err));
   #|     transport.on('error', err => fail(handle, err));
   #|     state.handles.set(handle.id, handle);
-  #|     try {
-  #|       if (!isServer && typeof socket._start === 'function') socket._start();
-  #|     } catch (err) {
-  #|       fail(handle, err);
-  #|     }
   #|     return handle.id | 0;
   #|   };
   #|   globalThis.__xtlsTake = (id, key, maxLen = 0) => {
@@ -319,12 +313,20 @@ pub fn rand_bytes(num : Int) -> Bytes raise {
 }
 
 ///|
+extern "js" fn js_tls_tick() -> @js_async.Promise[Unit] =
+  #| () => new Promise(resolve => setImmediate(resolve))
+
+///|
 async fn Tls::flush_encrypted(self : Tls) -> Unit {
+  // Node emits TLS records and secure/data/end events on its event loop.
+  // Process those callbacks before deciding to block on the peer's input.
+  js_tls_tick().wait()
   while true {
     let chunk = js_tls_take_encrypted(self.id)
     check_js_error(chunk.error)
     if chunk.ok {
       self.writer.write(chunk.data) catch {
+        @io.PipeClosed => raise ConnectionClosed
         err => raise TlsError(err.to_string())
       }
     } else {
@@ -336,6 +338,7 @@ async fn Tls::flush_encrypted(self : Tls) -> Unit {
 ///|
 async fn Tls::read_underlying_once(self : Tls) -> Bool {
   let data = self.reader.read_some(max_len=TLS_CHUNK_SIZE) catch {
+    @io.PipeClosed => raise ConnectionClosed
     err => raise TlsError(err.to_string())
   }
   match data {
@@ -421,6 +424,7 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::client_from_pair(
     read_buf: @io.ReaderBuffer::new(),
     closed: false,
   }
+  errdefer tls.close()
   tls.drive_handshake()
   tls
 }
@@ -466,6 +470,7 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::server_from_pair(
     read_buf: @io.ReaderBuffer::new(),
     closed: false,
   }
+  errdefer tls.close()
   tls.drive_handshake()
   tls
 }
@@ -480,7 +485,8 @@ pub fn Tls::close(self : Tls) -> Unit {
 
 ///|
 pub async fn Tls::shutdown(self : Tls) -> Unit {
-  if !self.closed {
+  js_tls_tick().wait()
+  if !self.closed && !self.status().ended {
     check_js_error(js_tls_shutdown(self.id))
     self.flush_encrypted()
   }
@@ -554,7 +560,7 @@ pub impl @io.Reader for Tls with fn _direct_read(self, buf, offset~, max_len~) {
 ///|
 pub impl @io.Writer for Tls with fn write_once(self, buf, offset~, len~) {
   if self.closed {
-    return 0
+    raise ConnectionClosed
   }
   let available = buf.length() - offset
   let n = @cmp.minimum(len, available)
@@ -562,11 +568,7 @@ pub impl @io.Writer for Tls with fn write_once(self, buf, offset~, len~) {
     return 0
   }
   let err = js_tls_write_plain(self.id, buf, offset, n)
-  if err != "" {
-    return 0
-  }
-  self.flush_encrypted() catch {
-    _ => return 0
-  }
+  check_js_error(err)
+  self.flush_encrypted()
   n
 }

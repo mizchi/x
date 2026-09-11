@@ -491,7 +491,7 @@ pub fn read_from_process() -> (ReadFromProcess, &ProcessOutput) raise {
   js_process_init()
   let id = js_process_temp_output()
   (
-    ReadFromProcess::{ id, read_buf: @async_io.ReaderBuffer::new() },
+    ReadFromProcess::{ id, read_buf: @async_io.ReaderBuffer::new(), },
     JsProcessOutput::{ id, },
   )
 }
@@ -615,7 +615,7 @@ pub async fn collect_output_merged(
 ///|
 pub fn redirect_from_file(path : String) -> &ProcessInput {
   js_process_init()
-  JsProcessInput::{ id: js_process_redirect_from_file(path) }
+  JsProcessInput::{ id: js_process_redirect_from_file(path), }
 }
 
 ///|
@@ -884,7 +884,7 @@ pub async fn[X] spawn(
   )
   let id = start.id
   let result = group.spawn(no_wait?, () => wait_with_cancel(id, cancel_handler))
-  Process::{ pid: start.pid, result }
+  Process::{ pid: start.pid, result, }
 }
 
 ///|

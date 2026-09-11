@@ -55,7 +55,7 @@ extern "js" fn js_raw_fd_close(fd : Int) -> Unit =
 ///|
 #alias(new, deprecated)
 pub async fn RawFd::RawFd(fd : Int) -> RawFd {
-  { fd, closed: false }
+  { fd, closed: false, }
 }
 
 ///|

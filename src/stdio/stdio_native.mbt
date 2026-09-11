@@ -46,10 +46,10 @@ pub impl @process.ProcessOutput for Output with fn _process_output_native(self) 
 }
 
 ///|
-pub let stdin : Input = Input::{ inner: @async_stdio.stdin }
+pub let stdin : Input = Input::{ inner: @async_stdio.stdin, }
 
 ///|
-pub let stdout : Output = Output::{ inner: @async_stdio.stdout }
+pub let stdout : Output = Output::{ inner: @async_stdio.stdout, }
 
 ///|
-pub let stderr : Output = Output::{ inner: @async_stdio.stderr }
+pub let stderr : Output = Output::{ inner: @async_stdio.stderr, }

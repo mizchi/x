@@ -75,12 +75,12 @@ fn parse_ipv6(src : String) -> Addr raise InvalidAddr {
   }
   let host = src[1:close].to_owned()
   let port = parse_port(src[close + 2:])
-  Addr::{ host, port, ip: 0U, is_ipv6: true }
+  Addr::{ host, port, ip: 0U, is_ipv6: true, }
 }
 
 ///|
 pub fn Addr::new(ip : UInt, port : Int) -> Addr {
-  Addr::{ host: ipv4_host_from_ip(ip), port, ip, is_ipv6: false }
+  Addr::{ host: ipv4_host_from_ip(ip), port, ip, is_ipv6: false, }
 }
 
 ///|
@@ -92,7 +92,7 @@ pub fn Addr::parse(src : String) -> Addr raise InvalidAddr {
     guard parts.length() == 2 else { raise InvalidAddr }
     let ip = parse_ipv4_host(parts[0])
     let port = parse_port(parts[1])
-    Addr::{ host: parts[0].to_owned(), port, ip, is_ipv6: false }
+    Addr::{ host: parts[0].to_owned(), port, ip, is_ipv6: false, }
   }
 }
 

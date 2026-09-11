@@ -130,6 +130,25 @@ async fn remove_if_exists(path : String) -> Unit {
 }
 
 ///|
+#cfg(target="native")
+async fn test_pipe() -> (@pipe.PipeRead, @pipe.PipeWrite) {
+  @pipe.pipe()
+}
+
+///|
+// TLS needs buffered duplex transport: the JS in-memory pipe is a rendezvous
+// channel and can deadlock when both peers send handshake records at once.
+#cfg(target="js")
+async fn test_pipe() -> (@socket.Tcp, @socket.Tcp) {
+  let listener = @socket.TcpServer(@socket.Addr::parse("127.0.0.1:0"))
+  defer listener.close()
+  let reader = @socket.Tcp::connect(listener.addr)
+  errdefer reader.close()
+  let (writer, _) = listener.accept()
+  (reader, writer)
+}
+
+///|
 test "sha1" {
   inspect(
     @crypto.bytes_to_hex_string(@tls.sha1(b"abc")),
@@ -143,12 +162,12 @@ test "rand_bytes length" {
 }
 
 ///|
-test "one way" {
-  @async.run_async_main(() => {
+async test "one way" {
+  @async.with_timeout(5000, () => {
     let (key, cert) = write_test_keys()
     @async.with_task_group(root => {
-      let (client_read_from_server, server_write_to_client) = @pipe.pipe()
-      let (server_read_from_client, client_write_to_server) = @pipe.pipe()
+      let (client_read_from_server, server_write_to_client) = test_pipe()
+      let (server_read_from_client, client_write_to_server) = test_pipe()
       let server_task = root.spawn(() => {
         defer {
           server_read_from_client.close()
@@ -194,12 +213,12 @@ test "one way" {
 }
 
 ///|
-test "echo" {
-  @async.run_async_main(() => {
+async test "echo" {
+  @async.with_timeout(5000, () => {
     let (key, cert) = write_test_keys()
     @async.with_task_group(root => {
-      let (client_read_from_server, server_write_to_client) = @pipe.pipe()
-      let (server_read_from_client, client_write_to_server) = @pipe.pipe()
+      let (client_read_from_server, server_write_to_client) = test_pipe()
+      let (server_read_from_client, client_write_to_server) = test_pipe()
       root.spawn_bg(() => {
         defer {
           server_read_from_client.close()
@@ -222,6 +241,7 @@ test "echo" {
           None => fail("expected tls request")
         }
         server.shutdown()
+        ignore(server.read_all())
       })
       root.spawn_bg(() => {
         defer {
@@ -246,11 +266,11 @@ test "echo" {
 }
 
 ///|
-test "`connect` accidental close" {
-  @async.run_async_main(() => {
+async test "`connect` accidental close" {
+  @async.with_timeout(5000, () => {
     @async.with_task_group(root => {
-      let (client_read_from_server, server_write_to_client) = @pipe.pipe()
-      let (server_read_from_client, client_write_to_server) = @pipe.pipe()
+      let (client_read_from_server, server_write_to_client) = test_pipe()
+      let (server_read_from_client, client_write_to_server) = test_pipe()
       root.spawn_bg(() => {
         defer {
           server_read_from_client.close()
@@ -288,12 +308,12 @@ test "`connect` accidental close" {
 }
 
 ///|
-test "`read` already closed" {
-  @async.run_async_main(() => {
+async test "`read` already closed" {
+  @async.with_timeout(5000, () => {
     let (key, cert) = write_test_keys()
     @async.with_task_group(root => {
-      let (client_read_from_server, server_write_to_client) = @pipe.pipe()
-      let (server_read_from_client, client_write_to_server) = @pipe.pipe()
+      let (client_read_from_server, server_write_to_client) = test_pipe()
+      let (server_read_from_client, client_write_to_server) = test_pipe()
       root.spawn_bg(() => {
         defer {
           server_read_from_client.close()
@@ -334,12 +354,12 @@ test "`read` already closed" {
 }
 
 ///|
-test "get_peer_certificate" {
-  @async.run_async_main(() => {
+async test "get_peer_certificate" {
+  @async.with_timeout(5000, () => {
     let (key, cert) = write_test_keys()
     @async.with_task_group(root => {
-      let (client_read_from_server, server_write_to_client) = @pipe.pipe()
-      let (server_read_from_client, client_write_to_server) = @pipe.pipe()
+      let (client_read_from_server, server_write_to_client) = test_pipe()
+      let (server_read_from_client, client_write_to_server) = test_pipe()
       root.spawn_bg(() => {
         defer {
           server_read_from_client.close()
@@ -358,6 +378,7 @@ test "get_peer_certificate" {
           server.get_peer_certificate().map(cert => cert.length()),
           content="None",
         )
+        ignore(server.read_all())
       })
       root.spawn_bg(() => {
         defer {
@@ -380,12 +401,12 @@ test "get_peer_certificate" {
 }
 
 ///|
-test "client custom root certificate" {
-  @async.run_async_main(() => {
+async test "client custom root certificate" {
+  @async.with_timeout(5000, () => {
     let (key, cert) = write_test_keys()
     @async.with_task_group(root => {
-      let (client_read_from_server, server_write_to_client) = @pipe.pipe()
-      let (server_read_from_client, client_write_to_server) = @pipe.pipe()
+      let (client_read_from_server, server_write_to_client) = test_pipe()
+      let (server_read_from_client, client_write_to_server) = test_pipe()
       root.spawn_bg(() => {
         defer {
           server_read_from_client.close()
@@ -402,6 +423,7 @@ test "client custom root certificate" {
         defer server.close()
         assert_eq(server.read_exactly(2), b"ok")
         server.shutdown()
+        ignore(server.read_all())
       })
       root.spawn_bg(() => {
         defer {
@@ -426,13 +448,13 @@ test "client custom root certificate" {
 }
 
 ///|
-test "client custom root certificate rejects different root" {
-  @async.run_async_main(() => {
+async test "client custom root certificate rejects different root" {
+  @async.with_timeout(5000, () => {
     let (key, cert) = write_test_keys()
     let (other_key, other_cert) = write_other_test_keys()
     @async.with_task_group(root => {
-      let (client_read_from_server, server_write_to_client) = @pipe.pipe()
-      let (server_read_from_client, client_write_to_server) = @pipe.pipe()
+      let (client_read_from_server, server_write_to_client) = test_pipe()
+      let (server_read_from_client, client_write_to_server) = test_pipe()
       root.spawn_bg(() => {
         defer {
           server_read_from_client.close()
@@ -482,12 +504,12 @@ test "client custom root certificate rejects different root" {
 }
 
 ///|
-test "channel binding" {
-  @async.run_async_main(() => {
+async test "channel binding" {
+  @async.with_timeout(5000, () => {
     let (key, cert) = write_test_keys()
     @async.with_task_group(root => {
-      let (client_read_from_server, server_write_to_client) = @pipe.pipe()
-      let (server_read_from_client, client_write_to_server) = @pipe.pipe()
+      let (client_read_from_server, server_write_to_client) = test_pipe()
+      let (server_read_from_client, client_write_to_server) = test_pipe()
       let server_task = root.spawn(() => {
         defer {
           server_read_from_client.close()
@@ -502,10 +524,12 @@ test "channel binding" {
           certificate_type=@tls.PEM,
         )
         defer server.close()
-        (
+        let binding = (
           server.unique_channel_binding(),
           server.server_endpoint_channel_binding(),
         )
+        ignore(server.read_all())
+        binding
       })
       let client_task = root.spawn(() => {
         defer {
@@ -538,12 +562,12 @@ test "channel binding" {
 }
 
 ///|
-test "peer close connection" {
-  @async.run_async_main(() => {
+async test "peer close connection" {
+  @async.with_timeout(5000, () => {
     let (key, cert) = write_test_keys()
     @async.with_task_group(root => {
-      let (client_read_from_server, server_write_to_client) = @pipe.pipe()
-      let (server_read_from_client, client_write_to_server) = @pipe.pipe()
+      let (client_read_from_server, server_write_to_client) = test_pipe()
+      let (server_read_from_client, client_write_to_server) = test_pipe()
       root.spawn_bg(() => {
         defer {
           server_read_from_client.close()

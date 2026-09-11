@@ -100,7 +100,9 @@ async test "stream: SSE-like chunked response" {
       defer conn.close()
       ignore(conn.read_request())
       conn.skip_request_body()
-      let extra : Map[String, String] = { "Content-Type": "text/event-stream" }
+      let extra : Map[@async_http.CaseInsensitiveString, String] = {
+        "Content-Type": "text/event-stream",
+      }
       conn.send_response(200, "OK", extra_headers=extra)
       // Simulate SSE events
       conn.write("data: event1\n\n")
@@ -162,7 +164,7 @@ async test "stream: OpenAI-like POST SSE" {
         fail("body missing stream:true")
       }
       // Send SSE response
-      let extra : Map[String, String] = {
+      let extra : Map[@async_http.CaseInsensitiveString, String] = {
         "Content-Type": "text/event-stream",
         "Cache-Control": "no-cache",
       }
@@ -235,7 +237,9 @@ async test "stream: response headers available before body" {
       defer conn.close()
       ignore(conn.read_request())
       conn.skip_request_body()
-      let extra : Map[String, String] = { "X-Stream-Id": "abc123" }
+      let extra : Map[@async_http.CaseInsensitiveString, String] = {
+        "X-Stream-Id": "abc123",
+      }
       conn.send_response(200, "OK", extra_headers=extra)
       conn.write("body")
       conn.end_response()
@@ -412,6 +416,47 @@ async test "http GET with custom headers" {
 }
 
 ///|
+async test "client and server preserve string headers across native requests" {
+  @async.with_task_group(group => {
+    let server = @http.Server::new(host="127.0.0.1", port=0, headers={
+      "X-SeRvEr": "default",
+    })
+    defer server.close()
+    group.spawn_bg(() => {
+      let (conn, _) = server.accept()
+      defer conn.close()
+      for _ in 0..<3 {
+        let req = conn.read_request()
+        assert_eq(req.headers.get("x-client"), Some("default"))
+        assert_eq(req.headers.get("x-request"), Some("per-request"))
+        conn.skip_request_body()
+        conn.send_response(200, "OK", extra_headers={
+          "X-ReSpOnSe": "per-response",
+        })
+        conn.write("ok")
+        conn.end_response()
+      }
+    })
+    let client = @http.Client::new("http://127.0.0.1:\{server.port()}", headers={
+      "X-ClIeNt": "default",
+    })
+    defer client.close()
+    let extra_headers : Map[String, String] = { "X-ReQuEsT": "per-request" }
+    for meth in [@http.Get, @http.Post, @http.Put] {
+      let resp = match meth {
+        @http.Post => client.post("/", "body", extra_headers~)
+        @http.Put => client.put("/", "body", extra_headers~)
+        _ => client.get("/", extra_headers~)
+      }
+      assert_eq(resp.code, 200)
+      assert_eq(resp.headers.get("x-server"), Some("default"))
+      assert_eq(resp.headers.get("x-response"), Some("per-response"))
+      assert_eq(client.read_all().text(), "ok")
+    }
+  })
+}
+
+///|
 async test "http response headers" {
   @async.with_task_group(group => {
     let server = @async_http.Server(@socket.Addr::parse("127.0.0.1:0"))
@@ -422,7 +467,7 @@ async test "http response headers" {
       defer conn.close()
       ignore(conn.read_request())
       conn.skip_request_body()
-      let extra_headers : Map[String, String] = {
+      let extra_headers : Map[@async_http.CaseInsensitiveString, String] = {
         "X-Custom": "custom-value",
         "Content-Type": "text/plain",
       }
@@ -714,7 +759,9 @@ async test "smoke: response headers match upstream" {
         let (conn, _) = server.accept()
         ignore(conn.read_request())
         conn.skip_request_body()
-        let extra : Map[String, String] = { "X-Test": "value123" }
+        let extra : Map[@async_http.CaseInsensitiveString, String] = {
+          "X-Test": "value123",
+        }
         conn.send_response(200, "OK", extra_headers=extra)
         conn.write("ok")
         conn.end_response()

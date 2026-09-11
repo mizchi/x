@@ -1,9 +1,9 @@
 name = "mizchi/x"
 
-version = "0.6.0"
+version = "0.6.1"
 
 import {
-  "moonbitlang/async@0.20.5",
+  "moonbitlang/async@0.21.3",
   "moonbitlang/x@0.4.50",
   "moonbitlang/regexp@0.3.5",
 }
