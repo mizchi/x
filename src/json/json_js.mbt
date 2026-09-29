@@ -95,8 +95,12 @@ extern "js" fn js_array_get(v : JsValue, i : Int) -> JsValue =
   #| (v, i) => v[i]
 
 ///|
-extern "js" fn js_object_keys(v : JsValue) -> Array[String] =
+extern "js" fn js_object_keys_ffi(v : JsValue) -> FixedArray[String] =
   #| (v) => Object.keys(v)
+
+fn js_object_keys(v : JsValue) -> Array[String] {
+  Array::from_fixed_array(js_object_keys_ffi(v))
+}
 
 ///|
 extern "js" fn js_object_get(v : JsValue, k : String) -> JsValue =
