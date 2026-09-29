@@ -7,8 +7,8 @@ priv struct JsCompileResult {
   error : String
   id : Int
   capture : Int
-  group_names : Array[String]
-  group_indices : Array[Int]
+  group_names : FixedArray[String]
+  group_indices : FixedArray[Int]
 }
 
 ///|
@@ -61,7 +61,7 @@ extern "js" fn js_compile(source : String, flags : String) -> JsCompileResult =
 
 ///|
 priv struct JsExecResult {
-  captures : Array[Int]
+  captures : FixedArray[Int]
 }
 
 ///|
@@ -121,7 +121,7 @@ pub fn compile(
 pub fn Regexp::execute(self : Regexp, input : StringView) -> MatchResult {
   let owned = input.to_owned()
   let result = js_execute(self.id, owned)
-  { input: owned, captures: result.captures, names: self.names, }
+  { input: owned, captures: Array::from_fixed_array(result.captures), names: self.names, }
 }
 
 ///|
