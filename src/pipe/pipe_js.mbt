@@ -1,17 +1,22 @@
 ///|
 pub struct PipeRead {
+  priv read_controller : @io.BinaryReaderController
   inner : @io.PipeRead
 }
 
 ///|
 pub struct PipeWrite {
+  priv write_controller : @io.BinaryWriterController
   inner : @io.PipeWrite
 }
 
 ///|
 pub fn pipe() -> (PipeRead, PipeWrite) raise {
   let (r, w) = @io.pipe()
-  (PipeRead::{ inner: r, }, PipeWrite::{ inner: w, })
+  (
+    PipeRead::{ read_controller: @io.BinaryReaderController(), inner: r, },
+    PipeWrite::{ write_controller: @io.BinaryWriterController(), inner: w, },
+  )
 }
 
 ///|
@@ -25,33 +30,66 @@ pub fn PipeWrite::close(self : PipeWrite) -> Unit {
 }
 
 ///|
-pub fn PipeRead::fd(self : PipeRead) -> Int {
+pub fn PipeRead::fd(self : PipeRead) -> Int32 {
   ignore(self)
   -1
 }
 
 ///|
-pub fn PipeWrite::fd(self : PipeWrite) -> Int {
+pub fn PipeWrite::fd(self : PipeWrite) -> Int32 {
   ignore(self)
   -1
 }
 
 ///|
-pub impl @io.Reader for PipeRead with fn _get_internal_buffer(self) {
-  @io.Reader::_get_internal_buffer(self.inner)
+impl @io.BinaryReaderImpl for PipeRead with fn get_controller(self) {
+  self.read_controller
 }
 
 ///|
-pub impl @io.Reader for PipeRead with fn _direct_read(
+impl @io.BinaryReaderImpl for PipeRead with fn raw_read_impl(
   self,
   buf,
   offset~,
   max_len~,
 ) {
-  @io.Reader::_direct_read(self.inner, buf, offset~, max_len~)
+  self.inner.read_into(buf, offset~, max_len~)
 }
 
 ///|
-pub impl @io.Writer for PipeWrite with fn write_once(self, buf, offset~, len~) {
-  @io.Writer::write_once(self.inner, buf, offset~, len~)
+impl @io.BinaryWriterImpl for PipeWrite with fn raw_write_impl(
+  self,
+  buf,
+  offset~,
+  len~,
+) {
+  self.inner.write(buf[offset:offset + len])
+  len
+}
+
+///|
+pub impl @io.BinaryReader for PipeRead
+
+///|
+pub extend PipeRead with @io.BinaryReader::{
+  read_into,
+  read_at_least,
+  peek,
+  peek_at_least,
+  read_exactly,
+  drop_exactly,
+  peek_exactly,
+  drop_all,
+  peek_until,
+}
+
+///|
+pub impl @io.BinaryWriter for PipeWrite
+
+///|
+pub extend PipeWrite with @io.BinaryWriter::{write_reader}
+
+///|
+impl @io.BinaryWriterImpl for PipeWrite with fn get_controller(self) {
+  self.write_controller
 }

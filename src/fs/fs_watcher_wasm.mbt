@@ -5,8 +5,8 @@ pub struct Watcher {}
 ///|
 pub async fn Watcher::Watcher(
   path : String,
-  debounce_timeout? : Int,
-  max_debounce_delay? : Int,
+  debounce_timeout? : Int32,
+  max_debounce_delay? : Int32,
   ignored_paths? : (String) -> Bool,
 ) -> Watcher raise IOError {
   ignore((path, debounce_timeout, max_debounce_delay, ignored_paths))

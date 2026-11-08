@@ -1,17 +1,17 @@
 ///|
 priv struct ProcessStart {
-  id : Int
-  pid : Int
+  id : Int32
+  pid : Int32
 }
 
 ///|
 pub(open) trait ProcessInput {
-  fn _process_input_js(Self) -> Int
+  fn _process_input_js(Self) -> Int32
 }
 
 ///|
 pub(open) trait ProcessOutput {
-  fn _process_output_js(Self) -> Int
+  fn _process_output_js(Self) -> Int32
 }
 
 ///|
@@ -53,7 +53,7 @@ extern "js" fn js_process_init() -> Unit =
   #| }
 
 ///|
-extern "js" fn js_process_redirect_from_file(path : String) -> Int =
+extern "js" fn js_process_redirect_from_file(path : String) -> Int32 =
   #| (path) => {
   #|   globalThis.__xproc ??= { nextId: 1, inputs: new Map(), outputs: new Map(), procs: new Map(), pids: new Map() };
   #|   const state = globalThis.__xproc;
@@ -67,9 +67,9 @@ extern "js" fn js_process_redirect_from_file(path : String) -> Int =
 extern "js" fn js_process_redirect_to_file(
   path : String,
   append : Bool,
-  create_mode : Int,
-  permission : Int,
-) -> Int =
+  create_mode : Int32,
+  permission : Int32,
+) -> Int32 =
   #| (path, append, createMode, permission) => {
   #|   globalThis.__xproc ??= { nextId: 1, inputs: new Map(), outputs: new Map(), procs: new Map(), pids: new Map() };
   #|   const state = globalThis.__xproc;
@@ -80,7 +80,7 @@ extern "js" fn js_process_redirect_to_file(
   #| }
 
 ///|
-extern "js" fn js_process_temp_input() -> Int =
+extern "js" fn js_process_temp_input() -> Int32 =
   #| () => {
   #|   globalThis.__xproc ??= { nextId: 1, inputs: new Map(), outputs: new Map(), procs: new Map(), pids: new Map() };
   #|   const state = globalThis.__xproc;
@@ -91,7 +91,7 @@ extern "js" fn js_process_temp_input() -> Int =
   #| }
 
 ///|
-extern "js" fn js_process_temp_output() -> Int =
+extern "js" fn js_process_temp_output() -> Int32 =
   #| () => {
   #|   globalThis.__xproc ??= { nextId: 1, inputs: new Map(), outputs: new Map(), procs: new Map(), pids: new Map() };
   #|   const state = globalThis.__xproc;
@@ -103,11 +103,11 @@ extern "js" fn js_process_temp_output() -> Int =
 
 ///|
 extern "js" fn js_process_write_input(
-  id : Int,
+  id : Int32,
   data : Bytes,
-  offset : Int,
-  len : Int,
-) -> JsPromise[Int] =
+  offset : Int32,
+  len : Int32,
+) -> JsPromise[Int32] =
   #| async (id, data, offset, len) => {
   #|   const input = globalThis.__xproc?.inputs?.get(id);
   #|   if (!input) throw new Error('process input not found');
@@ -121,7 +121,7 @@ extern "js" fn js_process_write_input(
   #| }
 
 ///|
-extern "js" fn js_process_close_input(id : Int) -> Unit =
+extern "js" fn js_process_close_input(id : Int32) -> Unit =
   #| (id) => {
   #|   const input = globalThis.__xproc?.inputs?.get(id);
   #|   if (!input || input.closed) return;
@@ -133,8 +133,8 @@ extern "js" fn js_process_close_input(id : Int) -> Unit =
 
 ///|
 extern "js" fn js_process_read_output(
-  id : Int,
-  max_len : Int,
+  id : Int32,
+  max_len : Int32,
 ) -> JsPromise[Bytes] =
   #| async (id, maxLen) => {
   #|   const output = globalThis.__xproc?.outputs?.get(id);
@@ -156,7 +156,7 @@ extern "js" fn js_process_read_output(
   #| }
 
 ///|
-extern "js" fn js_process_close_output(id : Int) -> Unit =
+extern "js" fn js_process_close_output(id : Int32) -> Unit =
   #| (id) => {
   #|   const output = globalThis.__xproc?.outputs?.get(id);
   #|   if (!output || output.closed) return;
@@ -173,9 +173,9 @@ extern "js" fn js_process_start(
   env_keys : FixedArray[String],
   env_values : FixedArray[String],
   inherit_env : Bool,
-  stdin_id : Int,
-  stdout_id : Int,
-  stderr_id : Int,
+  stdin_id : Int32,
+  stdout_id : Int32,
+  stderr_id : Int32,
   inherit_stdio : Bool,
 ) -> JsPromise[ProcessStart] =
   #| async (cmd, args, cwd, envKeys, envValues, inheritEnv, stdinId, stdoutId, stderrId, inheritStdio) => {
@@ -282,7 +282,7 @@ extern "js" fn js_process_start(
   #| }
 
 ///|
-extern "js" fn js_process_wait(id : Int) -> JsPromise[Int] =
+extern "js" fn js_process_wait(id : Int32) -> JsPromise[Int32] =
   #| async (id) => {
   #|   const proc = globalThis.__xproc?.procs?.get(id);
   #|   if (!proc) throw new Error('process not found');
@@ -291,7 +291,7 @@ extern "js" fn js_process_wait(id : Int) -> JsPromise[Int] =
   #| }
 
 ///|
-extern "js" fn js_process_wait_pid(pid : Int) -> JsPromise[Int] =
+extern "js" fn js_process_wait_pid(pid : Int32) -> JsPromise[Int32] =
   #| async (pid) => {
   #|   const state = globalThis.__xproc;
   #|   const id = state?.pids?.get(pid | 0);
@@ -303,12 +303,12 @@ extern "js" fn js_process_wait_pid(pid : Int) -> JsPromise[Int] =
 
 ///|
 extern "js" fn js_process_wait_with_cancel(
-  id : Int,
+  id : Int32,
   hard : Bool,
-  timeout_ms : Int,
+  timeout_ms : Int32,
   signal_name : String,
   abort_signal : @js_async.AbortSignal,
-) -> JsPromise[Int] =
+) -> JsPromise[Int32] =
   #| async (id, hard, timeoutMs, signalName, abortSignal) => {
   #|   const proc = globalThis.__xproc?.procs?.get(id);
   #|   if (!proc) throw new Error('process not found');
@@ -356,7 +356,7 @@ extern "js" fn js_process_wait_with_cancel(
   #| }
 
 ///|
-fn create_mode_to_int(mode : @fs.CreateMode) -> Int {
+fn create_mode_to_int(mode : @fs.CreateMode) -> Int32 {
   match mode {
     OpenExisting => 0
     TruncateExisting => 1
@@ -367,7 +367,7 @@ fn create_mode_to_int(mode : @fs.CreateMode) -> Int {
 }
 
 ///|
-fn process_input_id(input : &ProcessInput?) -> Int {
+fn process_input_id(input : &ProcessInput?) -> Int32 {
   match input {
     Some(input) => input._process_input_js()
     None => 0
@@ -375,7 +375,7 @@ fn process_input_id(input : &ProcessInput?) -> Int {
 }
 
 ///|
-fn process_output_id(output : &ProcessOutput?) -> Int {
+fn process_output_id(output : &ProcessOutput?) -> Int32 {
   match output {
     Some(output) => output._process_output_js()
     None => 0
@@ -393,7 +393,7 @@ fn signal_to_js(signal : @signal.Signal) -> String {
 }
 
 ///|
-fn cancel_to_js(handler : CancellationHandler) -> (Bool, Int, String) {
+fn cancel_to_js(handler : CancellationHandler) -> (Bool, Int32, String) {
   match handler.kind {
     Hard => (true, 0, "SIGKILL")
     Graceful(timeout, signal) =>
@@ -402,20 +402,20 @@ fn cancel_to_js(handler : CancellationHandler) -> (Bool, Int, String) {
 }
 
 ///|
-async fn wait_with_cancel(id : Int, handler : CancellationHandler) -> Int {
+async fn wait_with_cancel(id : Int32, handler : CancellationHandler) -> Int32 {
   let (hard, timeout_ms, signal_name) = cancel_to_js(handler)
+  // Cancellation is a separate effect in core async; cleanup must run in defer.
+  defer @async.protect_from_cancel(() => {
+    let _code : Int32 = @js_async.Promise::wait(js_process_wait(id).cast())
+  })
   @js_async.run_promise(abort_signal => {
     js_process_wait_with_cancel(id, hard, timeout_ms, signal_name, abort_signal).cast()
-  }) catch {
-    _ if @async.is_being_cancelled() =>
-      @async.protect_from_cancel(() => run_js_promise(js_process_wait(id)))
-    err => raise err
-  }
+  })
 }
 
 ///|
 priv struct JsProcessInput {
-  id : Int
+  id : Int32
 }
 
 ///|
@@ -425,7 +425,7 @@ impl ProcessInput for JsProcessInput with fn _process_input_js(self) {
 
 ///|
 priv struct JsProcessOutput {
-  id : Int
+  id : Int32
 }
 
 ///|
@@ -435,8 +435,8 @@ impl ProcessOutput for JsProcessOutput with fn _process_output_js(self) {
 
 ///|
 pub struct ReadFromProcess {
-  id : Int
-  read_buf : @async_io.ReaderBuffer
+  id : Int32
+  read_buf : @async_io.BinaryReaderController
 }
 
 ///|
@@ -445,12 +445,12 @@ pub fn ReadFromProcess::close(self : ReadFromProcess) -> Unit {
 }
 
 ///|
-pub impl @async_io.Reader for ReadFromProcess with fn _get_internal_buffer(self) {
+impl @async_io.BinaryReaderImpl for ReadFromProcess with fn get_controller(self) {
   self.read_buf
 }
 
 ///|
-pub impl @async_io.Reader for ReadFromProcess with fn _direct_read(
+impl @async_io.BinaryReaderImpl for ReadFromProcess with fn raw_read_impl(
   self,
   buf,
   offset~,
@@ -466,7 +466,8 @@ pub impl @async_io.Reader for ReadFromProcess with fn _direct_read(
 
 ///|
 pub struct WriteToProcess {
-  id : Int
+  priv write_controller : @async_io.BinaryWriterController
+  id : Int32
 }
 
 ///|
@@ -475,7 +476,7 @@ pub fn WriteToProcess::close(self : WriteToProcess) -> Unit {
 }
 
 ///|
-pub impl @async_io.Writer for WriteToProcess with fn write_once(
+impl @async_io.BinaryWriterImpl for WriteToProcess with fn raw_write_impl(
   self,
   buf,
   offset~,
@@ -491,7 +492,7 @@ pub fn read_from_process() -> (ReadFromProcess, &ProcessOutput) raise {
   js_process_init()
   let id = js_process_temp_output()
   (
-    ReadFromProcess::{ id, read_buf: @async_io.ReaderBuffer::new(), },
+    ReadFromProcess::{ id, read_buf: @async_io.BinaryReaderController(), },
     JsProcessOutput::{ id, },
   )
 }
@@ -500,21 +501,27 @@ pub fn read_from_process() -> (ReadFromProcess, &ProcessOutput) raise {
 pub fn write_to_process() -> (&ProcessInput, WriteToProcess) raise {
   js_process_init()
   let id = js_process_temp_input()
-  (JsProcessInput::{ id, }, WriteToProcess::{ id, })
+  (
+    JsProcessInput::{ id, },
+    WriteToProcess::{
+      write_controller: @async_io.BinaryWriterController(),
+      id,
+    },
+  )
 }
 
 ///|
 pub async fn run(
   cmd : StringView,
   args : ArrayView[String],
-  extra_env? : Map[String, String] = {},
-  inherit_env? : Bool = true,
+  extra_env~ : Map[String, String] = {},
+  inherit_env~ : Bool = true,
   stdin? : &ProcessInput,
   stdout? : &ProcessOutput,
   stderr? : &ProcessOutput,
   cwd? : StringView,
-  cancel_handler? : CancellationHandler = graceful_cancel(timeout=5000),
-) -> Int {
+  cancel_handler~ : CancellationHandler = graceful_cancel(timeout=5000),
+) -> Int32 {
   run_internal(
     cmd,
     args,
@@ -532,10 +539,10 @@ pub async fn run(
 pub async fn run_inherit(
   cmd : StringView,
   args : ArrayView[String],
-  extra_env? : Map[String, String] = {},
-  inherit_env? : Bool = true,
+  extra_env~ : Map[String, String] = {},
+  inherit_env~ : Bool = true,
   cwd? : StringView,
-) -> Int {
+) -> Int32 {
   run_inherit_internal(cmd, args, cwd?, extra_env~, inherit_env~)
 }
 
@@ -543,11 +550,11 @@ pub async fn run_inherit(
 pub async fn collect_output(
   cmd : StringView,
   args : ArrayView[String],
-  extra_env? : Map[String, String] = {},
-  inherit_env? : Bool = true,
+  extra_env~ : Map[String, String] = {},
+  inherit_env~ : Bool = true,
   stdin? : &ProcessInput,
   cwd? : StringView,
-) -> (Int, &@async_io.Data, &@async_io.Data) {
+) -> (Int32, &@data.Data, &@data.Data) {
   collect_output_internal(cmd, args, cwd?, extra_env~, inherit_env~, stdin?)
 }
 
@@ -555,12 +562,12 @@ pub async fn collect_output(
 pub async fn collect_stdout(
   cmd : StringView,
   args : ArrayView[String],
-  extra_env? : Map[String, String] = {},
-  inherit_env? : Bool = true,
+  extra_env~ : Map[String, String] = {},
+  inherit_env~ : Bool = true,
   stdin? : &ProcessInput,
   stderr? : &ProcessOutput,
   cwd? : StringView,
-) -> (Int, &@async_io.Data) {
+) -> (Int32, &@data.Data) {
   collect_stdout_internal(
     cmd,
     args,
@@ -576,12 +583,12 @@ pub async fn collect_stdout(
 pub async fn collect_stderr(
   cmd : StringView,
   args : ArrayView[String],
-  extra_env? : Map[String, String] = {},
-  inherit_env? : Bool = true,
+  extra_env~ : Map[String, String] = {},
+  inherit_env~ : Bool = true,
   stdin? : &ProcessInput,
   stdout? : &ProcessOutput,
   cwd? : StringView,
-) -> (Int, &@async_io.Data) {
+) -> (Int32, &@data.Data) {
   collect_stderr_internal(
     cmd,
     args,
@@ -597,11 +604,11 @@ pub async fn collect_stderr(
 pub async fn collect_output_merged(
   cmd : StringView,
   args : Array[String],
-  extra_env? : Map[String, String] = {},
-  inherit_env? : Bool = true,
+  extra_env~ : Map[String, String] = {},
+  inherit_env~ : Bool = true,
   stdin? : &ProcessInput,
   cwd? : StringView,
-) -> (Int, &@async_io.Data) {
+) -> (Int32, &@data.Data) {
   collect_output_merged_internal(
     cmd,
     args,
@@ -623,8 +630,8 @@ pub fn redirect_to_file(
   path : String,
   append? : Bool,
   create_mode? : @fs.CreateMode,
-  permission? : Int,
-  create? : Int,
+  permission? : Int32,
+  create? : Int32,
   truncate? : Bool,
 ) -> &ProcessOutput {
   ignore((create, truncate))
@@ -644,12 +651,12 @@ async fn start_process(
   cmd : StringView,
   args : ArrayView[String],
   cwd? : StringView,
-  extra_env? : Map[String, String] = {},
-  inherit_env? : Bool = true,
+  extra_env~ : Map[String, String] = {},
+  inherit_env~ : Bool = true,
   stdin? : &ProcessInput,
   stdout? : &ProcessOutput,
   stderr? : &ProcessOutput,
-  inherit_stdio? : Bool = false,
+  inherit_stdio~ : Bool = false,
 ) -> ProcessStart {
   let (env_keys, env_values) = env_to_arrays(extra_env)
   run_js_promise(
@@ -673,13 +680,13 @@ async fn run_internal(
   cmd : StringView,
   args : ArrayView[String],
   cwd? : StringView,
-  extra_env? : Map[String, String] = {},
-  inherit_env? : Bool = true,
+  extra_env~ : Map[String, String] = {},
+  inherit_env~ : Bool = true,
   stdin? : &ProcessInput,
   stdout? : &ProcessOutput,
   stderr? : &ProcessOutput,
   cancel_handler~ : CancellationHandler,
-) -> Int {
+) -> Int32 {
   let proc = start_process(
     cmd,
     args,
@@ -698,9 +705,9 @@ async fn run_inherit_internal(
   cmd : StringView,
   args : ArrayView[String],
   cwd? : StringView,
-  extra_env? : Map[String, String] = {},
-  inherit_env? : Bool = true,
-) -> Int {
+  extra_env~ : Map[String, String] = {},
+  inherit_env~ : Bool = true,
+) -> Int32 {
   let proc = start_process(
     cmd,
     args,
@@ -717,12 +724,13 @@ async fn collect_output_internal(
   cmd : StringView,
   args : ArrayView[String],
   cwd? : StringView,
-  extra_env? : Map[String, String] = {},
-  inherit_env? : Bool = true,
+  extra_env~ : Map[String, String] = {},
+  inherit_env~ : Bool = true,
   stdin? : &ProcessInput,
-) -> (Int, &@async_io.Data, &@async_io.Data) {
+) -> (Int32, &@data.Data, &@data.Data) {
   let (stdout_r, stdout_w) = read_from_process()
   let (stderr_r, stderr_w) = read_from_process()
+  let mut result = None
   @async.with_task_group(group => {
     defer stdout_r.close()
     defer stderr_r.close()
@@ -741,8 +749,9 @@ async fn collect_output_internal(
     })
     let stdout_task = group.spawn(() => stdout_r.read_all())
     let stderr = stderr_r.read_all()
-    (code_task.wait(), stdout_task.wait(), stderr)
+    result = Some((code_task.wait(), stdout_task.wait(), stderr))
   })
+  result.unwrap()
 }
 
 ///|
@@ -750,12 +759,13 @@ async fn collect_stdout_internal(
   cmd : StringView,
   args : ArrayView[String],
   cwd? : StringView,
-  extra_env? : Map[String, String] = {},
-  inherit_env? : Bool = true,
+  extra_env~ : Map[String, String] = {},
+  inherit_env~ : Bool = true,
   stdin? : &ProcessInput,
   stderr? : &ProcessOutput,
-) -> (Int, &@async_io.Data) {
+) -> (Int32, &@data.Data) {
   let (stdout_r, stdout_w) = read_from_process()
+  let mut result = None
   @async.with_task_group(group => {
     defer stdout_r.close()
     let code_task = group.spawn(() => {
@@ -772,8 +782,9 @@ async fn collect_stdout_internal(
       )
     })
     let stdout = stdout_r.read_all()
-    (code_task.wait(), stdout)
+    result = Some((code_task.wait(), stdout))
   })
+  result.unwrap()
 }
 
 ///|
@@ -781,12 +792,13 @@ async fn collect_stderr_internal(
   cmd : StringView,
   args : ArrayView[String],
   cwd? : StringView,
-  extra_env? : Map[String, String] = {},
-  inherit_env? : Bool = true,
+  extra_env~ : Map[String, String] = {},
+  inherit_env~ : Bool = true,
   stdin? : &ProcessInput,
   stdout? : &ProcessOutput,
-) -> (Int, &@async_io.Data) {
+) -> (Int32, &@data.Data) {
   let (stderr_r, stderr_w) = read_from_process()
+  let mut result = None
   @async.with_task_group(group => {
     defer stderr_r.close()
     let code_task = group.spawn(() => {
@@ -803,8 +815,9 @@ async fn collect_stderr_internal(
       )
     })
     let stderr = stderr_r.read_all()
-    (code_task.wait(), stderr)
+    result = Some((code_task.wait(), stderr))
   })
+  result.unwrap()
 }
 
 ///|
@@ -812,11 +825,12 @@ async fn collect_output_merged_internal(
   cmd : StringView,
   args : Array[String],
   cwd? : StringView,
-  extra_env? : Map[String, String] = {},
-  inherit_env? : Bool = true,
+  extra_env~ : Map[String, String] = {},
+  inherit_env~ : Bool = true,
   stdin? : &ProcessInput,
-) -> (Int, &@async_io.Data) {
+) -> (Int32, &@data.Data) {
   let (r, w) = read_from_process()
+  let mut result = None
   @async.with_task_group(group => {
     defer r.close()
     let code_task = group.spawn(() => {
@@ -833,23 +847,24 @@ async fn collect_output_merged_internal(
       )
     })
     let output = r.read_all()
-    (code_task.wait(), output)
+    result = Some((code_task.wait(), output))
   })
+  result.unwrap()
 }
 
 ///|
 pub struct Process {
-  pid : Int
-  priv result : @async.Task[Int]
+  pid : Int32
+  priv result : @async.Task[Int32]
 }
 
 ///|
-pub async fn Process::wait(self : Process) -> Int {
+pub async fn Process::wait(self : Process) -> Int32 {
   self.result.wait()
 }
 
 ///|
-pub fn Process::try_wait(self : Process) -> Int? raise {
+pub fn Process::try_wait(self : Process) -> Int32? raise {
   self.result.try_wait()
 }
 
@@ -859,17 +874,17 @@ pub fn Process::cancel(self : Process) -> Unit {
 }
 
 ///|
-pub async fn[X] spawn(
-  group : @async.TaskGroup[X],
+pub async fn spawn(
+  group : @async.TaskGroup,
   cmd : StringView,
   args : ArrayView[String],
-  extra_env? : Map[String, String] = {},
-  inherit_env? : Bool = true,
+  extra_env~ : Map[String, String] = {},
+  inherit_env~ : Bool = true,
   stdin? : &ProcessInput,
   stdout? : &ProcessOutput,
   stderr? : &ProcessOutput,
   cwd? : StringView,
-  cancel_handler? : CancellationHandler = graceful_cancel(timeout=5000),
+  cancel_handler~ : CancellationHandler = graceful_cancel(timeout=5000),
   no_wait? : Bool,
 ) -> Process {
   let start = start_process(
@@ -891,13 +906,13 @@ pub async fn[X] spawn(
 pub async fn spawn_orphan(
   cmd : StringView,
   args : ArrayView[String],
-  extra_env? : Map[String, String] = {},
-  inherit_env? : Bool = true,
+  extra_env~ : Map[String, String] = {},
+  inherit_env~ : Bool = true,
   stdin? : &ProcessInput,
   stdout? : &ProcessOutput,
   stderr? : &ProcessOutput,
   cwd? : StringView,
-) -> Int {
+) -> Int32 {
   let start = start_process(
     cmd,
     args,
@@ -912,6 +927,33 @@ pub async fn spawn_orphan(
 }
 
 ///|
-pub async fn wait_pid(pid : Int) -> Int {
+pub async fn wait_pid(pid : Int32) -> Int32 {
   run_js_promise(js_process_wait_pid(pid))
+}
+
+///|
+pub impl @async_io.BinaryReader for ReadFromProcess
+
+///|
+pub extend ReadFromProcess with @async_io.BinaryReader::{
+  read_into,
+  read_at_least,
+  peek,
+  peek_at_least,
+  read_exactly,
+  drop_exactly,
+  peek_exactly,
+  drop_all,
+  peek_until,
+}
+
+///|
+pub impl @async_io.BinaryWriter for WriteToProcess
+
+///|
+pub extend WriteToProcess with @async_io.BinaryWriter::{write_reader}
+
+///|
+impl @async_io.BinaryWriterImpl for WriteToProcess with fn get_controller(self) {
+  self.write_controller
 }

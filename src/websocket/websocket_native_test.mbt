@@ -46,7 +46,7 @@ async test "websocket text echo" {
           @async_ws.ConnectionClosed(_) => break
           err => raise err
         }
-        let content = msg.read_all()
+        let content : &@data.Data = msg.read_all()
         match msg.kind {
           @async_ws.Text => ws.send_text(content.text())
           @async_ws.Binary => ws.send_binary(content.binary()[:])
@@ -80,7 +80,7 @@ async test "websocket binary echo" {
           @async_ws.ConnectionClosed(_) => break
           err => raise err
         }
-        let content = msg.read_all()
+        let content : &@data.Data = msg.read_all()
         match msg.kind {
           @async_ws.Text => ws.send_text(content.text())
           @async_ws.Binary => ws.send_binary(content.binary()[:])
@@ -121,7 +121,7 @@ async test "websocket multiple messages" {
           @async_ws.ConnectionClosed(_) => break
           err => raise err
         }
-        let content = msg.read_all()
+        let content : &@data.Data = msg.read_all()
         match msg.kind {
           @async_ws.Text => ws.send_text(content.text())
           @async_ws.Binary => ws.send_binary(content.binary()[:])
@@ -163,7 +163,7 @@ async test "smoke: text echo matches upstream" {
             @async_ws.ConnectionClosed(_) => break
             err => raise err
           }
-          let content = msg.read_all()
+          let content : &@data.Data = msg.read_all()
           match msg.kind {
             @async_ws.Text => ws.send_text(content.text())
             @async_ws.Binary => ws.send_binary(content.binary()[:])
@@ -179,7 +179,7 @@ async test "smoke: text echo matches upstream" {
     defer upstream.close()
     upstream.send_text("hello")
     let upstream_msg = upstream.recv()
-    let upstream_data = upstream_msg.read_all()
+    let upstream_data : &@data.Data = upstream_msg.read_all()
     let upstream_text = upstream_data.text()
     upstream.send_close()
     // Wrapper API
@@ -213,7 +213,7 @@ async test "smoke: binary echo matches upstream" {
             @async_ws.ConnectionClosed(_) => break
             err => raise err
           }
-          let content = msg.read_all()
+          let content : &@data.Data = msg.read_all()
           match msg.kind {
             @async_ws.Text => ws.send_text(content.text())
             @async_ws.Binary => ws.send_binary(content.binary()[:])
@@ -230,7 +230,7 @@ async test "smoke: binary echo matches upstream" {
     defer upstream.close()
     upstream.send_binary(data[:])
     let upstream_msg = upstream.recv()
-    let upstream_bytes = upstream_msg.read_all().binary()
+    let upstream_bytes = upstream_msg.read_all()
     upstream.send_close()
     // Wrapper API
     let wrapper = @websocket.Conn::connect(url)
@@ -316,7 +316,7 @@ async test "smoke: multiple messages match upstream" {
             @async_ws.ConnectionClosed(_) => break
             err => raise err
           }
-          let content = msg.read_all()
+          let content : &@data.Data = msg.read_all()
           match msg.kind {
             @async_ws.Text => ws.send_text(content.text())
             @async_ws.Binary => ws.send_binary(content.binary()[:])
@@ -335,7 +335,7 @@ async test "smoke: multiple messages match upstream" {
     for m in messages {
       upstream.send_text(m)
       let msg = upstream.recv()
-      upstream_results.push(msg.read_all().text())
+      upstream_results.push(@data.Data::text(msg.read_all()))
     }
     upstream.send_close()
     // Wrapper
@@ -373,7 +373,7 @@ async test "smoke: mixed text and binary match upstream" {
             @async_ws.ConnectionClosed(_) => break
             err => raise err
           }
-          let content = msg.read_all()
+          let content : &@data.Data = msg.read_all()
           match msg.kind {
             @async_ws.Text => ws.send_text(content.text())
             @async_ws.Binary => ws.send_binary(content.binary()[:])
@@ -389,11 +389,11 @@ async test "smoke: mixed text and binary match upstream" {
     let upstream = @async_ws.Conn::connect(url)
     defer upstream.close()
     upstream.send_text("one")
-    let u1 = upstream.recv().read_all().text()
+    let u1 = @data.Data::text(upstream.recv().read_all())
     upstream.send_binary(bin_data[:])
-    let u2 = upstream.recv().read_all().binary()
+    let u2 = upstream.recv().read_all()
     upstream.send_text("two")
-    let u3 = upstream.recv().read_all().text()
+    let u3 = @data.Data::text(upstream.recv().read_all())
     upstream.send_close()
     // Wrapper: text → binary → text
     let wrapper = @websocket.Conn::connect(url)
@@ -435,7 +435,7 @@ async test "websocket empty string" {
           @async_ws.ConnectionClosed(_) => break
           err => raise err
         }
-        let content = msg.read_all()
+        let content : &@data.Data = msg.read_all()
         match msg.kind {
           @async_ws.Text => ws.send_text(content.text())
           @async_ws.Binary => ws.send_binary(content.binary()[:])
@@ -469,7 +469,7 @@ async test "websocket unicode text" {
           @async_ws.ConnectionClosed(_) => break
           err => raise err
         }
-        let content = msg.read_all()
+        let content : &@data.Data = msg.read_all()
         match msg.kind {
           @async_ws.Text => ws.send_text(content.text())
           @async_ws.Binary => ws.send_binary(content.binary()[:])
@@ -508,7 +508,7 @@ async test "websocket empty binary" {
           @async_ws.ConnectionClosed(_) => break
           err => raise err
         }
-        let content = msg.read_all()
+        let content : &@data.Data = msg.read_all()
         match msg.kind {
           @async_ws.Text => ws.send_text(content.text())
           @async_ws.Binary => ws.send_binary(content.binary()[:])
@@ -543,7 +543,7 @@ async test "websocket large binary" {
           @async_ws.ConnectionClosed(_) => break
           err => raise err
         }
-        let content = msg.read_all()
+        let content : &@data.Data = msg.read_all()
         match msg.kind {
           @async_ws.Text => ws.send_text(content.text())
           @async_ws.Binary => ws.send_binary(content.binary()[:])
@@ -660,7 +660,7 @@ async test "websocket server-initiated close" {
         @async_ws.ConnectionClosed(_) => return
         err => raise err
       }
-      let content = msg.read_all()
+      let content : &@data.Data = msg.read_all()
       ws.send_text(content.text())
       ws.send_close(code=@async_ws.PolicyViolation, reason="policy")
     })

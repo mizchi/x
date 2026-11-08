@@ -12,9 +12,9 @@ async test "stream: GET read_some" {
       ignore(conn.read_request())
       conn.skip_request_body()
       conn.send_response(200, "OK")
-      conn.write("chunk1")
+      conn.write(b"chunk1")
       conn.flush()
-      conn.write("chunk2")
+      conn.write(b"chunk2")
       conn.end_response()
     })
     let (resp, stream) = @http.get_stream(
@@ -48,14 +48,14 @@ async test "stream: GET read_all" {
       ignore(conn.read_request())
       conn.skip_request_body()
       conn.send_response(200, "OK")
-      conn.write("full body content")
+      conn.write(b"full body content")
       conn.end_response()
     })
     let (resp, stream) = @http.get_stream("http://127.0.0.1:\{addr.port()}/all")
     defer stream.close()
     assert_eq(resp.code, 200)
-    let body = stream.read_all()
-    let body_str : &@io.Data = body
+    let body : &@data.Data = stream.read_all()
+    let body_str : &@data.Data = body
     assert_eq(body_str.text(), "full body content")
   })
 }
@@ -71,11 +71,11 @@ async test "stream: POST with body" {
       defer conn.close()
       let req = conn.read_request()
       guard req.meth is Post else { fail("expected POST") }
-      let body = conn.read_all()
+      let body : &@data.Data = conn.read_all()
       conn.send_response(200, "OK")
-      conn.write("echo:")
+      conn.write(b"echo:")
       conn.flush()
-      conn.write(body.text())
+      conn.write_string(body.text())
       conn.end_response()
     })
     let post_body : String = "stream data"
@@ -84,7 +84,7 @@ async test "stream: POST with body" {
     stream.write(post_body)
     let resp = stream.end_request()
     assert_eq(resp.code, 200)
-    let body = stream.read_all()
+    let body : &@data.Data = stream.read_all()
     assert_eq(body.text(), "echo:stream data")
   })
 }
@@ -105,11 +105,11 @@ async test "stream: SSE-like chunked response" {
       }
       conn.send_response(200, "OK", extra_headers=extra)
       // Simulate SSE events
-      conn.write("data: event1\n\n")
+      conn.write(b"data: event1\n\n")
       conn.flush()
-      conn.write("data: event2\n\n")
+      conn.write(b"data: event2\n\n")
       conn.flush()
-      conn.write("data: event3\n\n")
+      conn.write(b"data: event3\n\n")
       conn.end_response()
     })
     let (resp, stream) = @http.get_stream(
@@ -157,7 +157,7 @@ async test "stream: OpenAI-like POST SSE" {
       guard auth == "Bearer test-key" else { fail("bad auth: " + auth) }
       let ct = req.headers.get("content-type").unwrap_or("")
       guard ct == "application/json" else { fail("bad content-type: " + ct) }
-      let body = conn.read_all()
+      let body : &@data.Data = conn.read_all()
       let body_text = body.text()
       guard body_text.contains("\"stream\":true") ||
         body_text.contains("\"stream\": true") else {
@@ -170,15 +170,15 @@ async test "stream: OpenAI-like POST SSE" {
       }
       conn.send_response(200, "OK", extra_headers=extra)
       // Simulate streaming tokens
-      conn.write(
+      conn.write_string(
         "data: {\"choices\":[{\"delta\":{\"content\":\"Hello\"}}]}\n\n",
       )
       conn.flush()
-      conn.write(
+      conn.write_string(
         "data: {\"choices\":[{\"delta\":{\"content\":\" world\"}}]}\n\n",
       )
       conn.flush()
-      conn.write("data: [DONE]\n\n")
+      conn.write(b"data: [DONE]\n\n")
       conn.end_response()
     })
     let headers : Map[String, String] = {
@@ -216,7 +216,7 @@ async test "stream: OpenAI-like POST SSE" {
     for line in lines {
       let trimmed = line.to_owned()
       if trimmed.has_prefix("data: ") {
-        events.push(trimmed.view(start_offset=6).to_owned())
+        events.push(trimmed.exact_view(start=6).to_owned())
       }
     }
     assert_eq(events.length(), 3)
@@ -241,7 +241,7 @@ async test "stream: response headers available before body" {
         "X-Stream-Id": "abc123",
       }
       conn.send_response(200, "OK", extra_headers=extra)
-      conn.write("body")
+      conn.write(b"body")
       conn.end_response()
     })
     let (resp, stream) = @http.get_stream(
@@ -252,8 +252,8 @@ async test "stream: response headers available before body" {
     assert_eq(resp.code, 200)
     assert_eq(resp.headers.get("x-stream-id").unwrap_or(""), "abc123")
     // Now read body
-    let body = stream.read_all()
-    let body_data : &@io.Data = body
+    let body : &@data.Data = stream.read_all()
+    let body_data : &@data.Data = body
     assert_eq(body_data.text(), "body")
   })
 }
@@ -270,21 +270,21 @@ async test "smoke: stream matches upstream get_stream" {
         ignore(conn.read_request())
         conn.skip_request_body()
         conn.send_response(200, "OK")
-        conn.write("part1\n")
+        conn.write(b"part1\n")
         conn.flush()
-        conn.write("part2\n")
+        conn.write(b"part2\n")
         conn.end_response()
         conn.close()
       }
     })
     let port = addr.port()
     // Upstream: get_stream + read_some
-    let (upstream_resp, upstream_client) = @async_http.get_stream(
+    let (upstream_resp, upstream_client) = @async_http.get(
       "http://127.0.0.1:\{port}/test",
     )
     defer upstream_client.close()
     let upstream_buf = StringBuilder()
-    while upstream_client.read_some() is Some(chunk) {
+    while upstream_client.read() is Some(chunk) {
       for i = 0; i < chunk.length(); i = i + 1 {
         upstream_buf.write_char(chunk[i].to_int().unsafe_to_char())
       }
@@ -326,7 +326,7 @@ async test "http GET" {
       conn.skip_request_body()
       guard req.meth is Get else { fail("expected GET") }
       conn.send_response(200, "OK")
-      conn.write("hello from server")
+      conn.write(b"hello from server")
       conn.end_response()
     })
     let (resp, body) = @http.get("http://127.0.0.1:\{addr.port()}/test")
@@ -347,9 +347,9 @@ async test "http POST with body" {
       defer conn.close()
       let req = conn.read_request()
       guard req.meth is Post else { fail("expected POST") }
-      let body = conn.read_all()
+      let body : &@data.Data = conn.read_all()
       conn.send_response(201, "Created")
-      conn.write("received: " + body.text())
+      conn.write_string("received: " + body.text())
       conn.end_response()
     })
     let post_body : String = "test data"
@@ -374,9 +374,9 @@ async test "http PUT with body" {
       defer conn.close()
       let req = conn.read_request()
       guard req.meth is Put else { fail("expected PUT") }
-      let body = conn.read_all()
+      let body : &@data.Data = conn.read_all()
       conn.send_response(200, "OK")
-      conn.write("updated: " + body.text())
+      conn.write_string("updated: " + body.text())
       conn.end_response()
     })
     let put_body : String = "updated data"
@@ -402,7 +402,7 @@ async test "http GET with custom headers" {
       conn.skip_request_body()
       let auth = req.headers.get("authorization").unwrap_or("none")
       conn.send_response(200, "OK")
-      conn.write("auth: " + auth)
+      conn.write_string("auth: " + auth)
       conn.end_response()
     })
     let headers : Map[String, String] = { "Authorization": "Bearer token123" }
@@ -433,7 +433,7 @@ async test "client and server preserve string headers across native requests" {
         conn.send_response(200, "OK", extra_headers={
           "X-ReSpOnSe": "per-response",
         })
-        conn.write("ok")
+        conn.write(b"ok")
         conn.end_response()
       }
     })
@@ -472,7 +472,7 @@ async test "http response headers" {
         "Content-Type": "text/plain",
       }
       conn.send_response(200, "OK", extra_headers~)
-      conn.write("ok")
+      conn.write(b"ok")
       conn.end_response()
     })
     let (resp, _) = @http.get("http://127.0.0.1:\{addr.port()}/")
@@ -494,7 +494,7 @@ async test "http 404 response" {
       ignore(conn.read_request())
       conn.skip_request_body()
       conn.send_response(404, "Not Found")
-      conn.write("not found")
+      conn.write(b"not found")
       conn.end_response()
     })
     let (resp, body) = @http.get("http://127.0.0.1:\{addr.port()}/missing")
@@ -536,7 +536,7 @@ async test "http unicode body" {
       ignore(conn.read_request())
       conn.skip_request_body()
       conn.send_response(200, "OK")
-      conn.write("\u{3053}\u{3093}\u{306B}\u{3061}\u{306F}\u{4E16}\u{754C}")
+      conn.write_string("こんにちは世界")
       conn.end_response()
     })
     let (resp, body) = @http.get("http://127.0.0.1:\{addr.port()}/unicode")
@@ -561,17 +561,20 @@ async test "smoke: GET matches upstream" {
         let req = conn.read_request()
         conn.skip_request_body()
         conn.send_response(200, "OK")
-        conn.write("path=" + req.path)
+        conn.write_string("path=" + req.path)
         conn.end_response()
         conn.close()
       }
     })
     let url = "http://127.0.0.1:\{addr.port()}/test"
     // Upstream
-    let upstream_client = @async_http.Client("http://127.0.0.1:\{addr.port()}")
+    let upstream_client = @async_http.ClientConnection(
+      "http://127.0.0.1:\{addr.port()}",
+    )
     defer upstream_client.close()
-    let upstream_resp = upstream_client.get("/test")
-    let upstream_body = upstream_client.read_all()
+    upstream_client.request(Get, "/test")
+    let upstream_resp = upstream_client.end_request()
+    let upstream_body : &@data.Data = upstream_client.read_all()
     // Wrapper
     let (wrapper_resp, wrapper_body) = @http.get(url)
     // Compare
@@ -591,19 +594,23 @@ async test "smoke: POST matches upstream" {
       for i = 0; i < 2; i = i + 1 {
         let (conn, _) = server.accept()
         ignore(conn.read_request())
-        let body = conn.read_all()
+        let body : &@data.Data = conn.read_all()
         conn.send_response(201, "Created")
-        conn.write("echo:" + body.text())
+        conn.write_string("echo:" + body.text())
         conn.end_response()
         conn.close()
       }
     })
     let post_data : String = "payload"
     // Upstream
-    let upstream_client = @async_http.Client("http://127.0.0.1:\{addr.port()}")
+    let upstream_client = @async_http.ClientConnection(
+      "http://127.0.0.1:\{addr.port()}",
+    )
     defer upstream_client.close()
-    let upstream_resp = upstream_client.post("/api", post_data)
-    let upstream_body = upstream_client.read_all()
+    upstream_client.request(Post, "/api")
+    upstream_client.write(@utf8.encode(post_data)[:])
+    let upstream_resp = upstream_client.end_request()
+    let upstream_body : &@data.Data = upstream_client.read_all()
     // Wrapper
     let (wrapper_resp, wrapper_body) = @http.post(
       "http://127.0.0.1:\{addr.port()}/api",
@@ -629,9 +636,9 @@ async test "client: generic request via Client::request" {
       let req = conn.read_request()
       guard req.meth is Patch else { fail("expected PATCH") }
       assert_eq(req.path, "/generic")
-      let request_body = conn.read_all()
+      let request_body : &@data.Data = conn.read_all()
       conn.send_response(200, "OK")
-      conn.write("seen:" + request_body.text())
+      conn.write_string("seen:" + request_body.text())
       conn.end_response()
     })
     let client = @http.Client::new("http://127.0.0.1:\{addr.port()}")
@@ -639,9 +646,9 @@ async test "client: generic request via Client::request" {
     client.request(@http.RequestMethod::Patch, "/generic", extra_headers={
       "Content-Type": "text/plain",
     })
-    client.write("payload")
+    client.write(b"payload")
     let resp = client.end_request()
-    let body = client.read_all()
+    let body : &@data.Data = client.read_all()
     assert_eq(resp.code, 200)
     assert_eq(body.text(), "seen:payload")
   })
@@ -661,9 +668,9 @@ async test "http multi-part response" {
       let req = conn.read_request()
       conn.skip_request_body()
       conn.send_response(200, "OK")
-      conn.write("part1-" + req.path + "\n")
+      conn.write_string("part1-" + req.path + "\n")
       conn.flush()
-      conn.write("part2-" + req.path + "\n")
+      conn.write_string("part2-" + req.path + "\n")
       conn.end_response()
     })
     let (resp, body) = @http.get("http://127.0.0.1:\{addr.port()}/multi")
@@ -683,9 +690,9 @@ async test "http POST echo - request method and path" {
       for i = 0; i < 3; i = i + 1 {
         let (conn, _) = server.accept()
         let req = conn.read_request()
-        let body = conn.read_all()
+        let body : &@data.Data = conn.read_all()
         conn.send_response(200, "OK")
-        conn.write(
+        conn.write_string(
           @debug.to_string(req.meth) + " " + req.path + " body=" + body.text(),
         )
         conn.end_response()
@@ -720,7 +727,7 @@ async test "http multiple sequential requests" {
         let req = conn.read_request()
         conn.skip_request_body()
         conn.send_response(200, "OK")
-        conn.write("req-" + i.to_string() + "-" + req.path)
+        conn.write_string("req-" + i.to_string() + "-" + req.path)
         conn.end_response()
         conn.close()
       }
@@ -763,15 +770,18 @@ async test "smoke: response headers match upstream" {
           "X-Test": "value123",
         }
         conn.send_response(200, "OK", extra_headers=extra)
-        conn.write("ok")
+        conn.write(b"ok")
         conn.end_response()
         conn.close()
       }
     })
     // Upstream
-    let upstream_client = @async_http.Client("http://127.0.0.1:\{addr.port()}")
+    let upstream_client = @async_http.ClientConnection(
+      "http://127.0.0.1:\{addr.port()}",
+    )
     defer upstream_client.close()
-    let upstream_resp = upstream_client.get("/")
+    upstream_client.request(Get, "/")
+    let upstream_resp = upstream_client.end_request()
     ignore(upstream_client.read_all())
     let upstream_header = upstream_resp.headers.get("x-test").unwrap_or("")
     // Wrapper
@@ -790,13 +800,13 @@ async test "server: addr and client_addr" {
     defer server.close()
     let listen_addr = server.addr()
     assert_eq(listen_addr.port, server.port())
-    let seen_client_ports : Array[Int] = []
+    let seen_client_ports : Array[Int32] = []
     group.spawn_bg(no_wait=true, allow_failure=true, () => {
       server.run_forever(
         (_req, _body, conn) => {
           seen_client_ports.push(conn.client_addr().port)
           conn.send_response(200, "OK")
-          conn.write("ok")
+          conn.write(b"ok")
           conn.end_response()
         },
         max_connections=1,
@@ -843,13 +853,13 @@ async test "passthrough mode remaining data" {
       let (conn, _) = server.accept()
       ignore(conn.read_request())
       conn.enter_passthrough_mode()
-      let rest = conn.read_all()
-      let data : &@io.Data = rest
+      let rest : &@data.Data = conn.read_all()
+      let data : &@data.Data = rest
       assert_eq(data.text(), "remaining data")
       conn.close()
     })
     let client = @socket.Tcp::connect(@socket.Addr::parse(addr.text))
     defer client.close()
-    client.write("GET / HTTP/1.1\r\n\r\nremaining data")
+    client.write(b"GET / HTTP/1.1\r\n\r\nremaining data")
   })
 }

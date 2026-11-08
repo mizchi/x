@@ -87,6 +87,6 @@ pub fn[D : @upstream.ByteSource] bytes_to_hex_string(data : D) -> String {
 
 ///|
 /// Renders a `UInt` iterator as a lowercase hex string.
-pub fn uints_to_hex_string(iter : Iter[UInt]) -> String {
+pub fn uints_to_hex_string(iter : Iter[UInt32]) -> String {
   @upstream.uints_to_hex_string(iter)
 }

@@ -14,10 +14,11 @@
 ///|
 /// A position in the source text. `line` is 1-based, `column` is 0-based, the
 /// same convention as `moonbitlang/core/json.Position`.
+#derive(Eq, ToJson, @debug.Debug)
 pub(all) struct Position {
-  line : Int
-  column : Int
-} derive(Eq, ToJson, @debug.Debug)
+  line : Int32
+  column : Int32
+}
 
 ///|
 /// Parsing error raised by `parse`.
@@ -27,13 +28,15 @@ pub(all) struct Position {
 /// runs out of input and `InvalidChar` (with the reported position and
 /// offending character) otherwise. It never produces `InvalidNumber` /
 /// `InvalidIdentEscape`, which are native-parser specific.
+#derive(Eq, ToJson, @debug.Debug)
 pub(all) suberror ParseError {
   InvalidChar(Position, Char)
   InvalidEof
   InvalidNumber(Position, String)
   InvalidIdentEscape(Position)
+  DuplicateKey(Position, String)
   DepthLimitExceeded
-} derive(Eq, ToJson, @debug.Debug)
+}
 
 ///|
 pub impl Show for ParseError with fn output(self, logger) {
@@ -47,6 +50,10 @@ pub impl Show for ParseError with fn output(self, logger) {
       logger.write_object(column)
     }
     InvalidEof => logger.write_string("Unexpected end of file")
+    DuplicateKey({ line, column, }, key) =>
+      logger.write_string(
+        "Duplicate key \{key.escape()} at line \{line}, column \{column}",
+      )
     InvalidNumber({ line, column, }, s) => {
       logger.write_string("Invalid number ")
       logger.write_string(s)
@@ -67,3 +74,24 @@ pub impl Show for ParseError with fn output(self, logger) {
       )
   }
 }
+
+///|
+pub extend Position with Eq::{not_equal, equal}
+
+///|
+pub extend Position with ToJson::{to_json}
+
+///|
+pub extend Position with @debug.Debug::{to_repr}
+
+///|
+pub extend ParseError with Eq::{not_equal, equal}
+
+///|
+pub extend ParseError with ToJson::{to_json}
+
+///|
+pub extend ParseError with @debug.Debug::{to_repr}
+
+///|
+pub extend ParseError with Show::{to_string, output}

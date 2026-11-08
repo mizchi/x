@@ -6,27 +6,40 @@ import {
 }
 
 // Values
-pub fn parse(StringView, max_nesting_depth? : Int) -> Json raise ParseError
+pub fn parse(StringView, max_nesting_depth? : Int32) -> @moonbitlang/core/json.Json raise ParseError
 
-pub fn stringify(Json, escape_slash? : Bool, indent? : Int) -> String
+pub fn stringify(@moonbitlang/core/json.Json, escape_slash? : Bool, indent? : Int32) -> String
 
 pub fn valid(StringView) -> Bool
 
 // Errors
+#derive(Eq, @debug.Debug, @moonbitlang/core/json.ToJson)
 pub(all) suberror ParseError {
   InvalidChar(Position, Char)
   InvalidEof
   InvalidNumber(Position, String)
   InvalidIdentEscape(Position)
+  DuplicateKey(Position, String)
   DepthLimitExceeded
-} derive(Eq, ToJson, @debug.Debug)
+}
+pub fn ParseError::equal(Self, Self) -> Bool
+pub fn ParseError::not_equal(Self, Self) -> Bool
+pub fn ParseError::output(Self, &Logger) -> Unit
+pub fn ParseError::to_json(Self) -> @moonbitlang/core/json.Json
+pub fn ParseError::to_repr(Self) -> @debug.Repr
+pub fn ParseError::to_string(Self) -> String
 pub impl Show for ParseError
 
 // Types and methods
+#derive(Eq, @debug.Debug, @moonbitlang/core/json.ToJson)
 pub(all) struct Position {
-  line : Int
-  column : Int
-} derive(Eq, ToJson, @debug.Debug)
+  line : Int32
+  column : Int32
+}
+pub fn Position::equal(Self, Self) -> Bool
+pub fn Position::not_equal(Self, Self) -> Bool
+pub fn Position::to_json(Self) -> @moonbitlang/core/json.Json
+pub fn Position::to_repr(Self) -> @debug.Repr
 
 // Type aliases
 

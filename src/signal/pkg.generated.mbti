@@ -11,13 +11,15 @@ pub fn set_global_cancellation_signals(ReadOnlyArray[Signal]) -> Unit
 // Errors
 
 // Types and methods
+#derive(@debug.Debug)
 pub(all) enum Signal {
   SIGINT
   SIGTERM
   SIGHUP
   SIGBREAK
-} derive(@debug.Debug)
-pub fn Signal::to_int(Self) -> Int
+}
+pub fn Signal::to_int(Self) -> Int32
+pub fn Signal::to_repr(Self) -> @debug.Repr
 
 // Type aliases
 

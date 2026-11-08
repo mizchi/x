@@ -1,5 +1,5 @@
 ///|
-pub fn Signal::to_int(self : Signal) -> Int {
+pub fn Signal::to_int(self : Signal) -> Int32 {
   match self {
     SIGINT => 2
     SIGTERM => 15

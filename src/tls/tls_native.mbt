@@ -1,5 +1,7 @@
 ///|
 pub struct Tls {
+  priv write_controller : @io.BinaryWriterController
+  priv read_controller : @io.BinaryReaderController
   priv inner : @async_tls.Tls
 }
 
@@ -23,14 +25,14 @@ fn to_async_file_type(t : X509FileType) -> @async_tls.X509FileType {
 ///|
 fn[T] raise_tls_error(err : Error) -> T raise {
   let message = err.to_string()
-  if message == "ConnectionClosed" {
+  if err is @async_tls.ConnectionClosed {
     raise ConnectionClosed
   }
   raise TlsError(message)
 }
 
 ///|
-pub fn rand_bytes(num : Int) -> Bytes raise {
+pub fn rand_bytes(num : Int32) -> Bytes raise {
   @async_tls.rand_bytes(num) catch {
     err => raise_tls_error(err)
   }
@@ -38,11 +40,11 @@ pub fn rand_bytes(num : Int) -> Bytes raise {
 
 ///|
 #label_migration(verify, fill=false, msg="use `trust` instead")
-pub async fn[Inner : @io.Reader + @io.Writer] Tls::client(
+pub async fn[Inner : @io.BinaryReader + @io.BinaryWriter] Tls::client(
   inner : Inner,
-  verify? : Bool = true,
+  verify~ : Bool = true,
   host? : String,
-  sni? : Bool = true,
+  sni~ : Bool = true,
   trust? : TrustedRoot,
 ) -> Tls {
   let trust = match trust {
@@ -57,17 +59,21 @@ pub async fn[Inner : @io.Reader + @io.Writer] Tls::client(
   ) catch {
     err => raise_tls_error(err)
   }
-  Tls::{ inner, }
+  Tls::{
+    write_controller: @io.BinaryWriterController(),
+    read_controller: @io.BinaryReaderController(),
+    inner,
+  }
 }
 
 ///|
 #label_migration(verify, fill=false, msg="use `trust` instead")
-pub async fn[R : @io.Reader, W : @io.Writer] Tls::client_from_pair(
+pub async fn[R : @io.BinaryReader, W : @io.BinaryWriter] Tls::client_from_pair(
   reader : R,
   writer : W,
-  verify? : Bool = true,
+  verify~ : Bool = true,
   host? : String,
-  sni? : Bool = true,
+  sni~ : Bool = true,
   trust? : TrustedRoot,
 ) -> Tls {
   let trust = match trust {
@@ -83,11 +89,15 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::client_from_pair(
   ) catch {
     err => raise_tls_error(err)
   }
-  Tls::{ inner, }
+  Tls::{
+    write_controller: @io.BinaryWriterController(),
+    read_controller: @io.BinaryReaderController(),
+    inner,
+  }
 }
 
 ///|
-pub async fn[Inner : @io.Reader + @io.Writer] Tls::server(
+pub async fn[Inner : @io.BinaryReader + @io.BinaryWriter] Tls::server(
   inner : Inner,
   private_key_file~ : String,
   private_key_type~ : X509FileType,
@@ -103,11 +113,15 @@ pub async fn[Inner : @io.Reader + @io.Writer] Tls::server(
   ) catch {
     err => raise_tls_error(err)
   }
-  Tls::{ inner, }
+  Tls::{
+    write_controller: @io.BinaryWriterController(),
+    read_controller: @io.BinaryReaderController(),
+    inner,
+  }
 }
 
 ///|
-pub async fn[R : @io.Reader, W : @io.Writer] Tls::server_from_pair(
+pub async fn[R : @io.BinaryReader, W : @io.BinaryWriter] Tls::server_from_pair(
   reader : R,
   writer : W,
   private_key_file~ : String,
@@ -125,7 +139,11 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::server_from_pair(
   ) catch {
     err => raise_tls_error(err)
   }
-  Tls::{ inner, }
+  Tls::{
+    write_controller: @io.BinaryWriterController(),
+    read_controller: @io.BinaryReaderController(),
+    inner,
+  }
 }
 
 ///|
@@ -162,20 +180,58 @@ pub fn Tls::server_endpoint_channel_binding(self : Tls) -> Bytes raise {
 }
 
 ///|
-pub impl @io.Reader for Tls with fn _get_internal_buffer(self) {
-  self.inner._get_internal_buffer()
+impl @io.BinaryReaderImpl for Tls with fn get_controller(self) {
+  self.read_controller
 }
 
 ///|
-pub impl @io.Reader for Tls with fn _direct_read(self, buf, offset~, max_len~) {
-  self.inner._direct_read(buf, offset~, max_len~) catch {
+impl @io.BinaryReaderImpl for Tls with fn raw_read_impl(
+  self,
+  buf,
+  offset~,
+  max_len~,
+) {
+  self.inner.read_into(buf, offset~, max_len~) catch {
     err => raise_tls_error(err)
   }
 }
 
 ///|
-pub impl @io.Writer for Tls with fn write_once(self, buf, offset~, len~) {
-  self.inner.write_once(buf, offset~, len~) catch {
+impl @io.BinaryWriterImpl for Tls with fn raw_write_impl(
+  self,
+  buf,
+  offset~,
+  len~,
+) {
+  self.inner.write(buf[offset:offset + len]) catch {
     err => raise_tls_error(err)
   }
+  len
+}
+
+///|
+pub impl @io.BinaryReader for Tls
+
+///|
+pub extend Tls with @io.BinaryReader::{
+  read_into,
+  read_at_least,
+  peek,
+  peek_at_least,
+  read_exactly,
+  drop_exactly,
+  peek_exactly,
+  drop_all,
+  peek_until,
+}
+
+///|
+pub impl @io.BinaryWriter for Tls
+
+///|
+pub extend Tls with @io.BinaryWriter::{write_reader}
+
+///|
+impl @io.BinaryWriterImpl for Tls with fn get_controller(self) {
+  self.write_controller
 }

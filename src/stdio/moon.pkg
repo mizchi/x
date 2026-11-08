@@ -1,18 +1,27 @@
 import {
-  "moonbitlang/async/stdio" @async_stdio,
-  "moonbitlang/async/io",
-  "moonbitlang/async/js_async",
+  "mizchi/x/data",
+  "moonbitlang/core/async/process" @async_process,
+  "moonbitlang/core/async/stdio" @async_stdio,
+  "moonbitlang/core/async/io",
+  "moonbitlang/core/async/js_async",
   "mizchi/x/process",
 }
 
 import {
-  "moonbitlang/async",
+  "moonbitlang/core/async",
   "mizchi/x/fs",
 } for "test"
 
 warnings = "-0029-0014"
 
 options(
+  "allow-experimental-packages": [
+    "moonbitlang/core/async/process",
+    "moonbitlang/core/async",
+    "moonbitlang/core/async/io",
+    "moonbitlang/core/async/js_async",
+    "moonbitlang/core/async/stdio",
+  ],
   targets: {
     "stdio_js.mbt": [ "js" ],
     "stdio_js_test.mbt": [ "js" ],

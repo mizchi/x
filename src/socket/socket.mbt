@@ -1,35 +1,39 @@
 ///|
-pub suberror InvalidAddr derive(@debug.Debug)
+#derive(@debug.Debug)
+pub suberror InvalidAddr
 
 ///|
+#derive(@debug.Debug)
 pub suberror ResolveHostnameError {
   ResolveHostnameError(String)
-} derive(@debug.Debug)
+}
 
 ///|
+#derive(@debug.Debug)
 pub(all) enum IpProtocolPreference {
   OnlyV4
   OnlyV6
   FavorV4
   FavorV6
   NoPreference
-} derive(@debug.Debug)
+}
 
 ///|
+#derive(Eq, Compare, Hash)
 pub struct Addr {
   priv host : String
-  priv port : Int
-  priv ip : UInt
+  priv port : Int32
+  priv ip : UInt32
   priv is_ipv6 : Bool
-} derive(Eq, Compare, Hash)
+}
 
 ///|
-fn ipv4_part(ip : UInt, shift : Int) -> String {
+fn ipv4_part(ip : UInt32, shift : Int32) -> String {
   ((ip >> shift) & 0xffU).to_string()
 }
 
 ///|
-fn ipv4_host_from_ip(ip : UInt) -> String {
+fn ipv4_host_from_ip(ip : UInt32) -> String {
   ipv4_part(ip, 24) +
   "." +
   ipv4_part(ip, 16) +
@@ -40,14 +44,14 @@ fn ipv4_host_from_ip(ip : UInt) -> String {
 }
 
 ///|
-fn parse_port(raw : StringView) -> Int raise InvalidAddr {
+fn parse_port(raw : StringView) -> Int32 raise InvalidAddr {
   let port = @string.parse_int(raw, base=10) catch { _ => raise InvalidAddr }
   guard 0 <= port && port < 65536 else { raise InvalidAddr }
   port
 }
 
 ///|
-fn parse_ipv4_host(raw : StringView) -> UInt raise InvalidAddr {
+fn parse_ipv4_host(raw : StringView) -> UInt32 raise InvalidAddr {
   let parts = raw.split(".").collect()
   guard parts.length() == 4 else { raise InvalidAddr }
   let mut ip = 0U
@@ -79,7 +83,7 @@ fn parse_ipv6(src : String) -> Addr raise InvalidAddr {
 }
 
 ///|
-pub fn Addr::new(ip : UInt, port : Int) -> Addr {
+pub fn Addr::new(ip : UInt32, port : Int32) -> Addr {
   Addr::{ host: ipv4_host_from_ip(ip), port, ip, is_ipv6: false, }
 }
 
@@ -97,12 +101,12 @@ pub fn Addr::parse(src : String) -> Addr raise InvalidAddr {
 }
 
 ///|
-pub fn Addr::ip(self : Addr) -> UInt {
+pub fn Addr::ip(self : Addr) -> UInt32 {
   self.ip
 }
 
 ///|
-pub fn Addr::port(self : Addr) -> Int {
+pub fn Addr::port(self : Addr) -> Int32 {
   self.port
 }
 
@@ -134,3 +138,24 @@ pub impl Show for Addr with fn output(self, logger) {
     logger..write_string(self.host)..write_char(':').write_object(self.port)
   }
 }
+
+///|
+pub extend InvalidAddr with @debug.Debug::{to_repr}
+
+///|
+pub extend ResolveHostnameError with @debug.Debug::{to_repr}
+
+///|
+pub extend IpProtocolPreference with @debug.Debug::{to_repr}
+
+///|
+pub extend Addr with Eq::{not_equal, equal}
+
+///|
+pub extend Addr with Compare::{op_lt, op_le, op_ge, compare, op_gt}
+
+///|
+pub extend Addr with Hash::{hash, hash_combine}
+
+///|
+pub extend Addr with Show::{to_string, output}

@@ -126,9 +126,9 @@ async test "basic_cat" {
     |> ignore
     group.spawn_bg(() => {
       defer we_write.close()
-      we_write.write("abcd")
+      we_write.write(b"abcd")
       @async.sleep(50)
-      we_write.write("efgh")
+      we_write.write(b"efgh")
     })
     group.spawn_bg(() => {
       defer we_read.close()
@@ -243,7 +243,7 @@ async test "write_to_process feeds stdin" {
         stdin~,
       )
     })
-    writer.write("abc")
+    writer.write(b"abc")
     writer.close()
     let (code, stdout) = task.wait()
     inspect(code, content="0")
@@ -449,18 +449,25 @@ async test "cancel process" {
 async test "cancel process timeout" {
   let marker = "/tmp/mizchi_x_process_cancel_timeout_signal.txt"
   remove_if_exists(marker)
-  let script = "const fs=require('fs');process.on('SIGTERM',()=>{fs.writeFileSync(process.argv[1],'term')});setInterval(()=>{},1000)"
-  let t0 = @env.now()
+  let script = "const fs=require('fs');process.on('SIGTERM',()=>{fs.writeFileSync(process.argv[1],'term')});fs.writeFileSync(process.argv[1],'ready');setInterval(()=>{},1000)"
+  let mut t0 = @env.now()
   let result = try
-    @async.with_timeout(120, () => {
-      @process.run(
-        "node",
-        ["-e", script, marker],
-        cancel_handler=@process.graceful_cancel(
-          timeout=60,
-          signal=@signal.SIGTERM,
-        ),
-      )
+    @async.with_task_group(group => {
+      group.spawn_bg(() => {
+        ignore(
+          @process.run(
+            "node",
+            ["-e", script, marker],
+            cancel_handler=@process.graceful_cancel(
+              timeout=60,
+              signal=@signal.SIGTERM,
+            ),
+          ),
+        )
+      })
+      wait_for_file_text(marker, "ready", 5000)
+      t0 = @env.now()
+      @async.with_timeout(120, () => @async.sleep(1000))
     })
   catch {
     err => Err(err)
@@ -469,7 +476,7 @@ async test "cancel process timeout" {
   }
   let elapsed = @env.now() - t0
   assert_true(result is Err(_))
-  assert_true(elapsed >= 160UL)
+  assert_true(elapsed >= 160UL, msg="elapsed: \{elapsed} ms")
   wait_for_file_text(marker, "term", 1000)
   @fs.remove(marker)
 }

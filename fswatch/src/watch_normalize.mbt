@@ -57,7 +57,7 @@ async fn build_normalize_state(
       }
     })
   }
-  NormalizeState::{ exclude, prefix_map, known }
+  NormalizeState::{ exclude, prefix_map, known, }
 }
 
 ///|
@@ -91,7 +91,7 @@ async fn classify_event(state : NormalizeState, raw_path : String) -> Event? {
   if !exists_now {
     if state.known.contains(path) {
       state.known.remove(path)
-      return Some(Event::{ path, kind: Removed })
+      return Some(Event::{ path, kind: Removed, })
     }
     return None
   }
@@ -106,5 +106,5 @@ async fn classify_event(state : NormalizeState, raw_path : String) -> Event? {
   let was_known = state.known.contains(path)
   state.known[path] = true
   let kind : EventKind = if was_known { Modified } else { Created }
-  Some(Event::{ path, kind })
+  Some(Event::{ path, kind, })
 }

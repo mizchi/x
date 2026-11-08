@@ -38,7 +38,7 @@ fn to_async_lock(lock : Lock) -> @async_fs.Lock {
 ///|
 fn default_open_create_mode(
   create_mode? : CreateMode,
-  create? : Int,
+  create? : Int32,
   truncate? : Bool,
 ) -> CreateMode {
   match create_mode {
@@ -56,7 +56,7 @@ fn default_open_create_mode(
 ///|
 fn default_write_create_mode(
   create_mode? : CreateMode,
-  create? : Int,
+  create? : Int32,
   truncate? : Bool,
 ) -> CreateMode {
   match create_mode {
@@ -72,7 +72,7 @@ fn default_write_create_mode(
 }
 
 ///|
-fn permission_or_create(permission? : Int, create? : Int) -> Int {
+fn permission_or_create(permission? : Int32, create? : Int32) -> Int32 {
   match permission {
     Some(p) => p
     None =>
@@ -87,8 +87,8 @@ fn permission_or_create(permission? : Int, create? : Int) -> Int {
 pub async fn read_file(
   path : StringView,
   sync_timestamp? : Bool,
-) -> &@io.Data raise IOError {
-  @async_fs.read_file(path, sync_timestamp?) catch {
+) -> &@data.Data raise IOError {
+  @async_fs.read_binary(path, sync_timestamp?) catch {
     err => raise IOError::IOError(err.to_string())
   }
 }
@@ -96,12 +96,12 @@ pub async fn read_file(
 ///|
 pub async fn write_file(
   path : StringView,
-  content : &@io.Data,
+  content : &@data.Data,
   create_mode? : CreateMode,
-  permission? : Int,
+  permission? : Int32,
   sync? : SyncMode,
   append? : Bool,
-  create? : Int,
+  create? : Int32,
   truncate? : Bool,
 ) -> Unit raise IOError {
   let create_mode = to_async_create_mode(
@@ -109,7 +109,14 @@ pub async fn write_file(
   )
   let permission = permission_or_create(permission?, create?)
   let sync = sync.map(to_async_sync_mode)
-  @async_fs.write_file(path, content, create_mode~, permission~, sync?, append?) catch {
+  @async_fs.write_binary(
+    path,
+    content.binary()[:],
+    create_mode~,
+    permission~,
+    sync?,
+    append?,
+  ) catch {
     err => raise IOError::IOError(err.to_string())
   }
 }
@@ -135,7 +142,7 @@ pub async fn can_execute(path : StringView) -> Bool {
 }
 
 ///|
-pub async fn chmod(path : StringView, permission : Int) -> Unit raise IOError {
+pub async fn chmod(path : StringView, permission : Int32) -> Unit raise IOError {
   @async_fs.chmod(path, permission) catch {
     err => raise IOError::IOError(err.to_string())
   }
@@ -145,36 +152,39 @@ pub async fn chmod(path : StringView, permission : Int) -> Unit raise IOError {
 pub async fn atime(
   path : StringView,
   follow_symlink? : Bool,
-) -> (Int64, Int) raise IOError {
-  @async_fs.atime(path, follow_symlink?) catch {
+) -> (Int64, Int32) raise IOError {
+  let time = @async_fs.atime(path, follow_symlink?) catch {
     err => raise IOError::IOError(err.to_string())
   }
+  (time.sec(), time.nsec())
 }
 
 ///|
 pub async fn mtime(
   path : StringView,
   follow_symlink? : Bool,
-) -> (Int64, Int) raise IOError {
-  @async_fs.mtime(path, follow_symlink?) catch {
+) -> (Int64, Int32) raise IOError {
+  let time = @async_fs.mtime(path, follow_symlink?) catch {
     err => raise IOError::IOError(err.to_string())
   }
+  (time.sec(), time.nsec())
 }
 
 ///|
 pub async fn ctime(
   path : StringView,
   follow_symlink? : Bool,
-) -> (Int64, Int) raise IOError {
-  @async_fs.ctime(path, follow_symlink?) catch {
+) -> (Int64, Int32) raise IOError {
+  let time = @async_fs.ctime(path, follow_symlink?) catch {
     err => raise IOError::IOError(err.to_string())
   }
+  (time.sec(), time.nsec())
 }
 
 ///|
 pub async fn mkdir(
   path : StringView,
-  permission? : Int,
+  permission? : Int32,
   recursive? : Bool,
 ) -> Unit raise IOError {
   @async_fs.mkdir(path, permission?, recursive?) catch {
@@ -230,6 +240,7 @@ fn from_async_kind(k : @async_fs.FileKind) -> FileKind {
     Pipe => Pipe
     BlockDevice => BlockDevice
     CharDevice => CharDevice
+    _ => Unknown
   }
 }
 
@@ -268,6 +279,8 @@ pub async fn symlink(
 
 ///|
 pub struct File {
+  priv write_controller : @io.BinaryWriterController
+  priv read_controller : @io.BinaryReaderController
   priv inner : @async_fs.File
 }
 
@@ -278,8 +291,8 @@ pub async fn open(
   sync? : SyncMode,
   append? : Bool,
   create_mode? : CreateMode,
-  permission? : Int,
-  create? : Int,
+  permission? : Int32,
+  create? : Int32,
   truncate? : Bool,
 ) -> File raise IOError {
   let sync = sync.map(to_async_sync_mode)
@@ -297,21 +310,29 @@ pub async fn open(
   ) catch {
     err => raise IOError::IOError(err.to_string())
   }
-  File::{ inner, }
+  File::{
+    write_controller: @io.BinaryWriterController(),
+    read_controller: @io.BinaryReaderController(),
+    inner,
+  }
 }
 
 ///|
 pub async fn create(
   path : StringView,
   allow_existing? : Bool,
-  permission? : Int,
+  permission? : Int32,
   sync? : SyncMode,
 ) -> File raise IOError {
   let sync = sync.map(to_async_sync_mode)
   let inner = @async_fs.create(path, allow_existing?, permission?, sync?) catch {
     err => raise IOError::IOError(err.to_string())
   }
-  File::{ inner, }
+  File::{
+    write_controller: @io.BinaryWriterController(),
+    read_controller: @io.BinaryReaderController(),
+    inner,
+  }
 }
 
 ///|
@@ -320,7 +341,7 @@ pub fn File::close(self : File) -> Unit {
 }
 
 ///|
-pub fn File::fd(self : File) -> Int {
+pub fn File::fd(self : File) -> Int32 {
   file_fd_to_int(self.inner.fd())
 }
 
@@ -345,24 +366,27 @@ pub async fn File::size(self : File) -> Int64 raise IOError {
 }
 
 ///|
-pub async fn File::atime(self : File) -> (Int64, Int) raise IOError {
-  self.inner.atime() catch {
+pub async fn File::atime(self : File) -> (Int64, Int32) raise IOError {
+  let time = self.inner.atime() catch {
     err => raise IOError::IOError(err.to_string())
   }
+  (time.sec(), time.nsec())
 }
 
 ///|
-pub async fn File::mtime(self : File) -> (Int64, Int) raise IOError {
-  self.inner.mtime() catch {
+pub async fn File::mtime(self : File) -> (Int64, Int32) raise IOError {
+  let time = self.inner.mtime() catch {
     err => raise IOError::IOError(err.to_string())
   }
+  (time.sec(), time.nsec())
 }
 
 ///|
-pub async fn File::ctime(self : File) -> (Int64, Int) raise IOError {
-  self.inner.ctime() catch {
+pub async fn File::ctime(self : File) -> (Int64, Int32) raise IOError {
+  let time = self.inner.ctime() catch {
     err => raise IOError::IOError(err.to_string())
   }
+  (time.sec(), time.nsec())
 }
 
 ///|
@@ -370,9 +394,9 @@ pub async fn File::read_at(
   self : File,
   buf : FixedArray[Byte],
   position~ : Int64,
-  offset? : Int,
-  len? : Int,
-) -> Int raise IOError {
+  offset? : Int32,
+  len? : Int32,
+) -> Int32 raise IOError {
   self.inner.read_at(buf, position~, offset?, len?) catch {
     err => raise IOError::IOError(err.to_string())
   }
@@ -381,7 +405,7 @@ pub async fn File::read_at(
 ///|
 pub async fn File::read_exactly_at(
   self : File,
-  len : Int,
+  len : Int32,
   position~ : Int64,
 ) -> Bytes raise IOError {
   self.inner.read_exactly_at(len, position~) catch {
@@ -427,18 +451,29 @@ pub fn File::unlock(self : File) -> Unit {
 }
 
 ///|
-pub impl @io.Reader for File with fn _get_internal_buffer(self) {
-  @io.Reader::_get_internal_buffer(self.inner)
+impl @io.BinaryReaderImpl for File with fn get_controller(self) {
+  self.read_controller
 }
 
 ///|
-pub impl @io.Reader for File with fn _direct_read(self, buf, offset~, max_len~) {
-  @io.Reader::_direct_read(self.inner, buf, offset~, max_len~)
+impl @io.BinaryReaderImpl for File with fn raw_read_impl(
+  self,
+  buf,
+  offset~,
+  max_len~,
+) {
+  self.inner.read_into(buf, offset~, max_len~)
 }
 
 ///|
-pub impl @io.Writer for File with fn write_once(self, buf, offset~, len~) {
-  @io.Writer::write_once(self.inner, buf, offset~, len~)
+impl @io.BinaryWriterImpl for File with fn raw_write_impl(
+  self,
+  buf,
+  offset~,
+  len~,
+) {
+  self.inner.write(buf[offset:offset + len])
+  len
 }
 
 ///|
@@ -453,7 +488,7 @@ pub async fn walk(
   path : StringView,
   f : async (String, Array[String]) -> Unit,
   exclude? : (String) -> Bool,
-  max_concurrency? : Int,
+  max_concurrency? : Int32,
   allow_failure? : Bool,
 ) -> Unit raise IOError {
   @async_fs.walk(path, f, exclude?, max_concurrency?, allow_failure?) catch {
@@ -503,4 +538,31 @@ pub async fn Directory::read_all(
   self.inner.read_all(include_hidden?, include_special?) catch {
     err => raise IOError::IOError(err.to_string())
   }
+}
+
+///|
+pub impl @io.BinaryReader for File
+
+///|
+pub extend File with @io.BinaryReader::{
+  read_into,
+  read_at_least,
+  peek,
+  peek_at_least,
+  read_exactly,
+  drop_exactly,
+  peek_exactly,
+  drop_all,
+  peek_until,
+}
+
+///|
+pub impl @io.BinaryWriter for File
+
+///|
+pub extend File with @io.BinaryWriter::{write_reader}
+
+///|
+impl @io.BinaryWriterImpl for File with fn get_controller(self) {
+  self.write_controller
 }

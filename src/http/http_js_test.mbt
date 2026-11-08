@@ -28,7 +28,7 @@ async test "server: run_forever POST body and headers" {
     group.spawn_bg(no_wait=true, allow_failure=true, () => {
       server.run_forever((req, body, conn) => {
         let token = req.headers.get("x-token").unwrap_or("")
-        let payload = body.read_all()
+        let payload : &@data.Data = body.read_all()
         conn.send_response(201, "Created")
         conn.write(payload.text() + "|" + token)
         conn.end_response()
@@ -67,7 +67,7 @@ async test "server: response cookies" {
             extensions=["SameSite=Lax"],
           ),
         ])
-        conn.write("ok")
+        conn.write(b"ok")
         conn.end_response()
       })
     })
@@ -98,10 +98,10 @@ async test "server: run_forever SSE flush chunked" {
           "Cache-Control": "no-cache",
         }
         conn.send_response(200, "OK", extra_headers=headers)
-        conn.write("data: first\n\n")
+        conn.write(b"data: first\n\n")
         conn.flush()
         @async.sleep(150)
-        conn.write("data: second\n\n")
+        conn.write(b"data: second\n\n")
         conn.end_response()
       })
     })
@@ -117,13 +117,13 @@ async test "server: run_forever SSE flush chunked" {
       Some(chunk) => chunk
       None => fail("expected first chunk")
     }
-    let first_data : &@io.Data = first
+    let first_data : &@data.Data = first
     let first_text = first_data.text()
     assert_true(first_text.contains("data: first"))
     assert_true(!first_text.contains("data: second"))
 
-    let rest = stream.read_all()
-    let rest_data : &@io.Data = rest
+    let rest : &@data.Data = stream.read_all()
+    let rest_data : &@data.Data = rest
     let merged = first_text + rest_data.text()
     assert_true(merged.contains("data: second"))
   })
@@ -138,7 +138,7 @@ async test "request streaming" {
     group.spawn_bg(no_wait=true, allow_failure=true, () => {
       server.run_forever(
         (req, body, conn) => {
-          let request_body = body.read_all()
+          let request_body : &@data.Data = body.read_all()
           conn.send_response(200, "OK")
           conn.write(req.meth.to_string() + " " + req.path + "\n")
           conn.write(request_body.text())
@@ -157,9 +157,9 @@ async test "request streaming" {
     {
       let client = @http.put_stream("http://127.0.0.1:\{port}/put")
       defer client.close()
-      client..write("PUT data part 1\n").flush()
+      client..write(b"PUT data part 1\n").flush()
       @async.sleep(20)
-      client.write("PUT data part 2\n")
+      client.write(b"PUT data part 2\n")
       let response = client.end_request()
       inspect(response.code, content="200")
       inspect(
@@ -174,9 +174,9 @@ async test "request streaming" {
     }
     let client = @http.post_stream("http://127.0.0.1:\{port}/post")
     defer client.close()
-    client..write("POST data part 1\n").flush()
+    client..write(b"POST data part 1\n").flush()
     @async.sleep(20)
-    client.write("POST data part 2\n")
+    client.write(b"POST data part 2\n")
     let response = client.end_request()
     inspect(response.code, content="200")
     inspect(
@@ -198,13 +198,13 @@ async test "server: addr and client_addr" {
     defer server.close()
     let listen_addr = server.addr()
     assert_eq(listen_addr.port, server.port())
-    let seen_client_ports : Array[Int] = []
+    let seen_client_ports : Array[Int32] = []
     group.spawn_bg(no_wait=true, allow_failure=true, () => {
       server.run_forever(
         (_req, _body, conn) => {
           seen_client_ports.push(conn.client_addr().port)
           conn.send_response(200, "OK")
-          conn.write("ok")
+          conn.write(b"ok")
           conn.end_response()
         },
         max_connections=1,
@@ -238,5 +238,29 @@ async test "server: accept GET" {
     assert_eq(resp.code, 200)
     let text = body.text()
     assert_true(text.has_prefix("/accept-path|"))
+  })
+}
+
+///|
+async test "skipping a peeked response discards compatibility buffering" {
+  @async.with_timeout(5000, () => {
+    @async.with_task_group(group => {
+      let server = @http.Server::new(port=0)
+      defer server.close()
+      group.spawn_bg(no_wait=true, () => {
+        server.run_forever((req, _body, conn) => {
+          conn.send_response(200, "OK")
+          conn.write(req.path)
+          conn.end_response()
+        })
+      })
+      let client = @http.Client::new("http://127.0.0.1:\{server.port()}")
+      defer client.close()
+      ignore(client.get("/first"))
+      assert_eq(client.peek_exactly(1).to_owned(), b"/")
+      client.skip_response_body()
+      ignore(client.get("/second"))
+      assert_eq(client.read_all().text(), "/second")
+    })
   })
 }

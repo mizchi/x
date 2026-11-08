@@ -32,23 +32,23 @@ fn default_exclude(_ : String) -> Bool {
 /// (for directories) its descendants from tracking.
 pub async fn start(
   roots : Array[String],
-  interval_ms? : Int,
+  interval_ms? : Int32,
   exclude? : (String) -> Bool,
 ) -> Watcher {
   let ex = exclude.unwrap_or(default_exclude)
   let fast_interval = interval_ms.unwrap_or(50)
   let slow_interval = interval_ms.unwrap_or(500)
   match fsevents_start(roots, fast_interval, ex, fast_interval.to_double()) {
-    Some(state) => Watcher::{ backend: FSEvents(state), closed: false }
+    Some(state) => Watcher::{ backend: FSEvents(state), closed: false, }
     None =>
       match inotify_start(roots, fast_interval, ex) {
-        Some(state) => Watcher::{ backend: Inotify(state), closed: false }
+        Some(state) => Watcher::{ backend: Inotify(state), closed: false, }
         None =>
           match rdcw_start(roots, fast_interval, ex) {
-            Some(state) => Watcher::{ backend: RDCW(state), closed: false }
+            Some(state) => Watcher::{ backend: RDCW(state), closed: false, }
             None => {
               let state = polling_start(roots, slow_interval, ex)
-              Watcher::{ backend: Polling(state), closed: false }
+              Watcher::{ backend: Polling(state), closed: false, }
             }
           }
       }
@@ -61,13 +61,13 @@ pub async fn start(
 /// native backend misbehaves.
 pub async fn start_polling(
   roots : Array[String],
-  interval_ms? : Int,
+  interval_ms? : Int32,
   exclude? : (String) -> Bool,
 ) -> Watcher {
   let ex = exclude.unwrap_or(default_exclude)
   let interval = interval_ms.unwrap_or(500)
   let state = polling_start(roots, interval, ex)
-  Watcher::{ backend: Polling(state), closed: false }
+  Watcher::{ backend: Polling(state), closed: false, }
 }
 
 ///|

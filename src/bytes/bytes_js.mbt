@@ -4,23 +4,23 @@
 
 ///|
 #module("@mizchi/jsimd-moonbit-interop")
-extern "js" fn js_find_byte(target : Bytes, needle : Byte) -> Int = "findByte"
+extern "js" fn js_find_byte(target : Bytes, needle : Byte) -> Int32 = "findByte"
 
 ///|
 #module("@mizchi/jsimd-moonbit-interop")
-extern "js" fn js_find(target : Bytes, needle : Bytes) -> Int = "find"
+extern "js" fn js_find(target : Bytes, needle : Bytes) -> Int32 = "find"
 
 ///|
 #module("@mizchi/jsimd-moonbit-interop")
-extern "js" fn js_rev_find_byte(target : Bytes, needle : Byte) -> Int = "revFindByte"
+extern "js" fn js_rev_find_byte(target : Bytes, needle : Byte) -> Int32 = "revFindByte"
 
 ///|
 #module("@mizchi/jsimd-moonbit-interop")
-extern "js" fn js_rev_find(target : Bytes, needle : Bytes) -> Int = "revFind"
+extern "js" fn js_rev_find(target : Bytes, needle : Bytes) -> Int32 = "revFind"
 
 ///|
 #module("@mizchi/jsimd-moonbit-interop")
-extern "js" fn js_find_non_ascii(target : Bytes) -> Int = "findNonAscii"
+extern "js" fn js_find_non_ascii(target : Bytes) -> Int32 = "findNonAscii"
 
 ///|
 #module("@mizchi/jsimd-moonbit-interop")
@@ -28,10 +28,10 @@ extern "js" fn js_equal(left : Bytes, right : Bytes) -> Bool = "equal"
 
 ///|
 #module("@mizchi/jsimd-moonbit-interop")
-extern "js" fn js_compare(left : Bytes, right : Bytes) -> Int = "compare"
+extern "js" fn js_compare(left : Bytes, right : Bytes) -> Int32 = "compare"
 
 ///|
-fn found(index : Int) -> Int? {
+fn found(index : Int32) -> Int32? {
   if index < 0 {
     None
   } else {
@@ -41,7 +41,7 @@ fn found(index : Int) -> Int? {
 
 ///|
 /// Finds the first occurrence of `needle` in `target`.
-pub fn find(target : Bytes, needle : BytesView) -> Int? {
+pub fn find(target : Bytes, needle : BytesView) -> Int32? {
   if needle.length() == 1 {
     found(js_find_byte(target, needle.unsafe_get(0)))
   } else {
@@ -51,7 +51,7 @@ pub fn find(target : Bytes, needle : BytesView) -> Int? {
 
 ///|
 /// Finds the last occurrence of `needle` in `target`.
-pub fn rev_find(target : Bytes, needle : BytesView) -> Int? {
+pub fn rev_find(target : Bytes, needle : BytesView) -> Int32? {
   if needle.length() == 1 {
     found(js_rev_find_byte(target, needle.unsafe_get(0)))
   } else {
@@ -61,19 +61,19 @@ pub fn rev_find(target : Bytes, needle : BytesView) -> Int? {
 
 ///|
 /// Finds the first occurrence of `needle` in `target`.
-pub fn find_byte(target : Bytes, needle : Byte) -> Int? {
+pub fn find_byte(target : Bytes, needle : Byte) -> Int32? {
   found(js_find_byte(target, needle))
 }
 
 ///|
 /// Finds the last occurrence of `needle` in `target`.
-pub fn rev_find_byte(target : Bytes, needle : Byte) -> Int? {
+pub fn rev_find_byte(target : Bytes, needle : Byte) -> Int32? {
   found(js_rev_find_byte(target, needle))
 }
 
 ///|
 /// Returns the first non-ASCII byte offset, or `None` when all bytes are ASCII.
-pub fn find_non_ascii(target : Bytes) -> Int? {
+pub fn find_non_ascii(target : Bytes) -> Int32? {
   found(js_find_non_ascii(target))
 }
 
@@ -85,6 +85,6 @@ pub fn equal(left : Bytes, right : Bytes) -> Bool {
 
 ///|
 /// Compares two byte sequences using the builtin `Bytes` shortlex ordering.
-pub fn compare(left : Bytes, right : Bytes) -> Int {
+pub fn compare(left : Bytes, right : Bytes) -> Int32 {
   js_compare(left, right)
 }

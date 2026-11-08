@@ -4,8 +4,8 @@
 #borrow(paths)
 extern "C" fn fsevents_start_ffi(
   paths : Bytes,
-  total_len : Int,
-  num_paths : Int,
+  total_len : Int32,
+  num_paths : Int32,
   latency_ms : Double,
 ) -> Int64 = "mizchi_x_watch_fsevents_start"
 
@@ -14,8 +14,8 @@ extern "C" fn fsevents_start_ffi(
 extern "C" fn fsevents_pop_ffi(
   handle : Int64,
   out_buf : FixedArray[Byte],
-  out_cap : Int,
-) -> Int = "mizchi_x_watch_fsevents_pop"
+  out_cap : Int32,
+) -> Int32 = "mizchi_x_watch_fsevents_pop"
 
 ///|
 extern "C" fn fsevents_close_ffi(handle : Int64) -> Unit = "mizchi_x_watch_fsevents_close"
@@ -23,7 +23,7 @@ extern "C" fn fsevents_close_ffi(handle : Int64) -> Unit = "mizchi_x_watch_fseve
 ///|
 priv struct FSEventsState {
   handle : Int64
-  interval_ms : Int
+  interval_ms : Int32
   norm : NormalizeState
 }
 
@@ -32,7 +32,7 @@ priv struct FSEventsState {
 /// unreachable for some reason (dlopen failure, etc).
 async fn fsevents_start(
   roots : Array[String],
-  interval_ms : Int,
+  interval_ms : Int32,
   exclude : (String) -> Bool,
   latency_ms : Double,
 ) -> FSEventsState? {
@@ -53,7 +53,7 @@ async fn fsevents_start(
     return None
   }
   let norm = build_normalize_state(roots, exclude)
-  Some(FSEventsState::{ handle, interval_ms, norm })
+  Some(FSEventsState::{ handle, interval_ms, norm, })
 }
 
 ///|

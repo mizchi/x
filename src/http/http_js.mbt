@@ -32,7 +32,7 @@ extern "js" fn js_fetch_internal(
   #| }
 
 ///|
-fn parse_response_json(json_str : String) -> (Response, &@io.Data) {
+fn parse_response_json(json_str : String) -> (Response, &@data.Data) {
   let parsed = @json.parse(json_str) catch {
     _ =>
       return (Response::{ code: 0, reason: "", headers: {}, cookies: [], }, "")
@@ -91,8 +91,8 @@ fn parse_response_json(json_str : String) -> (Response, &@io.Data) {
 
 ///|
 priv struct JsStreamResult {
-  id : Int
-  code : Int
+  id : Int32
+  code : Int32
   reason : String
   headers_json : String
   cookies_json : String
@@ -131,7 +131,7 @@ extern "js" fn js_fetch_stream(
   #| }
 
 ///|
-extern "js" fn js_stream_read(id : Int) -> @js_async.Promise[JsStreamChunk] =
+extern "js" fn js_stream_read(id : Int32) -> @js_async.Promise[JsStreamChunk] =
   #| async (id) => {
   #|   const s = globalThis.__xhs.streams.get(id);
   #|   if (!s) throw new Error('Stream not found');
@@ -140,7 +140,7 @@ extern "js" fn js_stream_read(id : Int) -> @js_async.Promise[JsStreamChunk] =
   #| }
 
 ///|
-extern "js" fn js_stream_close(id : Int) -> Unit =
+extern "js" fn js_stream_close(id : Int32) -> Unit =
   #| (id) => {
   #|   const s = globalThis.__xhs;
   #|   const st = s.streams.get(id);
@@ -149,7 +149,7 @@ extern "js" fn js_stream_close(id : Int) -> Unit =
 
 ///|
 pub struct Stream {
-  id : Int
+  id : Int32
 }
 
 ///|
@@ -202,30 +202,30 @@ fn extract_path_from_url_js(url : String) -> String {
 
 ///|
 priv struct JsServeStart {
-  id : Int
-  port : Int
+  id : Int32
+  port : Int32
 }
 
 ///|
 priv struct JsServerAccept {
-  conn_id : Int
+  conn_id : Int32
   req_meth : String
   req_url : String
   headers_json : String
   client_host : String
-  client_port : Int
+  client_port : Int32
 }
 
 ///|
 extern "js" fn js_server_new(
   host : String,
-  port : Int,
+  port : Int32,
   headers_json : String,
-  max_request_body_bytes : Int,
-  request_timeout_ms : Int,
-  keep_alive_timeout_ms : Int,
-  headers_timeout_ms : Int,
-  accept_queue_limit : Int,
+  max_request_body_bytes : Int32,
+  request_timeout_ms : Int32,
+  keep_alive_timeout_ms : Int32,
+  headers_timeout_ms : Int32,
+  accept_queue_limit : Int32,
   trust_proxy : Bool,
 ) -> @js_async.Promise[JsServeStart] =
   #| async (host, port, headersJson, maxRequestBodyBytes, requestTimeoutMs, keepAliveTimeoutMs, headersTimeoutMs, acceptQueueLimit, trustProxy) => {
@@ -699,12 +699,12 @@ extern "js" fn js_server_new(
 
 ///|
 extern "js" fn js_server_run(
-  id : Int,
-  on_request : (String, String, String, Int, String, Int) -> @js_async.Promise[
+  id : Int32,
+  on_request : (String, String, String, Int32, String, Int32) -> @js_async.Promise[
     Unit,
   ],
   allow_failure : Bool,
-  max_connections : Int,
+  max_connections : Int32,
 ) -> @js_async.Promise[Unit] =
   #| async (id, onRequest, allowFailure, maxConnections) => {
   #|   const state = globalThis.__xhttpServer;
@@ -722,7 +722,9 @@ extern "js" fn js_server_run(
   #| }
 
 ///|
-extern "js" fn js_server_accept(id : Int) -> @js_async.Promise[JsServerAccept] =
+extern "js" fn js_server_accept(
+  id : Int32,
+) -> @js_async.Promise[JsServerAccept] =
   #| async (id) => {
   #|   const state = globalThis.__xhttpServer;
   #|   const entry = state?.servers.get(id);
@@ -741,7 +743,7 @@ extern "js" fn js_server_accept(id : Int) -> @js_async.Promise[JsServerAccept] =
   #| }
 
 ///|
-extern "js" fn js_server_close(id : Int) -> Unit =
+extern "js" fn js_server_close(id : Int32) -> Unit =
   #| (id) => {
   #|   const state = globalThis.__xhttpServer;
   #|   if (!state) return;
@@ -753,8 +755,8 @@ extern "js" fn js_server_close(id : Int) -> Unit =
 
 ///|
 extern "js" fn js_server_close_graceful(
-  id : Int,
-  timeout_ms : Int,
+  id : Int32,
+  timeout_ms : Int32,
 ) -> @js_async.Promise[Unit] =
   #| async (id, timeoutMs) => {
   #|   const state = globalThis.__xhttpServer;
@@ -841,8 +843,8 @@ extern "js" fn js_server_close_graceful(
 
 ///|
 extern "js" fn js_conn_send_response(
-  conn_id : Int,
-  code : Int,
+  conn_id : Int32,
+  code : Int32,
   reason : String,
   headers_json : String,
   cookies_json : String,
@@ -879,11 +881,11 @@ extern "js" fn js_conn_send_response(
 
 ///|
 extern "js" fn js_conn_write(
-  conn_id : Int,
+  conn_id : Int32,
   data : Bytes,
-  offset : Int,
-  len : Int,
-) -> @js_async.Promise[Int] =
+  offset : Int32,
+  len : Int32,
+) -> @js_async.Promise[Int32] =
   #| async (connId, data, offset, len) => {
   #|   const state = globalThis.__xhttpServer;
   #|   const conn = state?.conns.get(connId);
@@ -952,7 +954,7 @@ extern "js" fn js_conn_write(
   #| }
 
 ///|
-extern "js" fn js_conn_flush(conn_id : Int) -> Unit =
+extern "js" fn js_conn_flush(conn_id : Int32) -> Unit =
   #| (connId) => {
   #|   const state = globalThis.__xhttpServer;
   #|   const conn = state?.conns.get(connId);
@@ -972,7 +974,7 @@ extern "js" fn js_conn_flush(conn_id : Int) -> Unit =
   #| }
 
 ///|
-extern "js" fn js_conn_end(conn_id : Int) -> Unit =
+extern "js" fn js_conn_end(conn_id : Int32) -> Unit =
   #| (connId) => {
   #|   const state = globalThis.__xhttpServer;
   #|   const conn = state?.conns.get(connId);
@@ -988,7 +990,7 @@ extern "js" fn js_conn_end(conn_id : Int) -> Unit =
   #| }
 
 ///|
-extern "js" fn js_conn_close(conn_id : Int) -> Unit =
+extern "js" fn js_conn_close(conn_id : Int32) -> Unit =
   #| (connId) => {
   #|   const state = globalThis.__xhttpServer;
   #|   const conn = state?.conns.get(connId);
@@ -1030,7 +1032,7 @@ extern "js" fn js_conn_close(conn_id : Int) -> Unit =
   #| }
 
 ///|
-extern "js" fn js_conn_enter_passthrough(conn_id : Int) -> Unit =
+extern "js" fn js_conn_enter_passthrough(conn_id : Int32) -> Unit =
   #| (connId) => {
   #|   const state = globalThis.__xhttpServer;
   #|   const conn = state?.conns.get(connId);
@@ -1092,7 +1094,7 @@ extern "js" fn js_conn_enter_passthrough(conn_id : Int) -> Unit =
   #| }
 
 ///|
-extern "js" fn js_conn_skip_request_body(conn_id : Int) -> Unit =
+extern "js" fn js_conn_skip_request_body(conn_id : Int32) -> Unit =
   #| (connId) => {
   #|   const state = globalThis.__xhttpServer;
   #|   const conn = state?.conns.get(connId);
@@ -1112,8 +1114,8 @@ extern "js" fn js_conn_skip_request_body(conn_id : Int) -> Unit =
 
 ///|
 extern "js" fn js_conn_read_request(
-  conn_id : Int,
-  max_len : Int,
+  conn_id : Int32,
+  max_len : Int32,
 ) -> @js_async.Promise[Bytes] =
   #| async (connId, maxLen) => {
   #|   const state = globalThis.__xhttpServer;
@@ -1174,8 +1176,8 @@ extern "js" fn js_conn_read_request(
 
 ///|
 extern "js" fn js_conn_read(
-  conn_id : Int,
-  max_len : Int,
+  conn_id : Int32,
+  max_len : Int32,
 ) -> @js_async.Promise[Bytes] =
   #| async (connId, maxLen) => {
   #|   const state = globalThis.__xhttpServer;
@@ -1271,7 +1273,7 @@ fn path_from_url(url : String) -> String {
 }
 
 ///|
-fn to_addr(host : String, port : Int) -> Addr {
+fn to_addr(host : String, port : Int32) -> Addr {
   let h = if host.contains(":") && !host.has_prefix("[") {
     "[" + host + "]"
   } else {
@@ -1282,13 +1284,14 @@ fn to_addr(host : String, port : Int) -> Addr {
 
 ///|
 pub struct ServerConnection {
+  priv write_controller : @io.BinaryWriterController
   request : Request
   mut request_body_drained : Bool
-  conn_id : Int
+  conn_id : Int32
   peer_addr : Addr
-  reader_buffer : @io.ReaderBuffer
+  mut reader_buffer : @io.BinaryReaderController
   mut read_carry : Bytes
-  mut read_carry_offset : Int
+  mut read_carry_offset : Int32
   mut passthrough_mode : Bool
   mut response_started : Bool
   mut response_ended : Bool
@@ -1298,15 +1301,16 @@ pub struct ServerConnection {
 ///|
 fn new_server_connection(
   request : Request,
-  conn_id : Int,
+  conn_id : Int32,
   peer_addr : Addr,
 ) -> ServerConnection {
   ServerConnection::{
+    write_controller: @io.BinaryWriterController(),
     request,
     request_body_drained: false,
     conn_id,
     peer_addr,
-    reader_buffer: @io.ReaderBuffer::new(),
+    reader_buffer: @io.BinaryReaderController(),
     read_carry: Bytes::new(0),
     read_carry_offset: 0,
     passthrough_mode: false,
@@ -1317,7 +1321,7 @@ fn new_server_connection(
 }
 
 ///|
-fn read_prefetch_len(max_len : Int) -> Int {
+fn read_prefetch_len(max_len : Int32) -> Int32 {
   let min_prefetch = 16 * 1024
   let max_prefetch = 64 * 1024
   if max_len <= 0 {
@@ -1335,7 +1339,7 @@ fn read_prefetch_len(max_len : Int) -> Int {
 fn ServerConnection::set_read_carry(
   self : ServerConnection,
   data : Bytes,
-  offset : Int,
+  offset : Int32,
 ) -> Unit {
   let rest = data.length() - offset
   if rest <= 0 {
@@ -1371,6 +1375,7 @@ pub fn ServerConnection::client_addr(self : ServerConnection) -> Addr {
 
 ///|
 pub fn ServerConnection::skip_request_body(self : ServerConnection) -> Unit {
+  self.reader_buffer = @io.BinaryReaderController()
   self.read_carry = Bytes::new(0)
   self.read_carry_offset = 0
   js_conn_skip_request_body(self.conn_id)
@@ -1380,10 +1385,10 @@ pub fn ServerConnection::skip_request_body(self : ServerConnection) -> Unit {
 ///|
 pub fn ServerConnection::send_response(
   self : ServerConnection,
-  code : Int,
+  code : Int32,
   reason : String,
   extra_headers? : Map[String, String],
-  cookies? : Array[Cookie] = [],
+  cookies~ : Array[Cookie] = [],
 ) -> Unit {
   if self.passthrough_mode {
     return
@@ -1431,6 +1436,7 @@ pub fn ServerConnection::end_response(self : ServerConnection) -> Unit {
 pub fn ServerConnection::enter_passthrough_mode(
   self : ServerConnection,
 ) -> Unit raise HttpError {
+  self.reader_buffer = @io.BinaryReaderController()
   if self.closed {
     raise HttpError::NetworkError("connection closed")
   }
@@ -1446,12 +1452,12 @@ pub fn ServerConnection::enter_passthrough_mode(
 }
 
 ///|
-pub impl @io.Reader for ServerConnection with fn _get_internal_buffer(self) {
+impl @io.BinaryReaderImpl for ServerConnection with fn get_controller(self) {
   self.reader_buffer
 }
 
 ///|
-pub impl @io.Reader for ServerConnection with fn _direct_read(
+impl @io.BinaryReaderImpl for ServerConnection with fn raw_read_impl(
   self,
   buf,
   offset~,
@@ -1518,7 +1524,7 @@ pub impl @io.Reader for ServerConnection with fn _direct_read(
 }
 
 ///|
-pub impl @io.Writer for ServerConnection with fn write_once(
+impl @io.BinaryWriterImpl for ServerConnection with fn raw_write_impl(
   self,
   buf,
   offset~,
@@ -1549,23 +1555,23 @@ pub impl @io.Writer for ServerConnection with fn write_once(
 
 ///|
 pub struct Server {
-  id : Int
-  port : Int
+  id : Int32
+  port : Int32
   addr : Addr
 }
 
 ///|
 pub async fn Server::new(
   host? : String,
-  port? : Int,
+  port? : Int32,
   headers? : Map[String, String],
   dual_stack? : Bool,
   reuse_addr? : Bool,
-  max_request_body_bytes? : Int,
-  request_timeout_ms? : Int,
-  keep_alive_timeout_ms? : Int,
-  headers_timeout_ms? : Int,
-  accept_queue_limit? : Int,
+  max_request_body_bytes? : Int32,
+  request_timeout_ms? : Int32,
+  keep_alive_timeout_ms? : Int32,
+  headers_timeout_ms? : Int32,
+  accept_queue_limit? : Int32,
   trust_proxy? : Bool,
 ) -> Server raise HttpError {
   ignore(dual_stack)
@@ -1590,7 +1596,7 @@ pub async fn Server::new(
 }
 
 ///|
-pub fn Server::port(self : Server) -> Int {
+pub fn Server::port(self : Server) -> Int32 {
   self.port
 }
 
@@ -1621,17 +1627,17 @@ pub async fn Server::accept(
 ///|
 pub async fn Server::run_forever(
   self : Server,
-  f : async (Request, &@io.Reader, ServerConnection) -> Unit,
+  f : async (Request, &@io.BinaryReader, ServerConnection) -> Unit,
   allow_failure? : Bool,
-  max_connections? : Int,
+  max_connections? : Int32,
 ) -> Unit raise HttpError {
   fn on_request(
     req_meth : String,
     req_url : String,
     headers_json : String,
-    conn_id : Int,
+    conn_id : Int32,
     client_host : String,
-    client_port : Int,
+    client_port : Int32,
   ) -> @js_async.Promise[Unit] {
     @js_async.Promise::from_async(() => {
       let request = Request::{
@@ -1670,7 +1676,7 @@ pub fn Server::close(self : Server) -> Unit {
 ///|
 pub async fn Server::close_graceful(
   self : Server,
-  timeout_ms? : Int,
+  timeout_ms? : Int32,
 ) -> Unit raise HttpError {
   let controller = @js_async.AbortController::new()
   let promise = js_server_close_graceful(self.id, timeout_ms.unwrap_or(30000))
@@ -1684,7 +1690,7 @@ async fn stream_request_internal_js(
   url : String,
   meth : String,
   headers : Map[String, String],
-  body : &@io.Data,
+  body : &@data.Data,
 ) -> (Response, Stream) raise HttpError {
   let hjson = headers_to_json(headers)
   let body_str = body.text() catch { _ => "" }
@@ -1707,7 +1713,7 @@ async fn create_stream_client_js(
   url : String,
   meth : RequestMethod,
   headers : Map[String, String],
-  body : &@io.Data,
+  body : &@data.Data,
   proxy? : Client,
 ) -> (Response, Client) raise HttpError {
   if proxy is Some(_) {
@@ -1742,7 +1748,7 @@ async fn create_stream_client_js(
 pub async fn get_stream(
   url : String,
   headers? : Map[String, String],
-  body? : &@io.Data = "",
+  body~ : &@data.Data = "",
   proxy? : Client,
 ) -> (Response, Client) raise HttpError {
   create_stream_client_js(url, Get, headers.unwrap_or({}), body, proxy?)
@@ -1843,9 +1849,9 @@ async fn request_internal_js(
   url : String,
   meth : String,
   headers : Map[String, String],
-  body : &@io.Data,
+  body : &@data.Data,
   proxy? : Client,
-) -> (Response, &@io.Data) raise HttpError {
+) -> (Response, &@data.Data) raise HttpError {
   let request_method = match meth {
     "POST" => Post
     "PUT" => Put
@@ -1858,7 +1864,7 @@ async fn request_internal_js(
     body,
     proxy?,
   )
-  let body_data : &@io.Data = @io.Reader::read_all(client) catch {
+  let body_data : &@data.Data = @io.BinaryReader::read_all(client) catch {
     err => {
       client.close()
       raise classify_http_error(err.to_string())
@@ -1872,29 +1878,29 @@ async fn request_internal_js(
 pub async fn get(
   url : String,
   headers? : Map[String, String],
-  body? : &@io.Data = "",
+  body~ : &@data.Data = "",
   proxy? : Client,
-) -> (Response, &@io.Data) raise HttpError {
+) -> (Response, &@data.Data) raise HttpError {
   request_internal_js(url, "GET", headers.unwrap_or({}), body, proxy?)
 }
 
 ///|
 pub async fn post(
   url : String,
-  body : &@io.Data,
+  body : &@data.Data,
   headers? : Map[String, String],
   proxy? : Client,
-) -> (Response, &@io.Data) raise HttpError {
+) -> (Response, &@data.Data) raise HttpError {
   request_internal_js(url, "POST", headers.unwrap_or({}), body, proxy?)
 }
 
 ///|
 pub async fn put(
   url : String,
-  body : &@io.Data,
+  body : &@data.Data,
   headers? : Map[String, String],
   proxy? : Client,
-) -> (Response, &@io.Data) raise HttpError {
+) -> (Response, &@data.Data) raise HttpError {
   request_internal_js(url, "PUT", headers.unwrap_or({}), body, proxy?)
 }
 
@@ -1902,13 +1908,13 @@ pub async fn put(
 
 ///|
 priv struct JsClientNewResult {
-  id : Int
+  id : Int32
   error : String
 }
 
 ///|
 priv struct JsClientResponse {
-  code : Int
+  code : Int32
   reason : String
   headers_json : String
   cookies_json : String
@@ -2339,23 +2345,7 @@ extern "js" fn js_client_new(
   #|             pending.resolveResponse(response);
   #|           }
   #|         });
-  #|         nodeReq.on('information', (info) => {
-  #|           if (pending.responseResolved) return;
-  #|           pending.responseResolved = true;
-  #|           client.responseReader = {
-  #|             read: async () => ({ done: true, value: new Uint8Array(0) }),
-  #|             cancel: async () => {},
-  #|           };
-  #|           client.responseQueue = [];
-  #|           client.responseQueueBytes = 0;
-  #|           client.responseDone = true;
-  #|           client.responseError = null;
-  #|           pending.resolveResponse(toResponseObject({
-  #|             statusCode: info.statusCode,
-  #|             statusMessage: info.statusMessage,
-  #|             headers: info.headers || {},
-  #|           }));
-  #|         });
+  #|         // Informational responses are followed by the final response callback.
   #|         nodeReq.on('connect', (nodeRes, socket, head) => {
   #|           const copiedHead =
   #|             head && head.length > 0 ? new Uint8Array(head) : new Uint8Array(0);
@@ -2451,7 +2441,7 @@ extern "js" fn js_client_new(
   #| }
 
 ///|
-extern "js" fn js_client_close(id : Int) -> Unit =
+extern "js" fn js_client_close(id : Int32) -> Unit =
   #| (id) => {
   #|   const state = globalThis.__xhc;
   #|   const client = state?.clients.get(id);
@@ -2481,7 +2471,7 @@ extern "js" fn js_client_close(id : Int) -> Unit =
 
 ///|
 extern "js" fn js_client_request_begin(
-  id : Int,
+  id : Int32,
   meth : String,
   path : String,
   extra_headers_json : String,
@@ -2542,11 +2532,11 @@ extern "js" fn js_client_request_begin(
 
 ///|
 extern "js" fn js_client_request_append_body(
-  id : Int,
+  id : Int32,
   data : Bytes,
-  offset : Int,
-  len : Int,
-) -> Int =
+  offset : Int32,
+  len : Int32,
+) -> Int32 =
   #| (id, data, offset, len) => {
   #|   const state = globalThis.__xhc;
   #|   const client = state?.clients.get(id);
@@ -2572,7 +2562,7 @@ extern "js" fn js_client_request_append_body(
   #| }
 
 ///|
-extern "js" fn js_client_request_flush(id : Int) -> @js_async.Promise[String] =
+extern "js" fn js_client_request_flush(id : Int32) -> @js_async.Promise[String] =
   #| async (id) => {
   #|   const state = globalThis.__xhc;
   #|   const client = state?.clients.get(id);
@@ -2597,7 +2587,7 @@ extern "js" fn js_client_request_flush(id : Int) -> @js_async.Promise[String] =
 
 ///|
 extern "js" fn js_client_end_request(
-  id : Int,
+  id : Int32,
 ) -> @js_async.Promise[JsClientResponse] =
   #| async (id) => {
   #|   const state = globalThis.__xhc;
@@ -2648,8 +2638,8 @@ extern "js" fn js_client_end_request(
 
 ///|
 extern "js" fn js_client_read(
-  id : Int,
-  max_len : Int,
+  id : Int32,
+  max_len : Int32,
 ) -> @js_async.Promise[Bytes] =
   #| async (id, maxLen) => {
   #|   const state = globalThis.__xhc;
@@ -2722,7 +2712,7 @@ extern "js" fn js_client_read(
 
 ///|
 extern "js" fn js_client_skip_response_body(
-  id : Int,
+  id : Int32,
 ) -> @js_async.Promise[Unit] =
   #| async (id) => {
   #|   const state = globalThis.__xhc;
@@ -2743,7 +2733,7 @@ extern "js" fn js_client_skip_response_body(
 
 ///|
 extern "js" fn js_client_enter_passthrough(
-  id : Int,
+  id : Int32,
 ) -> @js_async.Promise[String] =
   #| async (id) => {
   #|   const state = globalThis.__xhc;
@@ -2769,8 +2759,8 @@ extern "js" fn js_client_enter_passthrough(
 
 ///|
 extern "js" fn js_client_tunnel_read(
-  id : Int,
-  max_len : Int,
+  id : Int32,
+  max_len : Int32,
 ) -> @js_async.Promise[Bytes] =
   #| async (id, maxLen) => {
   #|   const state = globalThis.__xhc;
@@ -2839,11 +2829,11 @@ extern "js" fn js_client_tunnel_read(
 
 ///|
 extern "js" fn js_client_tunnel_write(
-  id : Int,
+  id : Int32,
   data : Bytes,
-  offset : Int,
-  len : Int,
-) -> Int =
+  offset : Int32,
+  len : Int32,
+) -> Int32 =
   #| (id, data, offset, len) => {
   #|   const state = globalThis.__xhc;
   #|   const client = state?.clients.get(id);
@@ -2880,10 +2870,11 @@ fn request_method_to_string(meth : RequestMethod) -> String {
 
 ///|
 pub struct Client {
-  id : Int
+  priv write_controller : @io.BinaryWriterController
+  id : Int32
   mut closed : Bool
   mut passthrough_mode : Bool
-  reader_buffer : @io.ReaderBuffer
+  mut reader_buffer : @io.BinaryReaderController
 }
 
 ///|
@@ -2891,7 +2882,7 @@ pub async fn Client::new(
   url : String,
   headers? : Map[String, String],
   proxy? : Client,
-  verify? : Bool = true,
+  verify~ : Bool = true,
 ) -> Client raise HttpError {
   if proxy is Some(_) || !verify {
     raise HttpError::NotSupported
@@ -2905,10 +2896,11 @@ pub async fn Client::new(
     raise HttpError::InvalidUrl(url)
   }
   Client::{
+    write_controller: @io.BinaryWriterController(),
     id: result.id,
     closed: false,
     passthrough_mode: false,
-    reader_buffer: @io.ReaderBuffer::new(),
+    reader_buffer: @io.BinaryReaderController(),
   }
 }
 
@@ -2929,6 +2921,7 @@ pub async fn Client::request(
   path : StringView,
   extra_headers? : Map[String, String],
 ) -> Unit raise HttpError {
+  self.reader_buffer = @io.BinaryReaderController()
   if self.closed {
     raise HttpError::NetworkError("client closed")
   }
@@ -2991,6 +2984,7 @@ pub async fn Client::flush(self : Client) -> Unit raise HttpError {
 
 ///|
 pub async fn Client::skip_response_body(self : Client) -> Unit raise HttpError {
+  self.reader_buffer = @io.BinaryReaderController()
   if self.closed {
     return
   }
@@ -3008,6 +3002,7 @@ pub async fn Client::skip_response_body(self : Client) -> Unit raise HttpError {
 pub async fn Client::enter_passthrough_mode(
   self : Client,
 ) -> Unit raise HttpError {
+  self.reader_buffer = @io.BinaryReaderController()
   if self.closed {
     raise HttpError::NetworkError("client closed")
   }
@@ -3030,7 +3025,7 @@ pub async fn Client::get(
   self : Client,
   path : String,
   extra_headers? : Map[String, String],
-  body? : &@io.Data,
+  body? : &@data.Data,
 ) -> Response raise HttpError {
   self.request(Get, path, extra_headers=extra_headers.unwrap_or({}))
   match body {
@@ -3049,7 +3044,7 @@ pub async fn Client::get(
 pub async fn Client::post(
   self : Client,
   path : String,
-  body : &@io.Data,
+  body : &@data.Data,
   extra_headers? : Map[String, String],
 ) -> Response raise HttpError {
   self.request(Post, path, extra_headers=extra_headers.unwrap_or({}))
@@ -3065,7 +3060,7 @@ pub async fn Client::post(
 pub async fn Client::put(
   self : Client,
   path : String,
-  body : &@io.Data,
+  body : &@data.Data,
   extra_headers? : Map[String, String],
 ) -> Response raise HttpError {
   self.request(Put, path, extra_headers=extra_headers.unwrap_or({}))
@@ -3078,12 +3073,12 @@ pub async fn Client::put(
 }
 
 ///|
-pub impl @io.Reader for Client with fn _get_internal_buffer(self) {
+impl @io.BinaryReaderImpl for Client with fn get_controller(self) {
   self.reader_buffer
 }
 
 ///|
-pub impl @io.Reader for Client with fn _direct_read(
+impl @io.BinaryReaderImpl for Client with fn raw_read_impl(
   self,
   _buf,
   offset~,
@@ -3113,7 +3108,12 @@ pub impl @io.Reader for Client with fn _direct_read(
 }
 
 ///|
-pub impl @io.Writer for Client with fn write_once(self, _buf, offset~, len~) {
+impl @io.BinaryWriterImpl for Client with fn raw_write_impl(
+  self,
+  _buf,
+  offset~,
+  len~,
+) {
   if self.closed || offset >= _buf.length() {
     0
   } else {
@@ -3130,4 +3130,58 @@ pub impl @io.Writer for Client with fn write_once(self, _buf, offset~, len~) {
       written
     }
   }
+}
+
+///|
+pub impl @io.BinaryReader for ServerConnection
+
+///|
+pub extend ServerConnection with @io.BinaryReader::{
+  read_into,
+  read_at_least,
+  peek,
+  peek_at_least,
+  read_exactly,
+  drop_exactly,
+  peek_exactly,
+  drop_all,
+  peek_until,
+}
+
+///|
+pub impl @io.BinaryReader for Client
+
+///|
+pub extend Client with @io.BinaryReader::{
+  read_into,
+  read_at_least,
+  peek,
+  peek_at_least,
+  read_exactly,
+  drop_exactly,
+  peek_exactly,
+  drop_all,
+  peek_until,
+}
+
+///|
+pub impl @io.BinaryWriter for ServerConnection
+
+///|
+pub extend ServerConnection with @io.BinaryWriter::{write_reader}
+
+///|
+impl @io.BinaryWriterImpl for ServerConnection with fn get_controller(self) {
+  self.write_controller
+}
+
+///|
+pub impl @io.BinaryWriter for Client
+
+///|
+pub extend Client with @io.BinaryWriter::{write_reader}
+
+///|
+impl @io.BinaryWriterImpl for Client with fn get_controller(self) {
+  self.write_controller
 }

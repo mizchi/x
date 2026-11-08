@@ -33,7 +33,7 @@ fn addr_from_async(addr : @async_socket.Addr) -> Addr {
 ///|
 pub async fn Addr::resolve(
   host : String,
-  port~ : Int,
+  port~ : Int32,
   protocol? : IpProtocolPreference,
 ) -> Addr raise ResolveHostnameError {
   let protocol = to_async_protocol(protocol.unwrap_or(NoPreference))
@@ -45,6 +45,8 @@ pub async fn Addr::resolve(
 
 ///|
 pub struct Tcp {
+  priv write_controller : @io.BinaryWriterController
+  priv read_controller : @io.BinaryReaderController
   addr : Addr
   priv inner : @async_socket.Tcp
 }
@@ -55,7 +57,7 @@ pub fn Tcp::close(self : Tcp) -> Unit {
 }
 
 ///|
-pub fn Tcp::fd(self : Tcp) -> Int {
+pub fn Tcp::fd(self : Tcp) -> Int32 {
   socket_fd_to_int(self.inner.fd())
 }
 
@@ -71,13 +73,18 @@ pub async fn Tcp::connect(addr : Addr) -> Tcp {
       _ => abort("@socket.Tcp::connect: invalid address")
     },
   )
-  Tcp::{ addr: addr_from_async(inner.addr), inner, }
+  Tcp::{
+    write_controller: @io.BinaryWriterController(),
+    read_controller: @io.BinaryReaderController(),
+    addr: addr_from_async(inner.addr),
+    inner,
+  }
 }
 
 ///|
 pub async fn Tcp::connect_to_host(
   host : StringView,
-  port~ : Int,
+  port~ : Int32,
   protocol? : IpProtocolPreference,
 ) -> Tcp {
   let inner = @async_socket.Tcp::connect_to_host(
@@ -85,15 +92,20 @@ pub async fn Tcp::connect_to_host(
     port~,
     protocol=to_async_protocol(protocol.unwrap_or(NoPreference)),
   )
-  Tcp::{ addr: addr_from_async(inner.addr), inner, }
+  Tcp::{
+    write_controller: @io.BinaryWriterController(),
+    read_controller: @io.BinaryReaderController(),
+    addr: addr_from_async(inner.addr),
+    inner,
+  }
 }
 
 ///|
 pub fn Tcp::enable_keepalive(
   self : Tcp,
-  idle_before_keep_alive? : Int,
-  keep_alive_count? : Int,
-  keep_alive_interval? : Int,
+  idle_before_keep_alive? : Int32,
+  keep_alive_count? : Int32,
+  keep_alive_interval? : Int32,
 ) -> Unit raise {
   self.inner.enable_keepalive(
     idle_before_keep_alive?,
@@ -103,18 +115,29 @@ pub fn Tcp::enable_keepalive(
 }
 
 ///|
-pub impl @io.Reader for Tcp with fn _get_internal_buffer(self) {
-  @io.Reader::_get_internal_buffer(self.inner)
+impl @io.BinaryReaderImpl for Tcp with fn get_controller(self) {
+  self.read_controller
 }
 
 ///|
-pub impl @io.Reader for Tcp with fn _direct_read(self, buf, offset~, max_len~) {
-  @io.Reader::_direct_read(self.inner, buf, offset~, max_len~)
+impl @io.BinaryReaderImpl for Tcp with fn raw_read_impl(
+  self,
+  buf,
+  offset~,
+  max_len~,
+) {
+  self.inner.read_into(buf, offset~, max_len~)
 }
 
 ///|
-pub impl @io.Writer for Tcp with fn write_once(self, buf, offset~, len~) {
-  @io.Writer::write_once(self.inner, buf, offset~, len~)
+impl @io.BinaryWriterImpl for Tcp with fn raw_write_impl(
+  self,
+  buf,
+  offset~,
+  len~,
+) {
+  self.inner.write(buf[offset:offset + len])
+  len
 }
 
 ///|
@@ -146,7 +169,7 @@ pub fn TcpServer::close(self : TcpServer) -> Unit {
 }
 
 ///|
-pub fn TcpServer::fd(self : TcpServer) -> Int {
+pub fn TcpServer::fd(self : TcpServer) -> Int32 {
   socket_fd_to_int(self.inner.fd())
 }
 
@@ -160,7 +183,12 @@ pub fn TcpServer::addr(self : TcpServer) -> Addr {
 pub async fn TcpServer::accept(self : TcpServer) -> (Tcp, Addr) {
   let (conn, peer) = self.inner.accept()
   (
-    Tcp::{ addr: addr_from_async(conn.addr), inner: conn, },
+    Tcp::{
+      write_controller: @io.BinaryWriterController(),
+      read_controller: @io.BinaryReaderController(),
+      addr: addr_from_async(conn.addr),
+      inner: conn,
+    },
     addr_from_async(peer),
   )
 }
@@ -170,12 +198,17 @@ pub async fn TcpServer::run_forever(
   self : TcpServer,
   f : async (Tcp, Addr) -> Unit,
   allow_failure? : Bool,
-  max_connections? : Int,
+  max_connections? : Int32,
 ) -> Unit {
   self.inner.run_forever(
     (conn, peer) => {
       f(
-        Tcp::{ addr: addr_from_async(conn.addr), inner: conn, },
+        Tcp::{
+          write_controller: @io.BinaryWriterController(),
+          read_controller: @io.BinaryReaderController(),
+          addr: addr_from_async(conn.addr),
+          inner: conn,
+        },
         addr_from_async(peer),
       )
     },
@@ -207,7 +240,7 @@ pub fn UdpClient::close(self : UdpClient) -> Unit {
 }
 
 ///|
-pub fn UdpClient::fd(self : UdpClient) -> Int {
+pub fn UdpClient::fd(self : UdpClient) -> Int32 {
   socket_fd_to_int(self.inner.fd())
 }
 
@@ -226,9 +259,9 @@ pub fn UdpClient::connect(self : UdpClient, addr : Addr) -> Unit raise {
 pub async fn UdpClient::recv(
   self : UdpClient,
   buf : FixedArray[Byte],
-  offset? : Int,
-  max_len? : Int,
-) -> Int {
+  offset? : Int32,
+  max_len? : Int32,
+) -> Int32 {
   self.inner.recv(buf, offset?, max_len?)
 }
 
@@ -236,9 +269,9 @@ pub async fn UdpClient::recv(
 pub async fn UdpClient::recvfrom(
   self : UdpClient,
   buf : FixedArray[Byte],
-  offset? : Int,
-  max_len? : Int,
-) -> (Int, Addr) {
+  offset? : Int32,
+  max_len? : Int32,
+) -> (Int32, Addr) {
   let (n, addr) = self.inner.recvfrom(buf, offset?, max_len?)
   (n, addr_from_async(addr))
 }
@@ -247,8 +280,8 @@ pub async fn UdpClient::recvfrom(
 pub async fn UdpClient::send(
   self : UdpClient,
   buf : Bytes,
-  offset? : Int,
-  len? : Int,
+  offset? : Int32,
+  len? : Int32,
 ) -> Unit {
   self.inner.send(buf, offset?, len?)
 }
@@ -278,7 +311,10 @@ pub fn UdpClient::set_multicast_loopback(
 }
 
 ///|
-pub fn UdpClient::set_multicast_ttl(self : UdpClient, ttl : Int) -> Unit raise {
+pub fn UdpClient::set_multicast_ttl(
+  self : UdpClient,
+  ttl : Int32,
+) -> Unit raise {
   self.inner.set_multicast_ttl(ttl)
 }
 
@@ -326,7 +362,7 @@ pub fn UdpServer::close(self : UdpServer) -> Unit {
 }
 
 ///|
-pub fn UdpServer::fd(self : UdpServer) -> Int {
+pub fn UdpServer::fd(self : UdpServer) -> Int32 {
   socket_fd_to_int(self.inner.fd())
 }
 
@@ -340,9 +376,9 @@ pub fn UdpServer::addr(self : UdpServer) -> Addr {
 pub async fn UdpServer::recvfrom(
   self : UdpServer,
   buf : FixedArray[Byte],
-  offset? : Int,
-  max_len? : Int,
-) -> (Int, Addr) {
+  offset? : Int32,
+  max_len? : Int32,
+) -> (Int32, Addr) {
   let (n, addr) = self.inner.recvfrom(buf, offset?, max_len?)
   (n, addr_from_async(addr))
 }
@@ -352,8 +388,8 @@ pub async fn UdpServer::sendto(
   self : UdpServer,
   buf : Bytes,
   addr : Addr,
-  offset? : Int,
-  len? : Int,
+  offset? : Int32,
+  len? : Int32,
 ) -> Unit {
   self.inner.sendto(
     buf,
@@ -414,6 +450,36 @@ pub fn UdpServer::set_multicast_loopback(
 }
 
 ///|
-pub fn UdpServer::set_multicast_ttl(self : UdpServer, ttl : Int) -> Unit raise {
+pub fn UdpServer::set_multicast_ttl(
+  self : UdpServer,
+  ttl : Int32,
+) -> Unit raise {
   self.inner.set_multicast_ttl(ttl)
+}
+
+///|
+pub impl @io.BinaryReader for Tcp
+
+///|
+pub extend Tcp with @io.BinaryReader::{
+  read_into,
+  read_at_least,
+  peek,
+  peek_at_least,
+  read_exactly,
+  drop_exactly,
+  peek_exactly,
+  drop_all,
+  peek_until,
+}
+
+///|
+pub impl @io.BinaryWriter for Tcp
+
+///|
+pub extend Tcp with @io.BinaryWriter::{write_reader}
+
+///|
+impl @io.BinaryWriterImpl for Tcp with fn get_controller(self) {
+  self.write_controller
 }

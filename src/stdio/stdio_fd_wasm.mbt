@@ -1,5 +1,5 @@
 ///|
-fn stdio_fd_to_int(fd : UInt64) -> Int {
+fn stdio_fd_to_int(fd : UInt64) -> Int32 {
   let max_int = 2147483647
   if fd > max_int.to_uint64() {
     abort("stdio fd value too large to fit in Int")

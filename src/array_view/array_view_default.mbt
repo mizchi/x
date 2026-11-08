@@ -1,10 +1,10 @@
 ///|
-pub fn find_byte(target : ArrayView[Byte], needle : Byte) -> Int? {
+pub fn find_byte(target : ArrayView[Byte], needle : Byte) -> Int32? {
   target.search(needle)
 }
 
 ///|
-pub fn rev_find_byte(target : ArrayView[Byte], needle : Byte) -> Int? {
+pub fn rev_find_byte(target : ArrayView[Byte], needle : Byte) -> Int32? {
   let mut i = target.length() - 1
   while i >= 0 {
     if target[i] == needle {
@@ -19,7 +19,7 @@ pub fn rev_find_byte(target : ArrayView[Byte], needle : Byte) -> Int? {
 fn matches_at(
   target : ArrayView[Byte],
   needle : ArrayView[Byte],
-  index : Int,
+  index : Int32,
 ) -> Bool {
   for offset in 0..<needle.length() {
     if target[index + offset] != needle[offset] {
@@ -30,7 +30,7 @@ fn matches_at(
 }
 
 ///|
-pub fn find(target : ArrayView[Byte], needle : ArrayView[Byte]) -> Int? {
+pub fn find(target : ArrayView[Byte], needle : ArrayView[Byte]) -> Int32? {
   if needle.length() == 0 {
     return Some(0)
   }
@@ -47,7 +47,7 @@ pub fn find(target : ArrayView[Byte], needle : ArrayView[Byte]) -> Int? {
 }
 
 ///|
-pub fn rev_find(target : ArrayView[Byte], needle : ArrayView[Byte]) -> Int? {
+pub fn rev_find(target : ArrayView[Byte], needle : ArrayView[Byte]) -> Int32? {
   if needle.length() == 0 {
     return Some(target.length())
   }

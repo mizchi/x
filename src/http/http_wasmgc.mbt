@@ -5,7 +5,7 @@ pub struct Stream {}
 pub fn get_stream(
   _url : String,
   headers? : Map[String, String],
-  body? : &@io.Data = "",
+  body~ : &@data.Data = "",
   proxy? : Client,
 ) -> (Response, Client) raise HttpError {
   ignore(headers)
@@ -58,9 +58,9 @@ pub fn Stream::close(self : Stream) -> Unit {
 pub fn get(
   _url : String,
   headers? : Map[String, String],
-  body? : &@io.Data = "",
+  body~ : &@data.Data = "",
   proxy? : Client,
-) -> (Response, &@io.Data) raise HttpError {
+) -> (Response, &@data.Data) raise HttpError {
   ignore(headers)
   ignore(body)
   ignore(proxy)
@@ -70,10 +70,10 @@ pub fn get(
 ///|
 pub fn post(
   _url : String,
-  _body : &@io.Data,
+  _body : &@data.Data,
   headers? : Map[String, String],
   proxy? : Client,
-) -> (Response, &@io.Data) raise HttpError {
+) -> (Response, &@data.Data) raise HttpError {
   ignore(headers)
   ignore(proxy)
   raise HttpError::NotSupported
@@ -82,10 +82,10 @@ pub fn post(
 ///|
 pub fn put(
   _url : String,
-  _body : &@io.Data,
+  _body : &@data.Data,
   headers? : Map[String, String],
   proxy? : Client,
-) -> (Response, &@io.Data) raise HttpError {
+) -> (Response, &@data.Data) raise HttpError {
   ignore(headers)
   ignore(proxy)
   raise HttpError::NotSupported
@@ -101,7 +101,7 @@ pub fn Client::new(
   url : String,
   headers? : Map[String, String],
   proxy? : Client,
-  verify? : Bool = true,
+  verify~ : Bool = true,
 ) -> Client raise HttpError {
   ignore(url)
   ignore(headers)
@@ -158,7 +158,7 @@ pub fn Client::get(
   self : Client,
   path : String,
   extra_headers? : Map[String, String],
-  body? : &@io.Data,
+  body? : &@data.Data,
 ) -> Response raise HttpError {
   ignore(self)
   ignore(path)
@@ -171,7 +171,7 @@ pub fn Client::get(
 pub fn Client::post(
   self : Client,
   path : String,
-  body : &@io.Data,
+  body : &@data.Data,
   extra_headers? : Map[String, String],
 ) -> Response raise HttpError {
   ignore(self)
@@ -185,7 +185,7 @@ pub fn Client::post(
 pub fn Client::put(
   self : Client,
   path : String,
-  body : &@io.Data,
+  body : &@data.Data,
   extra_headers? : Map[String, String],
 ) -> Response raise HttpError {
   ignore(self)
@@ -196,13 +196,13 @@ pub fn Client::put(
 }
 
 ///|
-pub impl @io.Reader for Client with fn _get_internal_buffer(self) {
+impl @io.BinaryReaderImpl for Client with fn get_controller(self) {
   ignore(self)
   abort("Client reader not supported on wasm-gc target")
 }
 
 ///|
-pub impl @io.Reader for Client with fn _direct_read(
+impl @io.BinaryReaderImpl for Client with fn raw_read_impl(
   self,
   _buf,
   offset~,
@@ -215,7 +215,12 @@ pub impl @io.Reader for Client with fn _direct_read(
 }
 
 ///|
-pub impl @io.Writer for Client with fn write_once(self, _buf, offset~, len~) {
+impl @io.BinaryWriterImpl for Client with fn raw_write_impl(
+  self,
+  _buf,
+  offset~,
+  len~,
+) {
   ignore(self)
   ignore(offset)
   ignore(len)
@@ -233,15 +238,15 @@ pub struct ServerConnection {}
 ///|
 pub async fn Server::new(
   host? : String,
-  port? : Int,
+  port? : Int32,
   headers? : Map[String, String],
   dual_stack? : Bool,
   reuse_addr? : Bool,
-  max_request_body_bytes? : Int,
-  request_timeout_ms? : Int,
-  keep_alive_timeout_ms? : Int,
-  headers_timeout_ms? : Int,
-  accept_queue_limit? : Int,
+  max_request_body_bytes? : Int32,
+  request_timeout_ms? : Int32,
+  keep_alive_timeout_ms? : Int32,
+  headers_timeout_ms? : Int32,
+  accept_queue_limit? : Int32,
   trust_proxy? : Bool,
 ) -> Server raise HttpError {
   ignore(host)
@@ -259,7 +264,7 @@ pub async fn Server::new(
 }
 
 ///|
-pub fn Server::port(self : Server) -> Int {
+pub fn Server::port(self : Server) -> Int32 {
   ignore(self)
   0
 }
@@ -278,7 +283,7 @@ pub fn Server::close(self : Server) -> Unit {
 ///|
 pub fn Server::close_graceful(
   self : Server,
-  timeout_ms? : Int,
+  timeout_ms? : Int32,
 ) -> Unit raise HttpError {
   ignore(self)
   ignore(timeout_ms)
@@ -296,9 +301,9 @@ pub fn Server::accept(
 ///|
 pub fn Server::run_forever(
   self : Server,
-  _f : async (Request, &@io.Reader, ServerConnection) -> Unit,
+  _f : async (Request, &@io.BinaryReader, ServerConnection) -> Unit,
   allow_failure? : Bool,
-  max_connections? : Int,
+  max_connections? : Int32,
 ) -> Unit raise HttpError {
   ignore(self)
   ignore(allow_failure)
@@ -336,10 +341,10 @@ pub fn ServerConnection::skip_request_body(
 ///|
 pub fn ServerConnection::send_response(
   self : ServerConnection,
-  _code : Int,
+  _code : Int32,
   _reason : String,
   extra_headers? : Map[String, String],
-  cookies? : Array[Cookie] = [],
+  cookies~ : Array[Cookie] = [],
 ) -> Unit raise HttpError {
   ignore(self)
   ignore(extra_headers)
@@ -370,13 +375,13 @@ pub fn ServerConnection::enter_passthrough_mode(
 }
 
 ///|
-pub impl @io.Reader for ServerConnection with fn _get_internal_buffer(self) {
+impl @io.BinaryReaderImpl for ServerConnection with fn get_controller(self) {
   ignore(self)
   abort("ServerConnection reader not supported on wasm-gc target")
 }
 
 ///|
-pub impl @io.Reader for ServerConnection with fn _direct_read(
+impl @io.BinaryReaderImpl for ServerConnection with fn raw_read_impl(
   self,
   _buf,
   offset~,
@@ -389,7 +394,7 @@ pub impl @io.Reader for ServerConnection with fn _direct_read(
 }
 
 ///|
-pub impl @io.Writer for ServerConnection with fn write_once(
+impl @io.BinaryWriterImpl for ServerConnection with fn raw_write_impl(
   self,
   _buf,
   offset~,
@@ -399,4 +404,60 @@ pub impl @io.Writer for ServerConnection with fn write_once(
   ignore(offset)
   ignore(len)
   raise HttpError::NotSupported
+}
+
+///|
+pub impl @io.BinaryReader for Client
+
+///|
+pub extend Client with @io.BinaryReader::{
+  read_into,
+  read_at_least,
+  peek,
+  peek_at_least,
+  read_exactly,
+  drop_exactly,
+  peek_exactly,
+  drop_all,
+  peek_until,
+}
+
+///|
+pub impl @io.BinaryReader for ServerConnection
+
+///|
+pub extend ServerConnection with @io.BinaryReader::{
+  read_into,
+  read_at_least,
+  peek,
+  peek_at_least,
+  read_exactly,
+  drop_exactly,
+  peek_exactly,
+  drop_all,
+  peek_until,
+}
+
+///|
+pub impl @io.BinaryWriter for Client
+
+///|
+pub extend Client with @io.BinaryWriter::{write_reader}
+
+///|
+impl @io.BinaryWriterImpl for Client with fn get_controller(self) {
+  ignore(self)
+  abort("writer not supported on this target")
+}
+
+///|
+pub impl @io.BinaryWriter for ServerConnection
+
+///|
+pub extend ServerConnection with @io.BinaryWriter::{write_reader}
+
+///|
+impl @io.BinaryWriterImpl for ServerConnection with fn get_controller(self) {
+  ignore(self)
+  abort("writer not supported on this target")
 }

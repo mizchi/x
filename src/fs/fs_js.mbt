@@ -16,9 +16,9 @@ extern "js" fn js_read_file(path : String) -> JsPromise[String] =
 extern "js" fn js_write_file(
   path : String,
   content : Bytes,
-  create_mode : Int,
-  permission : Int,
-  sync : Int,
+  create_mode : Int32,
+  permission : Int32,
+  sync : Int32,
   append : Bool,
 ) -> JsPromise[Unit] =
   #| async (path, content, createMode, permission, syncMode, append) => {
@@ -85,7 +85,7 @@ extern "js" fn js_readdir(
   include_hidden : Bool,
   include_special : Bool,
   sort : Bool,
-) -> JsPromise[Array[String]] =
+) -> JsPromise[FixedArray[String]] =
   #| async (path, includeHidden, includeSpecial, sort) => {
   #|   const fs = await import('node:fs/promises');
   #|   let entries = await fs.readdir(path);
@@ -140,19 +140,19 @@ extern "js" fn js_rmdir(path : String, recursive : Bool) -> JsPromise[Unit] =
 
 ///|
 priv struct JsTime {
-  seconds : Int
-  nanos : Int
+  seconds : Int32
+  nanos : Int32
 }
 
 ///|
 priv struct JsFileOpenResult {
-  id : Int
-  fd : Int
-  kind : Int
+  id : Int32
+  fd : Int32
+  kind : Int32
 }
 
 ///|
-extern "js" fn js_access(path : String, mode : Int) -> JsPromise[Bool] =
+extern "js" fn js_access(path : String, mode : Int32) -> JsPromise[Bool] =
   #| async (path, mode) => {
   #|   const fs = await import('node:fs/promises');
   #|   const nodeFs = await import('node:fs');
@@ -162,7 +162,7 @@ extern "js" fn js_access(path : String, mode : Int) -> JsPromise[Bool] =
   #| }
 
 ///|
-extern "js" fn js_chmod(path : String, permission : Int) -> JsPromise[Unit] =
+extern "js" fn js_chmod(path : String, permission : Int32) -> JsPromise[Unit] =
   #| async (path, permission) => {
   #|   const fs = await import('node:fs/promises');
   #|   await fs.chmod(path, permission);
@@ -172,7 +172,7 @@ extern "js" fn js_chmod(path : String, permission : Int) -> JsPromise[Unit] =
 extern "js" fn js_time(
   path : String,
   follow_symlink : Bool,
-  kind : Int,
+  kind : Int32,
 ) -> JsPromise[JsTime] =
   #| async (path, followSymlink, kind) => {
   #|   const fs = await import('node:fs/promises');
@@ -195,11 +195,11 @@ extern "js" fn js_tmpdir(prefix : String) -> JsPromise[String] =
 ///|
 extern "js" fn js_file_open(
   path : String,
-  mode : Int,
-  create_mode : Int,
-  permission : Int,
+  mode : Int32,
+  create_mode : Int32,
+  permission : Int32,
   append : Bool,
-  sync : Int,
+  sync : Int32,
 ) -> JsPromise[JsFileOpenResult] =
   #| async (path, mode, createMode, permission, append, syncMode) => {
   #|   const fs = await import('node:fs/promises');
@@ -247,7 +247,7 @@ extern "js" fn js_file_open(
   #| }
 
 ///|
-extern "js" fn js_file_close(id : Int) -> Unit =
+extern "js" fn js_file_close(id : Int32) -> Unit =
   #| (id) => {
   #|   const state = globalThis.__xfsFiles;
   #|   const handle = state?.files?.get(id);
@@ -257,7 +257,7 @@ extern "js" fn js_file_close(id : Int) -> Unit =
   #| }
 
 ///|
-extern "js" fn js_file_read(id : Int, max_len : Int) -> JsPromise[Bytes] =
+extern "js" fn js_file_read(id : Int32, max_len : Int32) -> JsPromise[Bytes] =
   #| async (id, maxLen) => {
   #|   const handle = globalThis.__xfsFiles?.files?.get(id);
   #|   if (!handle) throw new Error('file handle not found');
@@ -268,11 +268,11 @@ extern "js" fn js_file_read(id : Int, max_len : Int) -> JsPromise[Bytes] =
 
 ///|
 extern "js" fn js_file_write(
-  id : Int,
+  id : Int32,
   data : Bytes,
-  offset : Int,
-  len : Int,
-) -> JsPromise[Int] =
+  offset : Int32,
+  len : Int32,
+) -> JsPromise[Int32] =
   #| async (id, data, offset, len) => {
   #|   const handle = globalThis.__xfsFiles?.files?.get(id);
   #|   if (!handle) throw new Error('file handle not found');
@@ -285,8 +285,8 @@ extern "js" fn js_file_write(
 
 ///|
 extern "js" fn js_file_read_at(
-  id : Int,
-  max_len : Int,
+  id : Int32,
+  max_len : Int32,
   position : Int64,
 ) -> JsPromise[Bytes] =
   #| async (id, maxLen, position) => {
@@ -299,10 +299,10 @@ extern "js" fn js_file_read_at(
 
 ///|
 extern "js" fn js_file_write_at(
-  id : Int,
+  id : Int32,
   data : Bytes,
-  offset : Int,
-  len : Int,
+  offset : Int32,
+  len : Int32,
   position : Int64,
 ) -> JsPromise[Unit] =
   #| async (id, data, offset, len, position) => {
@@ -315,7 +315,7 @@ extern "js" fn js_file_write_at(
   #| }
 
 ///|
-extern "js" fn js_file_size(id : Int) -> JsPromise[Int] =
+extern "js" fn js_file_size(id : Int32) -> JsPromise[Int32] =
   #| async (id) => {
   #|   const handle = globalThis.__xfsFiles?.files?.get(id);
   #|   if (!handle) throw new Error('file handle not found');
@@ -324,7 +324,7 @@ extern "js" fn js_file_size(id : Int) -> JsPromise[Int] =
   #| }
 
 ///|
-extern "js" fn js_file_time(id : Int, kind : Int) -> JsPromise[JsTime] =
+extern "js" fn js_file_time(id : Int32, kind : Int32) -> JsPromise[JsTime] =
   #| async (id, kind) => {
   #|   const handle = globalThis.__xfsFiles?.files?.get(id);
   #|   if (!handle) throw new Error('file handle not found');
@@ -336,7 +336,7 @@ extern "js" fn js_file_time(id : Int, kind : Int) -> JsPromise[JsTime] =
   #| }
 
 ///|
-extern "js" fn js_file_sync(id : Int, only_data : Bool) -> JsPromise[Unit] =
+extern "js" fn js_file_sync(id : Int32, only_data : Bool) -> JsPromise[Unit] =
   #| async (id, onlyData) => {
   #|   const handle = globalThis.__xfsFiles?.files?.get(id);
   #|   if (!handle) throw new Error('file handle not found');
@@ -352,7 +352,7 @@ async fn[T] run_js_promise(promise : JsPromise[T]) -> T raise IOError {
 }
 
 ///|
-fn create_mode_to_int(mode : CreateMode) -> Int {
+fn create_mode_to_int(mode : CreateMode) -> Int32 {
   match mode {
     OpenExisting => 0
     TruncateExisting => 1
@@ -363,7 +363,7 @@ fn create_mode_to_int(mode : CreateMode) -> Int {
 }
 
 ///|
-fn sync_mode_to_int(sync : SyncMode) -> Int {
+fn sync_mode_to_int(sync : SyncMode) -> Int32 {
   match sync {
     NoSync => 0
     Data => 1
@@ -372,7 +372,7 @@ fn sync_mode_to_int(sync : SyncMode) -> Int {
 }
 
 ///|
-fn mode_to_int(mode : Mode) -> Int {
+fn mode_to_int(mode : Mode) -> Int32 {
   match mode {
     ReadOnly => 0
     WriteOnly => 1
@@ -383,7 +383,7 @@ fn mode_to_int(mode : Mode) -> Int {
 ///|
 fn default_write_create_mode(
   create_mode? : CreateMode,
-  create? : Int,
+  create? : Int32,
   truncate? : Bool,
 ) -> CreateMode {
   match create_mode {
@@ -399,7 +399,7 @@ fn default_write_create_mode(
 }
 
 ///|
-fn permission_or_create(permission? : Int, create? : Int) -> Int {
+fn permission_or_create(permission? : Int32, create? : Int32) -> Int32 {
   match permission {
     Some(p) => p
     None =>
@@ -411,7 +411,7 @@ fn permission_or_create(permission? : Int, create? : Int) -> Int {
 }
 
 ///|
-fn js_kind_to_file_kind(i : Int) -> FileKind {
+fn js_kind_to_file_kind(i : Int32) -> FileKind {
   match i {
     1 => Regular
     2 => Directory
@@ -425,7 +425,7 @@ fn js_kind_to_file_kind(i : Int) -> FileKind {
 }
 
 ///|
-fn time_to_tuple(time : JsTime) -> (Int64, Int) {
+fn time_to_tuple(time : JsTime) -> (Int64, Int32) {
   (time.seconds.to_int64(), time.nanos)
 }
 
@@ -433,7 +433,7 @@ fn time_to_tuple(time : JsTime) -> (Int64, Int) {
 pub async fn read_file(
   path : StringView,
   sync_timestamp? : Bool,
-) -> &@io.Data raise IOError {
+) -> &@data.Data raise IOError {
   ignore(sync_timestamp)
   let s : String = run_js_promise(js_read_file(path.to_owned()))
   s
@@ -442,12 +442,12 @@ pub async fn read_file(
 ///|
 pub async fn write_file(
   path : StringView,
-  content : &@io.Data,
+  content : &@data.Data,
   create_mode? : CreateMode,
-  permission? : Int,
+  permission? : Int32,
   sync? : SyncMode,
   append? : Bool,
-  create? : Int,
+  create? : Int32,
   truncate? : Bool,
 ) -> Unit raise IOError {
   let data = content.binary()
@@ -494,7 +494,7 @@ pub async fn can_execute(path : StringView) -> Bool {
 }
 
 ///|
-pub async fn chmod(path : StringView, permission : Int) -> Unit raise IOError {
+pub async fn chmod(path : StringView, permission : Int32) -> Unit raise IOError {
   run_js_promise(js_chmod(path.to_owned(), permission))
 }
 
@@ -502,7 +502,7 @@ pub async fn chmod(path : StringView, permission : Int) -> Unit raise IOError {
 pub async fn atime(
   path : StringView,
   follow_symlink? : Bool,
-) -> (Int64, Int) raise IOError {
+) -> (Int64, Int32) raise IOError {
   run_js_promise(js_time(path.to_owned(), follow_symlink.unwrap_or(true), 1))
   |> time_to_tuple
 }
@@ -511,7 +511,7 @@ pub async fn atime(
 pub async fn mtime(
   path : StringView,
   follow_symlink? : Bool,
-) -> (Int64, Int) raise IOError {
+) -> (Int64, Int32) raise IOError {
   run_js_promise(js_time(path.to_owned(), follow_symlink.unwrap_or(true), 2))
   |> time_to_tuple
 }
@@ -520,7 +520,7 @@ pub async fn mtime(
 pub async fn ctime(
   path : StringView,
   follow_symlink? : Bool,
-) -> (Int64, Int) raise IOError {
+) -> (Int64, Int32) raise IOError {
   run_js_promise(js_time(path.to_owned(), follow_symlink.unwrap_or(true), 3))
   |> time_to_tuple
 }
@@ -528,7 +528,7 @@ pub async fn ctime(
 ///|
 pub async fn mkdir(
   path : StringView,
-  permission? : Int,
+  permission? : Int32,
   recursive? : Bool,
 ) -> Unit raise IOError {
   ignore(permission)
@@ -542,7 +542,7 @@ pub async fn readdir(
   include_special? : Bool,
   sort? : Bool,
 ) -> Array[String] raise IOError {
-  run_js_promise(
+  let entries = run_js_promise(
     js_readdir(
       path.to_owned(),
       include_hidden.unwrap_or(false),
@@ -550,6 +550,7 @@ pub async fn readdir(
       sort.unwrap_or(false),
     ),
   )
+  entries.iter().collect()
 }
 
 ///|
@@ -574,7 +575,10 @@ pub async fn rmdir(path : StringView, recursive? : Bool) -> Unit raise IOError {
 }
 
 ///|
-extern "js" fn js_kind(path : String, follow_symlink : Bool) -> JsPromise[Int] =
+extern "js" fn js_kind(
+  path : String,
+  follow_symlink : Bool,
+) -> JsPromise[Int32] =
   #| async (path, followSymlink) => {
   #|   const fs = await import('node:fs/promises');
   #|   const stat = followSymlink ? await fs.stat(path) : await fs.lstat(path);
@@ -600,7 +604,7 @@ pub async fn kind(
   path : StringView,
   follow_symlink? : Bool,
 ) -> FileKind raise IOError {
-  let i : Int = run_js_promise(
+  let i : Int32 = run_js_promise(
     js_kind(path.to_owned(), follow_symlink.unwrap_or(true)),
   )
   match i {
@@ -640,11 +644,12 @@ pub async fn symlink(
 
 ///|
 pub struct File {
-  priv id : Int
-  priv fd : Int
+  priv write_controller : @io.BinaryWriterController
+  priv id : Int32
+  priv fd : Int32
   priv path : String
   priv kind : FileKind
-  priv read_buf : @io.ReaderBuffer
+  priv read_buf : @io.BinaryReaderController
 }
 
 ///|
@@ -654,8 +659,8 @@ pub async fn open(
   sync? : SyncMode,
   append? : Bool,
   create_mode? : CreateMode,
-  permission? : Int,
-  create? : Int,
+  permission? : Int32,
+  create? : Int32,
   truncate? : Bool,
 ) -> File raise IOError {
   let create_mode = match create_mode {
@@ -681,11 +686,12 @@ pub async fn open(
     ),
   )
   File::{
+    write_controller: @io.BinaryWriterController(),
     id: result.id,
     fd: result.fd,
     path: path_string,
     kind: js_kind_to_file_kind(result.kind),
-    read_buf: @io.ReaderBuffer::new(),
+    read_buf: @io.BinaryReaderController(),
   }
 }
 
@@ -693,7 +699,7 @@ pub async fn open(
 pub async fn create(
   path : StringView,
   allow_existing? : Bool,
-  permission? : Int,
+  permission? : Int32,
   sync? : SyncMode,
 ) -> File raise IOError {
   open(
@@ -715,7 +721,7 @@ pub fn File::close(self : File) -> Unit {
 }
 
 ///|
-pub fn File::fd(self : File) -> Int {
+pub fn File::fd(self : File) -> Int32 {
   self.fd
 }
 
@@ -738,17 +744,17 @@ pub async fn File::size(self : File) -> Int64 raise IOError {
 }
 
 ///|
-pub async fn File::atime(self : File) -> (Int64, Int) raise IOError {
+pub async fn File::atime(self : File) -> (Int64, Int32) raise IOError {
   run_js_promise(js_file_time(self.id, 1)) |> time_to_tuple
 }
 
 ///|
-pub async fn File::mtime(self : File) -> (Int64, Int) raise IOError {
+pub async fn File::mtime(self : File) -> (Int64, Int32) raise IOError {
   run_js_promise(js_file_time(self.id, 2)) |> time_to_tuple
 }
 
 ///|
-pub async fn File::ctime(self : File) -> (Int64, Int) raise IOError {
+pub async fn File::ctime(self : File) -> (Int64, Int32) raise IOError {
   run_js_promise(js_file_time(self.id, 3)) |> time_to_tuple
 }
 
@@ -757,9 +763,9 @@ pub async fn File::read_at(
   self : File,
   buf : FixedArray[Byte],
   position~ : Int64,
-  offset? : Int,
-  len? : Int,
-) -> Int raise IOError {
+  offset? : Int32,
+  len? : Int32,
+) -> Int32 raise IOError {
   let offset = offset.unwrap_or(0)
   let len = len.unwrap_or(buf.length() - offset)
   let data = run_js_promise(js_file_read_at(self.id, len, position))
@@ -771,7 +777,7 @@ pub async fn File::read_at(
 ///|
 pub async fn File::read_exactly_at(
   self : File,
-  len : Int,
+  len : Int32,
   position~ : Int64,
 ) -> Bytes raise IOError {
   let data = run_js_promise(js_file_read_at(self.id, len, position))
@@ -804,9 +810,7 @@ pub async fn File::sync(self : File, only_data? : Bool) -> Unit raise IOError {
 
 ///|
 pub async fn File::lock(_self : File, _lock : Lock) -> Unit raise IOError {
-  @async.sleep(0) catch {
-    err => raise IOError::IOError(err.to_string())
-  }
+  @async.sleep(0)
   raise IOError::IOError("File::lock is not supported on js target")
 }
 
@@ -821,12 +825,17 @@ pub fn File::unlock(_self : File) -> Unit {
 }
 
 ///|
-pub impl @io.Reader for File with fn _get_internal_buffer(self) {
+impl @io.BinaryReaderImpl for File with fn get_controller(self) {
   self.read_buf
 }
 
 ///|
-pub impl @io.Reader for File with fn _direct_read(self, buf, offset~, max_len~) {
+impl @io.BinaryReaderImpl for File with fn raw_read_impl(
+  self,
+  buf,
+  offset~,
+  max_len~,
+) {
   if max_len <= 0 {
     0
   } else {
@@ -840,7 +849,12 @@ pub impl @io.Reader for File with fn _direct_read(self, buf, offset~, max_len~) 
 }
 
 ///|
-pub impl @io.Writer for File with fn write_once(self, buf, offset~, len~) {
+impl @io.BinaryWriterImpl for File with fn raw_write_impl(
+  self,
+  buf,
+  offset~,
+  len~,
+) {
   let available = buf.length() - offset
   let n = if len < available { len } else { available }
   if n <= 0 {
@@ -871,8 +885,8 @@ type JsWatcherHandle
 ///|
 extern "js" fn js_watcher_new(
   root : String,
-  debounce_timeout : Int,
-  max_debounce_delay : Int,
+  debounce_timeout : Int32,
+  max_debounce_delay : Int32,
 ) -> JsPromise[JsWatcherHandle] =
   #| async (root, debounceTimeout, maxDebounceDelay) => {
   #|   const fs = await import('node:fs');
@@ -997,7 +1011,7 @@ extern "js" fn js_watcher_new(
 ///|
 extern "js" fn js_watcher_wait(
   handle : JsWatcherHandle,
-) -> JsPromise[Array[String]] =
+) -> JsPromise[FixedArray[String]] =
   #| async (handle) => {
   #|   if (!handle || handle.closed) throw new Error('watcher already closed');
   #|   while (true) {
@@ -1028,7 +1042,7 @@ extern "js" fn js_watcher_close(handle : JsWatcherHandle) -> Unit =
   #| }
 
 ///|
-extern "js" fn js_opendir(path : String) -> JsPromise[Int] =
+extern "js" fn js_opendir(path : String) -> JsPromise[Int32] =
   #| async (path) => {
   #|   const fs = await import('node:fs/promises');
   #|   if (!globalThis.__xfsDirs) globalThis.__xfsDirs = { nextId: 1, dirs: new Map() };
@@ -1040,7 +1054,7 @@ extern "js" fn js_opendir(path : String) -> JsPromise[Int] =
   #| }
 
 ///|
-extern "js" fn js_dir_close(id : Int) -> Unit =
+extern "js" fn js_dir_close(id : Int32) -> Unit =
   #| (id) => {
   #|   const state = globalThis.__xfsDirs;
   #|   const handle = state?.dirs?.get(id);
@@ -1051,7 +1065,7 @@ extern "js" fn js_dir_close(id : Int) -> Unit =
 
 ///|
 extern "js" fn js_dir_next(
-  id : Int,
+  id : Int32,
   include_hidden : Bool,
   include_special : Bool,
 ) -> JsPromise[JsDirectoryEntry] =
@@ -1074,7 +1088,7 @@ extern "js" fn js_dir_next(
 
 ///|
 pub struct Directory {
-  id : Int
+  id : Int32
 }
 
 ///|
@@ -1131,8 +1145,8 @@ pub struct Watcher {
 ///|
 pub async fn Watcher::Watcher(
   path : String,
-  debounce_timeout? : Int,
-  max_debounce_delay? : Int,
+  debounce_timeout? : Int32,
+  max_debounce_delay? : Int32,
   ignored_paths? : (String) -> Bool,
 ) -> Watcher raise IOError {
   let handle = run_js_promise(
@@ -1197,7 +1211,7 @@ pub async fn walk(
   path : StringView,
   f : async (String, Array[String]) -> Unit,
   exclude? : (String) -> Bool,
-  max_concurrency? : Int,
+  max_concurrency? : Int32,
   allow_failure? : Bool,
 ) -> Unit raise IOError {
   let max_concurrency = max_concurrency.unwrap_or(1000)
@@ -1241,4 +1255,31 @@ pub async fn walk(
   }) catch {
     err => raise IOError::IOError(err.to_string())
   }
+}
+
+///|
+pub impl @io.BinaryReader for File
+
+///|
+pub extend File with @io.BinaryReader::{
+  read_into,
+  read_at_least,
+  peek,
+  peek_at_least,
+  read_exactly,
+  drop_exactly,
+  peek_exactly,
+  drop_all,
+  peek_until,
+}
+
+///|
+pub impl @io.BinaryWriter for File
+
+///|
+pub extend File with @io.BinaryWriter::{write_reader}
+
+///|
+impl @io.BinaryWriterImpl for File with fn get_controller(self) {
+  self.write_controller
 }

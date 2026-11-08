@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.7.0 - 2026-11-09
+
+- Target MoonBit v0.10.20 and import async APIs from `moonbitlang/core/async`; remove the standalone async dependency.
+- Update `moonbitlang/x` to 0.5.7 and `moonbitlang/regexp` to 0.3.7; migrate the workspace to `moon.work`.
+- Implement core binary stream traits while preserving text/binary convenience APIs through `mizchi/x/data`.
+- Adapt HTTP connections, process results, timestamps, JS FFI arrays, and cancellation cleanup to the bundled core runtime.
+- Migrate integer and derive syntax, regenerate interfaces, and add regressions for shared stream buffering and process cleanup.
+- Reconcile directory notifications in the JS filesystem watcher and isolate watcher tests with temporary directories.
+- Release `mizchi/fswatch` 0.3.0 with a dependency on `mizchi/x` 0.7.0.
+- Explicitly reject WASM process redirection from `mizchi/x/pipe` handles, which core's new redirect enums cannot represent. Use `process.read_from_process` / `write_to_process` for process channels on WASM.
+
 ## 0.6.0 - 2026-08-30
 
 ### Added

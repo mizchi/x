@@ -1,6 +1,6 @@
 ///|
 pub(all) enum CancellationKind {
-  Graceful(Int, @signal.Signal?)
+  Graceful(Int32, @signal.Signal?)
   Hard
 }
 
@@ -11,7 +11,7 @@ pub(all) struct CancellationHandler {
 
 ///|
 pub fn graceful_cancel(
-  timeout~ : Int,
+  timeout~ : Int32,
   signal? : @signal.Signal,
 ) -> CancellationHandler {
   { kind: Graceful(timeout, signal), }

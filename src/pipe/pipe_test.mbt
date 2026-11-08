@@ -5,7 +5,7 @@ async test "read_exactly" {
     buf..write_string(msg).write_char('\n')
   }
   @async.with_task_group(root => {
-    let (r, w) = pipe()
+    let (r, w) = @pipe.pipe()
     root.spawn_bg(() => {
       defer r.close()
       let msg1 = r.read_exactly(4) |> @utf8.decode
@@ -18,10 +18,10 @@ async test "read_exactly" {
     root.spawn_bg(() => {
       defer w.close()
       log("first message sent")
-      w.write("abcdef")
+      w.write(b"abcdef")
       @async.sleep(100)
       log("second message sent")
-      w.write("ghijkl")
+      w.write(b"ghijkl")
     })
   })
   inspect(
@@ -44,7 +44,7 @@ async test "read_exactly failure" {
     buf..write_string(msg).write_char('\n')
   }
   @async.with_task_group(root => {
-    let (r, w) = pipe()
+    let (r, w) = @pipe.pipe()
     root.spawn_bg(() => {
       defer r.close()
       let msg1 = r.read_exactly(4) |> @utf8.decode
@@ -57,7 +57,7 @@ async test "read_exactly failure" {
     root.spawn_bg(() => {
       defer w.close()
       log("first message sent")
-      w.write("abcdef")
+      w.write(b"abcdef")
     })
   }) catch {
     err => log(err.to_string())
@@ -67,7 +67,7 @@ async test "read_exactly failure" {
     content=(
       #|first message sent
       #|first message: abcd
-      #|ReaderClosed
+      #|moonbitlang/core/async/io.ReaderClosed.ReaderClosed
       #|
     ),
   )
@@ -75,13 +75,34 @@ async test "read_exactly failure" {
 
 ///|
 async test "reader closed" {
-  let (r, w) = pipe()
+  let (r, w) = @pipe.pipe()
   r.close()
   @async.sleep(100)
-  let result = try w.write("abcd") catch {
+  let result = try w.write(b"abcd") catch {
     err => Err(err)
   } noraise {
     value => Ok(value)
   }
   assert_true(result is Err(_))
+}
+
+///|
+async test "core binary traits share buffering with compatibility methods" {
+  @async.with_timeout(5000, () => {
+    @async.with_task_group(group => {
+      let (reader, writer) = @pipe.pipe()
+      defer reader.close()
+      group.spawn_bg(() => {
+        defer writer.close()
+        @io.BinaryWriter::write(writer, b"core-stream\nnext")
+      })
+      assert_eq(@io.BinaryReader::peek_exactly(reader, 4).to_owned(), b"core")
+      assert_eq(reader.read_exactly(5), b"core-")
+      assert_eq(reader.read_some(max_len=2), Some(b"st"))
+      assert_eq(reader.drop(1), 1)
+      assert_eq(reader.read_until("\n"), Some("eam"))
+      assert_eq(@io.BinaryReader::read_all(reader), b"next")
+      assert_eq(reader.read_some(), None)
+    })
+  })
 }

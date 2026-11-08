@@ -1,7 +1,11 @@
 ///|
+#derive(@debug.Debug)
 pub(all) enum Signal {
   SIGINT
   SIGTERM
   SIGHUP
   SIGBREAK
-} derive(@debug.Debug)
+}
+
+///|
+pub extend Signal with @debug.Debug::{to_repr}

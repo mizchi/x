@@ -9,7 +9,7 @@ fn to_async_signal(signal : Signal) -> @async_signal.Signal {
 }
 
 ///|
-pub fn Signal::to_int(self : Signal) -> Int {
+pub fn Signal::to_int(self : Signal) -> Int32 {
   to_async_signal(self).to_int()
 }
 

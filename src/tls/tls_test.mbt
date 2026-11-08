@@ -582,7 +582,7 @@ async test "peer close connection" {
           certificate_type=@tls.PEM,
         )
         defer server.close()
-        server.write("1234")
+        server.write(b"1234")
         inspect(@utf8.decode(server.read_exactly(4)), content="abcd")
       })
       root.spawn_bg(() => {
@@ -597,7 +597,7 @@ async test "peer close connection" {
         )
         defer client.close()
         inspect(@utf8.decode(client.read_exactly(4)), content="1234")
-        client.write("abcd")
+        client.write(b"abcd")
         client.close()
       })
     })

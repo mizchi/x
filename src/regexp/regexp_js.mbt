@@ -5,10 +5,10 @@
 priv struct JsCompileResult {
   ok : Bool
   error : String
-  id : Int
-  capture : Int
-  group_names : Array[String]
-  group_indices : Array[Int]
+  id : Int32
+  capture : Int32
+  group_names : FixedArray[String]
+  group_indices : FixedArray[Int32]
 }
 
 ///|
@@ -61,14 +61,14 @@ extern "js" fn js_compile(source : String, flags : String) -> JsCompileResult =
 
 ///|
 priv struct JsExecResult {
-  captures : Array[Int]
+  captures : FixedArray[Int32]
 }
 
 ///|
 // Runs the stored RegExp once against `input`. Returns a flat array of
 // start/end offset pairs (`-1, -1` for groups that did not participate); an
 // empty array means no match.
-extern "js" fn js_execute(id : Int, input : String) -> JsExecResult =
+extern "js" fn js_execute(id : Int32, input : String) -> JsExecResult =
   #| (id, input) => {
   #|   const re = globalThis.__xRegexp?.regexps?.get(id);
   #|   if (!re) return { captures: [] };
@@ -88,9 +88,9 @@ extern "js" fn js_execute(id : Int, input : String) -> JsExecResult =
 ///|
 /// A compiled regular expression.
 pub struct Regexp {
-  priv id : Int
-  priv capture : Int
-  priv names : Map[String, Int]
+  priv id : Int32
+  priv capture : Int32
+  priv names : Map[String, Int32]
 }
 
 ///|
@@ -109,7 +109,7 @@ pub fn compile(
   guard result.ok else {
     raise RegexpError(err=InternalError, source_fragment=pattern)
   }
-  let names : Map[String, Int] = Map([])
+  let names : Map[String, Int32] = Map([])
   for i in 0..<result.group_names.length() {
     names[result.group_names[i]] = result.group_indices[i]
   }
@@ -137,13 +137,13 @@ pub fn Regexp::match_(self : Regexp, input : StringView) -> MatchResult? {
 
 ///|
 /// Returns the index of the capture group with the given name, if any.
-pub fn Regexp::group_by_name(self : Regexp, name : String) -> Int? {
+pub fn Regexp::group_by_name(self : Regexp, name : String) -> Int32? {
   self.names.get(name)
 }
 
 ///|
 /// Returns the number of capture groups, including the whole match at index 0.
-pub fn Regexp::group_count(self : Regexp) -> Int {
+pub fn Regexp::group_count(self : Regexp) -> Int32 {
   self.capture
 }
 
@@ -157,8 +157,8 @@ pub fn Regexp::group_names(self : Regexp) -> Array[String] {
 /// The result of running a regular expression against an input.
 pub struct MatchResult {
   priv input : String
-  priv captures : Array[Int]
-  priv names : Map[String, Int]
+  priv captures : FixedArray[Int32]
+  priv names : Map[String, Int32]
 }
 
 ///|
@@ -170,7 +170,7 @@ pub fn MatchResult::matched(self : MatchResult) -> Bool {
 ///|
 /// Returns the text of capture group `index` (0 is the whole match), or `None`
 /// when the index is out of range or the group did not participate.
-pub fn MatchResult::get(self : MatchResult, index : Int) -> StringView? {
+pub fn MatchResult::get(self : MatchResult, index : Int32) -> StringView? {
   if self.captures.is_empty() ||
     index < 0 ||
     index >= self.captures.length() / 2 {
@@ -181,7 +181,7 @@ pub fn MatchResult::get(self : MatchResult, index : Int) -> StringView? {
   if start < 0 || end < start || end > self.input.length() {
     return None
   }
-  Some(self.input.view(start_offset=start, end_offset=end))
+  Some(self.input.exact_view(start~, end~))
 }
 
 ///|
@@ -210,7 +210,7 @@ pub fn MatchResult::results(self : MatchResult) -> Array[StringView?] {
     if start == -1 && end == -1 {
       results.push(None)
     } else {
-      results.push(Some(self.input.view(start_offset=start, end_offset=end)))
+      results.push(Some(self.input.exact_view(start~, end~)))
     }
   }
   results
@@ -220,9 +220,9 @@ pub fn MatchResult::results(self : MatchResult) -> Array[StringView?] {
 /// The text before the match (the whole input when there is no match).
 pub fn MatchResult::before(self : MatchResult) -> StringView {
   if self.captures.is_empty() {
-    self.input.view(start_offset=0)
+    self.input.exact_view(start=0)
   } else {
-    self.input.view(end_offset=self.captures[0])
+    self.input.exact_view(end=self.captures[0])
   }
 }
 
@@ -230,8 +230,8 @@ pub fn MatchResult::before(self : MatchResult) -> StringView {
 /// The text after the match (empty when there is no match).
 pub fn MatchResult::after(self : MatchResult) -> StringView {
   if self.captures.is_empty() {
-    self.input.view(start_offset=self.input.length())
+    self.input.exact_view(start=self.input.length())
   } else {
-    self.input.view(start_offset=self.captures[1])
+    self.input.exact_view(start=self.captures[1])
   }
 }

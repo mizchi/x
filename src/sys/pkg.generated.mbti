@@ -2,7 +2,7 @@
 package "mizchi/x/sys"
 
 // Values
-pub fn exit(Int) -> Unit
+pub fn exit(Int32) -> Unit
 
 pub fn get_cli_args() -> Array[String]
 

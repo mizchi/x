@@ -12,7 +12,7 @@
 
 ///|
 test "parse multi-lines json error" {
-  let result = try? @json.parse(
+  let result = try_parse(
     (
       #|{
       #|  "a":2,
@@ -31,7 +31,7 @@ test "parse multi-lines json error" {
 ///|
 test "parse error" {
   debug_inspect(
-    try? @json.parse("[1, 2, ]"),
+    try_parse("[1, 2, ]"),
     content=(
       #|Err(InvalidChar({ line: 1, column: 7 }, '\u{0c}'))
     ),
@@ -41,7 +41,7 @@ test "parse error" {
 ///|
 test "parse whitespace error" {
   debug_inspect(
-    try? @json.parse("[1, 2,3   ,4  ]"),
+    try_parse("[1, 2,3   ,4  ]"),
     content=(
       #|Err(InvalidChar({ line: 1, column: 9 }, '\u{0c}'))
     ),

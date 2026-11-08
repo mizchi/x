@@ -24,6 +24,6 @@ pub fn unset_env_var(name : String) -> Unit {
 }
 
 ///|
-pub fn exit(code : Int) -> Unit {
+pub fn exit(code : Int32) -> Unit {
   @x_sys.exit(code)
 }

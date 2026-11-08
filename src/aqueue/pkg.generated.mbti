@@ -3,20 +3,26 @@ package "mizchi/x/aqueue"
 
 import {
   "moonbitlang/core/debug",
+  "moonbitlang/core/json",
 }
 
 // Values
 
 // Errors
-pub suberror QueueAlreadyClosed derive(ToJson, @debug.Debug)
+#derive(@debug.Debug, @json.ToJson)
+pub suberror QueueAlreadyClosed
+pub fn QueueAlreadyClosed::output(Self, &Logger) -> Unit
+pub fn QueueAlreadyClosed::to_json(Self) -> @json.Json
+pub fn QueueAlreadyClosed::to_repr(Self) -> @debug.Repr
+pub fn QueueAlreadyClosed::to_string(Self) -> String
 pub impl Show for QueueAlreadyClosed
 
 // Types and methods
 pub(all) enum Kind {
   Unbounded
-  Blocking(Int)
-  DiscardOldest(Int)
-  DiscardLatest(Int)
+  Blocking(Int32)
+  DiscardOldest(Int32)
+  DiscardLatest(Int32)
 }
 
 pub struct Queue[X] {

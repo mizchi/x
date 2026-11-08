@@ -7,15 +7,15 @@ fn[T, U] JsPromise::cast(self : JsPromise[T]) -> @js_async.Promise[U] = "%identi
 
 ///|
 priv struct JsConnResult {
-  id : Int
+  id : Int32
 }
 
 ///|
 priv struct JsWsMessage {
-  kind : Int
+  kind : Int32
   text : String
   binary : Bytes
-  close_code : Int
+  close_code : Int32
   close_reason : String
 }
 
@@ -49,7 +49,7 @@ extern "js" fn js_ws_connect(url : String) -> JsPromise[JsConnResult] =
   #| }
 
 ///|
-extern "js" fn js_ws_recv(id : Int) -> JsPromise[JsWsMessage] =
+extern "js" fn js_ws_recv(id : Int32) -> JsPromise[JsWsMessage] =
   #| async (id) => {
   #|   const c = globalThis.__xws.conns.get(id);
   #|   if (!c) throw new Error('Connection not found');
@@ -59,7 +59,7 @@ extern "js" fn js_ws_recv(id : Int) -> JsPromise[JsWsMessage] =
   #| }
 
 ///|
-extern "js" fn js_ws_send_text(id : Int, text : String) -> JsPromise[Unit] =
+extern "js" fn js_ws_send_text(id : Int32, text : String) -> JsPromise[Unit] =
   #| async (id, text) => {
   #|   const c = globalThis.__xws?.conns?.get(id);
   #|   if (!c || c.closed || c.ws.readyState !== 1) throw new Error('Connection not open');
@@ -67,7 +67,7 @@ extern "js" fn js_ws_send_text(id : Int, text : String) -> JsPromise[Unit] =
   #| }
 
 ///|
-extern "js" fn js_ws_send_binary(id : Int, data : Bytes) -> JsPromise[Unit] =
+extern "js" fn js_ws_send_binary(id : Int32, data : Bytes) -> JsPromise[Unit] =
   #| async (id, data) => {
   #|   const c = globalThis.__xws?.conns?.get(id);
   #|   if (!c || c.closed || c.ws.readyState !== 1) throw new Error('Connection not open');
@@ -76,8 +76,8 @@ extern "js" fn js_ws_send_binary(id : Int, data : Bytes) -> JsPromise[Unit] =
 
 ///|
 extern "js" fn js_ws_close(
-  id : Int,
-  code : Int,
+  id : Int32,
+  code : Int32,
   reason : String,
 ) -> JsPromise[Unit] =
   #| async (id, code, reason) => {
@@ -89,7 +89,11 @@ extern "js" fn js_ws_close(
   #| }
 
 ///|
-extern "js" fn js_ws_force_close(id : Int, code : Int, reason : String) -> Unit =
+extern "js" fn js_ws_force_close(
+  id : Int32,
+  code : Int32,
+  reason : String,
+) -> Unit =
   #| (id, code, reason) => {
   #|   const s = globalThis.__xws;
   #|   const c = s?.conns?.get(id);
@@ -100,7 +104,7 @@ extern "js" fn js_ws_force_close(id : Int, code : Int, reason : String) -> Unit 
   #| }
 
 ///|
-extern "js" fn js_ws_ping(id : Int) -> JsPromise[Unit] =
+extern "js" fn js_ws_ping(id : Int32) -> JsPromise[Unit] =
   #| async (id) => {
   #|   const c = globalThis.__xws?.conns?.get(id);
   #|   if (!c || c.closed || c.ws.readyState !== 1) throw new Error('Connection not open');
@@ -111,7 +115,7 @@ extern "js" fn js_ws_ping(id : Int) -> JsPromise[Unit] =
 
 ///|
 pub struct Conn {
-  id : Int
+  id : Int32
 }
 
 ///|

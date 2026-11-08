@@ -1,7 +1,7 @@
 import {
   "mizchi/x/fs",
-  "moonbitlang/async",
-  "moonbitlang/async/js_async",
+  "moonbitlang/core/async",
+  "moonbitlang/core/async/js_async",
   "moonbitlang/core/cmp",
   "moonbitlang/core/encoding/utf8",
 }
@@ -9,6 +9,10 @@ import {
 warnings = "-0029-0009-0067"
 
 options(
+  "allow-experimental-packages": [
+    "moonbitlang/core/async",
+    "moonbitlang/core/async/js_async",
+  ],
   "native-stub": [ "raw_fd_native.c" ],
   targets: {
     "raw_fd_js.mbt": [ "js" ],

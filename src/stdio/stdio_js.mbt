@@ -1,11 +1,12 @@
 ///|
 pub struct Input {
-  buf : @io.ReaderBuffer
+  buf : @io.BinaryReaderController
 }
 
 ///|
 pub struct Output {
-  target : Int // 1 = stdout, 2 = stderr
+  priv write_controller : @io.BinaryWriterController
+  target : Int32 // 1 = stdout, 2 = stderr
 }
 
 ///|
@@ -14,20 +15,20 @@ fn ensure_fd_available(ok : Bool) -> Unit raise {
 }
 
 ///|
-pub fn Input::fd(self : Input) -> Int raise {
+pub fn Input::fd(self : Input) -> Int32 raise {
   ignore(self)
   ensure_fd_available(true)
   0
 }
 
 ///|
-pub fn Output::fd(self : Output) -> Int raise {
+pub fn Output::fd(self : Output) -> Int32 raise {
   ensure_fd_available(self.target == 1 || self.target == 2)
   self.target
 }
 
 ///|
-extern "js" fn js_stdin_read(max_len : Int) -> @js_async.Promise[Bytes] =
+extern "js" fn js_stdin_read(max_len : Int32) -> @js_async.Promise[Bytes] =
   #| async (maxLen) => {
   #|   const { stdin } = process;
   #|   return new Promise((resolve) => {
@@ -61,10 +62,10 @@ extern "js" fn js_stdin_read(max_len : Int) -> @js_async.Promise[Bytes] =
 
 ///|
 extern "js" fn js_write(
-  target : Int,
+  target : Int32,
   data : Bytes,
-  offset : Int,
-  len : Int,
+  offset : Int32,
+  len : Int32,
 ) -> Unit =
   #| (target, data, offset, len) => {
   #|   const slice = data.subarray(offset, offset + len);
@@ -72,12 +73,17 @@ extern "js" fn js_write(
   #| }
 
 ///|
-pub impl @io.Reader for Input with fn _get_internal_buffer(self) {
+impl @io.BinaryReaderImpl for Input with fn get_controller(self) {
   self.buf
 }
 
 ///|
-pub impl @io.Reader for Input with fn _direct_read(self, buf, offset~, max_len~) {
+impl @io.BinaryReaderImpl for Input with fn raw_read_impl(
+  self,
+  buf,
+  offset~,
+  max_len~,
+) {
   ignore(self)
   let controller = @js_async.AbortController::new()
   let promise = js_stdin_read(max_len)
@@ -102,7 +108,12 @@ pub impl @process.ProcessInput for Input with fn _process_input_js(self) {
 }
 
 ///|
-pub impl @io.Writer for Output with fn write_once(self, buf, offset~, len~) {
+impl @io.BinaryWriterImpl for Output with fn raw_write_impl(
+  self,
+  buf,
+  offset~,
+  len~,
+) {
   js_write(self.target, buf, offset, len)
   len
 }
@@ -113,10 +124,49 @@ pub impl @process.ProcessOutput for Output with fn _process_output_js(self) {
 }
 
 ///|
-pub let stdin : Input = Input::{ buf: @io.ReaderBuffer::new(), }
+pub let stdin : Input = Input::{ buf: @io.BinaryReaderController(), }
 
 ///|
-pub let stdout : Output = Output::{ target: 1, }
+pub let stdout : Output = Output::{
+  write_controller: @io.BinaryWriterController(),
+  target: 1,
+}
 
 ///|
-pub let stderr : Output = Output::{ target: 2, }
+pub let stderr : Output = Output::{
+  write_controller: @io.BinaryWriterController(),
+  target: 2,
+}
+
+///|
+pub impl @io.BinaryReader for Input
+
+///|
+pub extend Input with @io.BinaryReader::{
+  read_into,
+  read_at_least,
+  peek,
+  peek_at_least,
+  read_exactly,
+  drop_exactly,
+  peek_exactly,
+  drop_all,
+  peek_until,
+}
+
+///|
+pub impl @io.BinaryWriter for Output
+
+///|
+pub extend Output with @io.BinaryWriter::{write_reader}
+
+///|
+impl @io.BinaryWriterImpl for Output with fn get_controller(self) {
+  self.write_controller
+}
+
+///|
+pub extend Input with @process.ProcessInput::{_process_input_js}
+
+///|
+pub extend Output with @process.ProcessOutput::{_process_output_js}

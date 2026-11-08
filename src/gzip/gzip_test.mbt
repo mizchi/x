@@ -9,9 +9,9 @@ async test "encode decode roundtrip" {
         mtime=123456789U,
         operating_system=b'\x03',
       )
-      encoder.write("hello ")
-      encoder.write("gzip ")
-      encoder.write("world")
+      encoder.write(b"hello ")
+      encoder.write(b"gzip ")
+      encoder.write(b"world")
       encoder.end()
     })
 
@@ -29,17 +29,17 @@ async test "encoder flush emits chunks" {
     root.spawn_bg(() => {
       defer compressed_w.close()
       let encoder = @gzip.Encoder(compressed_w)
-      encoder.write("ab")
+      encoder.write(b"ab")
       encoder.flush()
       @async.sleep(60)
-      encoder.write("cd")
+      encoder.write(b"cd")
       encoder.flush()
       @async.sleep(60)
       encoder.end()
     })
     root.spawn_bg(() => {
       defer compressed_r.close()
-      while compressed_r.read_some() is Some(chunk) {
+      while compressed_r.read() is Some(chunk) {
         log.push("chunk \{chunk.length()}")
       }
     })

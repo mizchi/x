@@ -1,33 +1,38 @@
 ///|
 pub struct Decoder[R] {
+  priv read_controller : @io.BinaryReaderController
   priv inner : @async_gzip.Decoder[R]
 }
 
 ///|
 #alias(new, deprecated)
-pub fn[R : @io.Reader] Decoder::Decoder(inner : R) -> Decoder[R] {
-  { inner: @async_gzip.Decoder(inner), }
+pub fn[R] Decoder::Decoder(inner : R) -> Decoder[R] {
+  Decoder::{
+    read_controller: @io.BinaryReaderController(),
+    inner: @async_gzip.Decoder(inner),
+  }
 }
 
 ///|
-pub impl[R : @io.Reader] @io.Reader for Decoder[R] with fn _get_internal_buffer(
+impl[R : @io.BinaryReader] @io.BinaryReaderImpl for Decoder[R] with fn get_controller(
   self,
 ) {
-  @io.Reader::_get_internal_buffer(self.inner)
+  self.read_controller
 }
 
 ///|
-pub impl[R : @io.Reader] @io.Reader for Decoder[R] with fn _direct_read(
+impl[R : @io.BinaryReader] @io.BinaryReaderImpl for Decoder[R] with fn raw_read_impl(
   self,
   dst,
   offset~,
   max_len~,
 ) {
-  @io.Reader::_direct_read(self.inner, dst, offset~, max_len~)
+  self.inner.read_into(dst, offset~, max_len~)
 }
 
 ///|
 pub struct Encoder[W] {
+  priv write_controller : @io.BinaryWriterController
   priv inner : @async_gzip.Encoder[W]
 }
 
@@ -35,31 +40,62 @@ pub struct Encoder[W] {
 #alias(new, deprecated)
 pub fn[W] Encoder::Encoder(
   inner : W,
-  mtime? : UInt = 0U,
-  extra_flags? : Byte = b'\x00',
-  operating_system? : Byte = b'\xff',
+  mtime~ : UInt32 = 0U,
+  extra_flags~ : Byte = b'\x00',
+  operating_system~ : Byte = b'\xff',
 ) -> Encoder[W] {
   {
+    write_controller: @io.BinaryWriterController(),
     inner: @async_gzip.Encoder(inner, mtime~, extra_flags~, operating_system~),
   }
 }
 
 ///|
-pub async fn[W : @io.Writer] Encoder::flush(self : Encoder[W]) -> Unit {
+pub async fn[W : @io.BinaryWriter] Encoder::flush(self : Encoder[W]) -> Unit {
   self.inner.flush()
 }
 
 ///|
-pub async fn[W : @io.Writer] Encoder::end(self : Encoder[W]) -> Unit {
+pub async fn[W : @io.BinaryWriter] Encoder::end(self : Encoder[W]) -> Unit {
   self.inner.end()
 }
 
 ///|
-pub impl[W : @io.Writer] @io.Writer for Encoder[W] with fn write_once(
+impl[W : @io.BinaryWriter] @io.BinaryWriterImpl for Encoder[W] with fn raw_write_impl(
   self,
   buf,
   offset~,
   len~,
 ) {
-  @io.Writer::write_once(self.inner, buf, offset~, len~)
+  self.inner.write(buf[offset:offset + len])
+  len
+}
+
+///|
+pub impl[R : @io.BinaryReader] @io.BinaryReader for Decoder[R]
+
+///|
+pub extend Decoder with @io.BinaryReader::{
+  read_into,
+  read_at_least,
+  peek,
+  peek_at_least,
+  read_exactly,
+  drop_exactly,
+  peek_exactly,
+  drop_all,
+  peek_until,
+}
+
+///|
+pub impl[W : @io.BinaryWriter] @io.BinaryWriter for Encoder[W]
+
+///|
+pub extend Encoder with @io.BinaryWriter::{write_reader}
+
+///|
+impl[W : @io.BinaryWriter] @io.BinaryWriterImpl for Encoder[W] with fn get_controller(
+  self,
+) {
+  self.write_controller
 }

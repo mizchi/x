@@ -2,17 +2,17 @@
 pub struct Tls {}
 
 ///|
-pub fn rand_bytes(_num : Int) -> Bytes raise {
+pub fn rand_bytes(_num : Int32) -> Bytes raise {
   raise TlsError("tls rand_bytes is not supported on this target")
 }
 
 ///|
 #label_migration(verify, fill=false, msg="use `trust` instead")
-pub async fn[Inner : @io.Reader + @io.Writer] Tls::client(
+pub async fn[Inner : @io.BinaryReader + @io.BinaryWriter] Tls::client(
   _inner : Inner,
-  verify? : Bool = true,
+  verify~ : Bool = true,
   host? : String,
-  sni? : Bool = true,
+  sni~ : Bool = true,
   trust? : TrustedRoot,
 ) -> Tls {
   ignore((verify, host, sni, trust))
@@ -21,12 +21,12 @@ pub async fn[Inner : @io.Reader + @io.Writer] Tls::client(
 
 ///|
 #label_migration(verify, fill=false, msg="use `trust` instead")
-pub async fn[R : @io.Reader, W : @io.Writer] Tls::client_from_pair(
+pub async fn[R : @io.BinaryReader, W : @io.BinaryWriter] Tls::client_from_pair(
   _reader : R,
   _writer : W,
-  verify? : Bool = true,
+  verify~ : Bool = true,
   host? : String,
-  sni? : Bool = true,
+  sni~ : Bool = true,
   trust? : TrustedRoot,
 ) -> Tls {
   ignore((verify, host, sni, trust))
@@ -34,7 +34,7 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::client_from_pair(
 }
 
 ///|
-pub async fn[Inner : @io.Reader + @io.Writer] Tls::server(
+pub async fn[Inner : @io.BinaryReader + @io.BinaryWriter] Tls::server(
   _inner : Inner,
   private_key_file~ : String,
   private_key_type~ : X509FileType,
@@ -48,7 +48,7 @@ pub async fn[Inner : @io.Reader + @io.Writer] Tls::server(
 }
 
 ///|
-pub async fn[R : @io.Reader, W : @io.Writer] Tls::server_from_pair(
+pub async fn[R : @io.BinaryReader, W : @io.BinaryWriter] Tls::server_from_pair(
   _reader : R,
   _writer : W,
   private_key_file~ : String,
@@ -88,18 +88,56 @@ pub fn Tls::server_endpoint_channel_binding(_self : Tls) -> Bytes raise {
 }
 
 ///|
-pub impl @io.Reader for Tls with fn _get_internal_buffer(_self) {
-  @io.ReaderBuffer::new()
+impl @io.BinaryReaderImpl for Tls with fn get_controller(_self) {
+  @io.BinaryReaderController()
 }
 
 ///|
-pub impl @io.Reader for Tls with fn _direct_read(_self, _buf, offset~, max_len~) {
+impl @io.BinaryReaderImpl for Tls with fn raw_read_impl(
+  _self,
+  _buf,
+  offset~,
+  max_len~,
+) {
   ignore((offset, max_len))
   abort("tls is not supported on this target")
 }
 
 ///|
-pub impl @io.Writer for Tls with fn write_once(_self, _buf, offset~, len~) {
+impl @io.BinaryWriterImpl for Tls with fn raw_write_impl(
+  _self,
+  _buf,
+  offset~,
+  len~,
+) {
   ignore((offset, len))
   abort("tls is not supported on this target")
+}
+
+///|
+pub impl @io.BinaryReader for Tls
+
+///|
+pub extend Tls with @io.BinaryReader::{
+  read_into,
+  read_at_least,
+  peek,
+  peek_at_least,
+  read_exactly,
+  drop_exactly,
+  peek_exactly,
+  drop_all,
+  peek_until,
+}
+
+///|
+pub impl @io.BinaryWriter for Tls
+
+///|
+pub extend Tls with @io.BinaryWriter::{write_reader}
+
+///|
+impl @io.BinaryWriterImpl for Tls with fn get_controller(self) {
+  ignore(self)
+  abort("writer not supported on this target")
 }

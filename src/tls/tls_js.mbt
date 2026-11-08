@@ -14,19 +14,17 @@ priv struct JsTlsStatus {
 }
 
 ///|
-const TLS_CHUNK_SIZE = 16384
-
-///|
 pub struct Tls {
-  priv id : Int
-  priv reader : &@io.Reader
-  priv writer : &@io.Writer
-  priv read_buf : @io.ReaderBuffer
+  priv write_controller : @io.BinaryWriterController
+  priv id : Int32
+  priv reader : &@io.BinaryReader
+  priv writer : &@io.BinaryWriter
+  priv read_buf : @io.BinaryReaderController
   priv mut closed : Bool
 }
 
 ///|
-extern "js" fn js_tls_rand_bytes(num : Int) -> Bytes =
+extern "js" fn js_tls_rand_bytes(num : Int32) -> Bytes =
   #| (num) => {
   #|   const crypto = require('node:crypto');
   #|   return new Uint8Array(crypto.randomBytes(Math.max(0, num | 0)));
@@ -38,7 +36,7 @@ extern "js" fn js_tls_create_client(
   servername : String,
   reject_unauthorized : Bool,
   ca_file : String,
-) -> Int =
+) -> Int32 =
   #| (host, servername, rejectUnauthorized, caFile) => {
   #|   const fs = require('node:fs');
   #|   const tls = require('node:tls');
@@ -53,10 +51,10 @@ extern "js" fn js_tls_create_client(
 ///|
 extern "js" fn js_tls_create_server(
   private_key_file : String,
-  private_key_type : Int,
+  private_key_type : Int32,
   certificate_file : String,
-  certificate_type : Int,
-) -> Int =
+  certificate_type : Int32,
+) -> Int32 =
   #| (privateKeyFile, privateKeyType, certificateFile, certificateType) => {
   #|   if (privateKeyType !== 1 || certificateType !== 1) {
   #|     throw new Error('only PEM key/certificate files are supported on js target');
@@ -162,7 +160,7 @@ extern "js" fn js_tls_init() -> Unit =
   #| }
 
 ///|
-extern "js" fn js_tls_status(id : Int) -> JsTlsStatus =
+extern "js" fn js_tls_status(id : Int32) -> JsTlsStatus =
   #| (id) => {
   #|   const handle = globalThis.__xtls?.handles?.get(id);
   #|   if (!handle) return { secure: false, ended: true, error: 'tls handle not found' };
@@ -170,15 +168,15 @@ extern "js" fn js_tls_status(id : Int) -> JsTlsStatus =
   #| }
 
 ///|
-extern "js" fn js_tls_take_encrypted(id : Int) -> JsTlsChunk =
+extern "js" fn js_tls_take_encrypted(id : Int32) -> JsTlsChunk =
   #| (id) => globalThis.__xtlsTake(id, 'encryptedOut')
 
 ///|
-extern "js" fn js_tls_take_plain(id : Int, max_len : Int) -> JsTlsChunk =
+extern "js" fn js_tls_take_plain(id : Int32, max_len : Int32) -> JsTlsChunk =
   #| (id, maxLen) => globalThis.__xtlsTake(id, 'plainIn', maxLen)
 
 ///|
-extern "js" fn js_tls_feed_encrypted(id : Int, data : Bytes) -> String =
+extern "js" fn js_tls_feed_encrypted(id : Int32, data : Bytes) -> String =
   #| (id, data) => {
   #|   try {
   #|     const handle = globalThis.__xtls?.handles?.get(id);
@@ -191,7 +189,7 @@ extern "js" fn js_tls_feed_encrypted(id : Int, data : Bytes) -> String =
   #| }
 
 ///|
-extern "js" fn js_tls_end_input(id : Int) -> String =
+extern "js" fn js_tls_end_input(id : Int32) -> String =
   #| (id) => {
   #|   try {
   #|     const handle = globalThis.__xtls?.handles?.get(id);
@@ -205,10 +203,10 @@ extern "js" fn js_tls_end_input(id : Int) -> String =
 
 ///|
 extern "js" fn js_tls_write_plain(
-  id : Int,
+  id : Int32,
   data : Bytes,
-  offset : Int,
-  len : Int,
+  offset : Int32,
+  len : Int32,
 ) -> String =
   #| (id, data, offset, len) => {
   #|   try {
@@ -224,7 +222,7 @@ extern "js" fn js_tls_write_plain(
   #| }
 
 ///|
-extern "js" fn js_tls_shutdown(id : Int) -> String =
+extern "js" fn js_tls_shutdown(id : Int32) -> String =
   #| (id) => {
   #|   try {
   #|     const handle = globalThis.__xtls?.handles?.get(id);
@@ -237,7 +235,7 @@ extern "js" fn js_tls_shutdown(id : Int) -> String =
   #| }
 
 ///|
-extern "js" fn js_tls_destroy(id : Int) -> Unit =
+extern "js" fn js_tls_destroy(id : Int32) -> Unit =
   #| (id) => {
   #|   const state = globalThis.__xtls;
   #|   const handle = state?.handles?.get(id);
@@ -249,7 +247,7 @@ extern "js" fn js_tls_destroy(id : Int) -> Unit =
   #| }
 
 ///|
-extern "js" fn js_tls_peer_certificate(id : Int) -> JsTlsChunk =
+extern "js" fn js_tls_peer_certificate(id : Int32) -> JsTlsChunk =
   #| (id) => {
   #|   const handle = globalThis.__xtls?.handles?.get(id);
   #|   if (!handle) return { ok: false, data: new Uint8Array(0), error: 'tls handle not found', closed: true };
@@ -263,7 +261,7 @@ extern "js" fn js_tls_peer_certificate(id : Int) -> JsTlsChunk =
   #| }
 
 ///|
-extern "js" fn js_tls_channel_binding(id : Int, which : String) -> JsTlsChunk =
+extern "js" fn js_tls_channel_binding(id : Int32, which : String) -> JsTlsChunk =
   #| (id, which) => {
   #|   const data = globalThis.__xtlsCryptoHash(id, which);
   #|   if (!data) return { ok: false, data: new Uint8Array(0), error: 'channel binding is not available', closed: false };
@@ -278,7 +276,7 @@ fn check_js_error(error : String) -> Unit raise {
 }
 
 ///|
-fn file_type_to_int(t : X509FileType) -> Int {
+fn file_type_to_int(t : X509FileType) -> Int32 {
   match t {
     PEM => 1
     ANS1 => 2
@@ -305,7 +303,7 @@ fn sni_to_js(host? : String, sni : Bool) -> String {
 }
 
 ///|
-pub fn rand_bytes(num : Int) -> Bytes raise {
+pub fn rand_bytes(num : Int32) -> Bytes raise {
   if num < 0 {
     raise TlsError("rand_bytes length must be non-negative")
   }
@@ -337,7 +335,7 @@ async fn Tls::flush_encrypted(self : Tls) -> Unit {
 
 ///|
 async fn Tls::read_underlying_once(self : Tls) -> Bool {
-  let data = self.reader.read_some(max_len=TLS_CHUNK_SIZE) catch {
+  let data = self.reader.read() catch {
     @io.PipeClosed => raise ConnectionClosed
     err => raise TlsError(err.to_string())
   }
@@ -385,11 +383,11 @@ async fn Tls::drive_handshake(self : Tls) -> Unit {
 
 ///|
 #label_migration(verify, fill=false, msg="use `trust` instead")
-pub async fn[Inner : @io.Reader + @io.Writer] Tls::client(
+pub async fn[Inner : @io.BinaryReader + @io.BinaryWriter] Tls::client(
   inner : Inner,
-  verify? : Bool = true,
+  verify~ : Bool = true,
   host? : String,
-  sni? : Bool = true,
+  sni~ : Bool = true,
   trust? : TrustedRoot,
 ) -> Tls {
   let trust = match trust {
@@ -401,12 +399,12 @@ pub async fn[Inner : @io.Reader + @io.Writer] Tls::client(
 
 ///|
 #label_migration(verify, fill=false, msg="use `trust` instead")
-pub async fn[R : @io.Reader, W : @io.Writer] Tls::client_from_pair(
+pub async fn[R : @io.BinaryReader, W : @io.BinaryWriter] Tls::client_from_pair(
   reader : R,
   writer : W,
-  verify? : Bool = true,
+  verify~ : Bool = true,
   host? : String,
-  sni? : Bool = true,
+  sni~ : Bool = true,
   trust? : TrustedRoot,
 ) -> Tls {
   js_tls_init()
@@ -418,10 +416,11 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::client_from_pair(
     ca_file,
   )
   let tls = Tls::{
+    write_controller: @io.BinaryWriterController(),
     id,
     reader,
     writer,
-    read_buf: @io.ReaderBuffer::new(),
+    read_buf: @io.BinaryReaderController(),
     closed: false,
   }
   errdefer tls.close()
@@ -430,7 +429,7 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::client_from_pair(
 }
 
 ///|
-pub async fn[Inner : @io.Reader + @io.Writer] Tls::server(
+pub async fn[Inner : @io.BinaryReader + @io.BinaryWriter] Tls::server(
   inner : Inner,
   private_key_file~ : String,
   private_key_type~ : X509FileType,
@@ -448,7 +447,7 @@ pub async fn[Inner : @io.Reader + @io.Writer] Tls::server(
 }
 
 ///|
-pub async fn[R : @io.Reader, W : @io.Writer] Tls::server_from_pair(
+pub async fn[R : @io.BinaryReader, W : @io.BinaryWriter] Tls::server_from_pair(
   reader : R,
   writer : W,
   private_key_file~ : String,
@@ -464,10 +463,11 @@ pub async fn[R : @io.Reader, W : @io.Writer] Tls::server_from_pair(
     file_type_to_int(certificate_type),
   )
   let tls = Tls::{
+    write_controller: @io.BinaryWriterController(),
     id,
     reader,
     writer,
-    read_buf: @io.ReaderBuffer::new(),
+    read_buf: @io.BinaryReaderController(),
     closed: false,
   }
   errdefer tls.close()
@@ -518,12 +518,17 @@ pub fn Tls::server_endpoint_channel_binding(self : Tls) -> Bytes raise {
 }
 
 ///|
-pub impl @io.Reader for Tls with fn _get_internal_buffer(self) {
+impl @io.BinaryReaderImpl for Tls with fn get_controller(self) {
   self.read_buf
 }
 
 ///|
-pub impl @io.Reader for Tls with fn _direct_read(self, buf, offset~, max_len~) {
+impl @io.BinaryReaderImpl for Tls with fn raw_read_impl(
+  self,
+  buf,
+  offset~,
+  max_len~,
+) {
   if self.closed || max_len <= 0 {
     return 0
   }
@@ -558,7 +563,12 @@ pub impl @io.Reader for Tls with fn _direct_read(self, buf, offset~, max_len~) {
 }
 
 ///|
-pub impl @io.Writer for Tls with fn write_once(self, buf, offset~, len~) {
+impl @io.BinaryWriterImpl for Tls with fn raw_write_impl(
+  self,
+  buf,
+  offset~,
+  len~,
+) {
   if self.closed {
     raise ConnectionClosed
   }
@@ -571,4 +581,31 @@ pub impl @io.Writer for Tls with fn write_once(self, buf, offset~, len~) {
   check_js_error(err)
   self.flush_encrypted()
   n
+}
+
+///|
+pub impl @io.BinaryReader for Tls
+
+///|
+pub extend Tls with @io.BinaryReader::{
+  read_into,
+  read_at_least,
+  peek,
+  peek_at_least,
+  read_exactly,
+  drop_exactly,
+  peek_exactly,
+  drop_all,
+  peek_until,
+}
+
+///|
+pub impl @io.BinaryWriter for Tls
+
+///|
+pub extend Tls with @io.BinaryWriter::{write_reader}
+
+///|
+impl @io.BinaryWriterImpl for Tls with fn get_controller(self) {
+  self.write_controller
 }

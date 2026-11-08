@@ -2,9 +2,9 @@
 package "mizchi/fswatch"
 
 // Values
-pub async fn start(Array[String], interval_ms? : Int, exclude? : (String) -> Bool) -> Watcher
+pub async fn start(Array[String], interval_ms? : Int32, exclude? : (String) -> Bool) -> Watcher
 
-pub async fn start_polling(Array[String], interval_ms? : Int, exclude? : (String) -> Bool) -> Watcher
+pub async fn start_polling(Array[String], interval_ms? : Int32, exclude? : (String) -> Bool) -> Watcher
 
 // Errors
 
@@ -13,13 +13,20 @@ pub(all) struct Event {
   path : String
   kind : EventKind
 }
+pub fn Event::output(Self, &Logger) -> Unit
+pub fn Event::to_string(Self) -> String
 pub impl Show for Event
 
+#derive(Eq)
 pub(all) enum EventKind {
   Created
   Modified
   Removed
-} derive(Eq)
+}
+pub fn EventKind::equal(Self, Self) -> Bool
+pub fn EventKind::not_equal(Self, Self) -> Bool
+pub fn EventKind::output(Self, &Logger) -> Unit
+pub fn EventKind::to_string(Self) -> String
 pub impl Show for EventKind
 
 pub struct Watcher {
@@ -31,4 +38,3 @@ pub async fn Watcher::next(Self) -> Array[Event]
 // Type aliases
 
 // Traits
-

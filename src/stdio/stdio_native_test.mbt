@@ -1,16 +1,16 @@
 ///|
-async test "write stdout" {
-  stdout.write("stdio test: stdout\n")
+async test "write @stdio.stdout" {
+  @stdio.stdout.write(b"stdio test: stdout\n")
 }
 
 ///|
-async test "write stderr" {
-  stderr.write("stdio test: stderr\n")
+async test "write @stdio.stderr" {
+  @stdio.stderr.write(b"stdio test: stderr\n")
 }
 
 ///|
 test "fd values" {
-  inspect(stdin.fd(), content="0")
-  inspect(stdout.fd(), content="1")
-  inspect(stderr.fd(), content="2")
+  inspect(@stdio.stdin.fd(), content="0")
+  inspect(@stdio.stdout.fd(), content="1")
+  inspect(@stdio.stderr.fd(), content="2")
 }

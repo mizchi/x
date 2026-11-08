@@ -5,31 +5,41 @@ pub struct Input {}
 pub struct Output {}
 
 ///|
-pub fn Input::fd(self : Input) -> Int raise {
+pub fn Input::fd(self : Input) -> Int32 raise {
   ignore(self)
   raise Failure::Failure("stdio not supported on wasm-gc target")
 }
 
 ///|
-pub fn Output::fd(self : Output) -> Int raise {
+pub fn Output::fd(self : Output) -> Int32 raise {
   ignore(self)
   raise Failure::Failure("stdio not supported on wasm-gc target")
 }
 
 ///|
-pub impl @io.Reader for Input with fn _get_internal_buffer(self) {
+impl @io.BinaryReaderImpl for Input with fn get_controller(self) {
   ignore(self)
   abort("stdio not supported on wasm-gc target")
 }
 
 ///|
-pub impl @io.Reader for Input with fn _direct_read(self, buf, offset~, max_len~) {
+impl @io.BinaryReaderImpl for Input with fn raw_read_impl(
+  self,
+  buf,
+  offset~,
+  max_len~,
+) {
   ignore((self, buf, offset, max_len))
   abort("stdio not supported on wasm-gc target")
 }
 
 ///|
-pub impl @io.Writer for Output with fn write_once(self, buf, offset~, len~) {
+impl @io.BinaryWriterImpl for Output with fn raw_write_impl(
+  self,
+  buf,
+  offset~,
+  len~,
+) {
   ignore((self, buf, offset, len))
   abort("stdio not supported on wasm-gc target")
 }
@@ -42,3 +52,31 @@ pub let stdout : Output = Output::{ }
 
 ///|
 pub let stderr : Output = Output::{ }
+
+///|
+pub impl @io.BinaryReader for Input
+
+///|
+pub extend Input with @io.BinaryReader::{
+  read_into,
+  read_at_least,
+  peek,
+  peek_at_least,
+  read_exactly,
+  drop_exactly,
+  peek_exactly,
+  drop_all,
+  peek_until,
+}
+
+///|
+pub impl @io.BinaryWriter for Output
+
+///|
+pub extend Output with @io.BinaryWriter::{write_reader}
+
+///|
+impl @io.BinaryWriterImpl for Output with fn get_controller(self) {
+  ignore(self)
+  abort("writer not supported on this target")
+}

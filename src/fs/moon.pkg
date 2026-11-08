@@ -1,14 +1,21 @@
 import {
+  "mizchi/x/data",
   "moonbitlang/core/debug",
-  "moonbitlang/async",
-  "moonbitlang/async/fs" @async_fs,
-  "moonbitlang/async/io",
-  "moonbitlang/async/js_async",
+  "moonbitlang/core/async",
+  "moonbitlang/core/async/fs" @async_fs,
+  "moonbitlang/core/async/io",
+  "moonbitlang/core/async/js_async",
 }
 
 warnings = "-0029-0014-0067"
 
 options(
+  "allow-experimental-packages": [
+    "moonbitlang/core/async",
+    "moonbitlang/core/async/fs",
+    "moonbitlang/core/async/io",
+    "moonbitlang/core/async/js_async",
+  ],
   targets: {
     "fs_js.mbt": [ "js" ],
     "fs_fd_native.mbt": [ "native" ],

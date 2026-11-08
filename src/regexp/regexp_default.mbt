@@ -53,13 +53,13 @@ pub fn Regexp::match_(self : Regexp, input : StringView) -> MatchResult? {
 
 ///|
 /// Returns the index of the capture group with the given name, if any.
-pub fn Regexp::group_by_name(self : Regexp, name : String) -> Int? {
+pub fn Regexp::group_by_name(self : Regexp, name : String) -> Int32? {
   self.inner.group_by_name(name)
 }
 
 ///|
 /// Returns the number of capture groups, including the whole match at index 0.
-pub fn Regexp::group_count(self : Regexp) -> Int {
+pub fn Regexp::group_count(self : Regexp) -> Int32 {
   self.inner.group_count()
 }
 
@@ -84,7 +84,7 @@ pub fn MatchResult::matched(self : MatchResult) -> Bool {
 ///|
 /// Returns the text of capture group `index` (0 is the whole match), or `None`
 /// when the index is out of range or the group did not participate.
-pub fn MatchResult::get(self : MatchResult, index : Int) -> StringView? {
+pub fn MatchResult::get(self : MatchResult, index : Int32) -> StringView? {
   self.inner.get(index)
 }
 

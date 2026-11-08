@@ -6,18 +6,18 @@
 /// async spawn helper's posix_spawn and this call is the reason the
 /// `new_process_group` flag on `spawn` is documented as best-effort —
 /// the kernel-level fix is `POSIX_SPAWN_SETPGROUP`, which needs
-/// upstream moonbitlang/async to thread through.
-extern "C" fn process_setpgid_self_ffi(pid : Int) -> Int = "mizchi_x_process_setpgid_self"
+/// upstream moonbitlang/core/async to thread through.
+extern "C" fn process_setpgid_self_ffi(pid : Int32) -> Int32 = "mizchi_x_process_setpgid_self"
 
 ///|
 /// `kill(2)` raw wrapper. Returns 0 on success, an errno otherwise.
-extern "C" fn process_kill_ffi(pid : Int, signal : Int) -> Int = "mizchi_x_process_kill"
+extern "C" fn process_kill_ffi(pid : Int32, signal : Int32) -> Int32 = "mizchi_x_process_kill"
 
 ///|
 /// Send a signal to `pid`. Mirrors `kill(2)` — pass a negative `pid`
 /// to target the process group whose pgid equals `-pid`. Silently
 /// drops the errno; use the raw FFI if you need it.
-pub fn kill(pid : Int, signal : @signal.Signal) -> Unit {
+pub fn kill(pid : Int32, signal : @signal.Signal) -> Unit {
   ignore(process_kill_ffi(pid, signal.to_int()))
 }
 
@@ -34,19 +34,19 @@ pub fn Process::kill_tree(self : Process, signal : @signal.Signal) -> Unit {
 }
 
 ///|
-pub async fn[X] spawn(
-  group : @async.TaskGroup[X],
+pub async fn spawn(
+  group : @async.TaskGroup,
   cmd : StringView,
   args : ArrayView[String],
-  extra_env? : Map[String, String] = {},
-  inherit_env? : Bool = true,
+  extra_env~ : Map[String, String] = {},
+  inherit_env~ : Bool = true,
   stdin? : &ProcessInput,
   stdout? : &ProcessOutput,
   stderr? : &ProcessOutput,
   cwd? : StringView,
-  cancel_handler? : CancellationHandler = graceful_cancel(timeout=5000),
+  cancel_handler~ : CancellationHandler = graceful_cancel(timeout=5000),
   no_wait? : Bool,
-  new_process_group? : Bool = false,
+  new_process_group~ : Bool = false,
 ) -> Process {
   let process = spawn_internal(
     group,

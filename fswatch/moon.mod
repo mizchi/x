@@ -1,11 +1,10 @@
 name = "mizchi/fswatch"
 
-version = "0.2.1"
+version = "0.3.0"
 
 import {
-  "mizchi/x@0.4.0",
-  "moonbitlang/async@0.20.0",
-  "moonbitlang/x@0.4.46",
+  "mizchi/x@0.7.0",
+  "moonbitlang/x@0.5.7",
 }
 
 readme = "README.md"

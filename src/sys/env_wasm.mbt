@@ -24,9 +24,9 @@ pub fn unset_env_var(name : String) -> Unit {
 }
 
 ///|
-fn wasi_proc_exit(code : Int) = "wasi_snapshot_preview1" "proc_exit"
+fn wasi_proc_exit(code : Int32) = "wasi_snapshot_preview1" "proc_exit"
 
 ///|
-pub fn exit(code : Int) -> Unit {
+pub fn exit(code : Int32) -> Unit {
   wasi_proc_exit(code)
 }

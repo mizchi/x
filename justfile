@@ -25,7 +25,7 @@ test:
 # Prove that JS packages unrelated to the SIMD facades work without jsimd.
 test-js-without-jsimd:
     bash scripts/test-js-without-jsimd.sh
-    moon test --target js src/aqueue src/cond_var src/crypto src/fs src/gzip src/http src/httpbench src/json src/pipe src/process src/raw_fd src/regexp src/semaphore src/signal src/socket src/stdio src/sys src/tls src/websocket
+    moon test --target js src/data src/aqueue src/cond_var src/crypto src/fs src/gzip src/http src/httpbench src/json src/pipe src/process src/raw_fd src/regexp src/semaphore src/signal src/socket src/stdio src/sys src/tls src/websocket
 
 # Update snapshot tests
 test-update:
@@ -49,7 +49,7 @@ release-check-all: install
     just target=wasm check
     just target=wasm-gc check
     just target=js test
-    moon test --target wasm src/aqueue src/array_view src/bytes src/bytes_view src/cond_var src/crypto src/gzip src/http src/json src/semaphore src/signal src/socket src/string_view src/sys src/websocket
+    moon test --target wasm src/data src/aqueue src/array_view src/bytes src/bytes_view src/cond_var src/crypto src/gzip src/http src/json src/semaphore src/signal src/socket src/string_view src/sys src/websocket
     just target=wasm-gc test
 
 # Check upstream test coverage gap
@@ -67,8 +67,8 @@ bench-http port="18080" vus="128" duration="20s" body_size="16384":
 # Profile a JS test with Node CPU profiler and convert it to pprof.
 pprof-js-test package="http" suite="blackbox" file="http_js_only_test.mbt" start="6" end="7" out="profiles/js-http":
     mkdir -p {{out}}
-    moon test --target js --build-only --package mizchi/x/{{package}}
-    node --cpu-prof --cpu-prof-dir={{out}} --cpu-prof-name={{package}}-{{suite}}.cpuprofile _build/js/debug/test/{{package}}/{{package}}.{{suite}}_test.js '{"file_and_index":[["{{file}}",[{"start":{{start}},"end":{{end}}}]]]}'
+    moon test --target js --build-only src/{{package}}
+    node --cpu-prof --cpu-prof-dir={{out}} --cpu-prof-name={{package}}-{{suite}}.cpuprofile _build/js/debug/test/mizchi/x/{{package}}/{{package}}.{{suite}}_test.js '{"package":"mizchi/x/{{package}}","file_and_index":[["{{file}}",[{"start":{{start}},"end":{{end}}}]]]}'
     moon-pprof cpuprofile2pprof {{out}}/{{package}}-{{suite}}.cpuprofile {{out}}/{{package}}-{{suite}}.pb.gz
     moon-pprof summary {{out}}/{{package}}-{{suite}}.pb.gz
 
@@ -81,5 +81,5 @@ pprof-wasm wasm out="profiles/wasm" iterations="1":
 # Build a wasm/wasm-gc test artifact and profile it with moon-pprof.
 pprof-wasm-test package="json" backend="wasm-gc" suite="blackbox" iterations="1" out="profiles/wasm-test":
     mkdir -p {{out}}
-    moon test --target {{backend}} --build-only --package mizchi/x/{{package}}
-    just pprof-wasm _build/{{backend}}/debug/test/{{package}}/{{package}}.{{suite}}_test.wasm {{out}} {{iterations}}
+    moon test --target {{backend}} --build-only src/{{package}}
+    just pprof-wasm _build/{{backend}}/debug/test/mizchi/x/{{package}}/{{package}}.{{suite}}_test.wasm {{out}} {{iterations}}

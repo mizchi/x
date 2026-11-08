@@ -1,9 +1,9 @@
 ///|
-extern "js" fn js_now_ms() -> Int =
+extern "js" fn js_now_ms() -> Int32 =
   #| () => Date.now() | 0
 
 ///|
-extern "js" fn js_probe_server_start() -> @js_async.Promise[Int] =
+extern "js" fn js_probe_server_start() -> @js_async.Promise[Int32] =
   #| async () => {
   #|   const http = await import('node:http');
   #|   if (!globalThis.__xhttpClientProbe) {
@@ -66,7 +66,7 @@ extern "js" fn js_probe_server_stop() -> @js_async.Promise[Unit] =
   #| }
 
 ///|
-extern "js" fn js_probe_server_first_to_end_ms() -> Int =
+extern "js" fn js_probe_server_first_to_end_ms() -> Int32 =
   #| () => {
   #|   const state = globalThis.__xhttpClientProbe;
   #|   if (!state) return -1;
@@ -74,7 +74,7 @@ extern "js" fn js_probe_server_first_to_end_ms() -> Int =
   #| }
 
 ///|
-extern "js" fn js_tunnel_probe_start() -> @js_async.Promise[Int] =
+extern "js" fn js_tunnel_probe_start() -> @js_async.Promise[Int32] =
   #| async () => {
   #|   const http = await import('node:http');
   #|   if (!globalThis.__xhttpTunnelProbe) {
@@ -148,9 +148,9 @@ extern "js" fn js_tunnel_probe_last_payload() -> String =
 
 ///|
 extern "js" fn js_server_streaming_probe_response_ms(
-  port : Int,
-  second_chunk_delay_ms : Int,
-) -> @js_async.Promise[Int] =
+  port : Int32,
+  second_chunk_delay_ms : Int32,
+) -> @js_async.Promise[Int32] =
   #| async (port, secondChunkDelayMs) => {
   #|   const http = await import('node:http');
   #|   const delay = Math.max(0, Number(secondChunkDelayMs || 0) | 0);
@@ -189,7 +189,7 @@ async test "server(js): max_request_body_bytes returns 413" {
     let port = server.port()
     group.spawn_bg(no_wait=true, allow_failure=true, () => {
       server.run_forever((_req, body, conn) => {
-        let payload = body.read_all()
+        let payload : &@data.Data = body.read_all()
         conn.send_response(200, "OK")
         conn.write("ok:" + payload.text())
         conn.end_response()
@@ -210,7 +210,7 @@ async test "server(js): close_graceful closes listener" {
     group.spawn_bg(no_wait=true, allow_failure=true, () => {
       server.run_forever((_req, _body, conn) => {
         conn.send_response(200, "OK")
-        conn.write("ok")
+        conn.write(b"ok")
         conn.end_response()
       })
     })
@@ -222,7 +222,7 @@ async test "server(js): close_graceful closes listener" {
     server.close_graceful(timeout_ms=500)
     @async.sleep(20)
 
-    let after_close : Result[(@http.Response, &@io.Data), @http.HttpError] = try
+    let after_close : Result[(@http.Response, &@data.Data), @http.HttpError] = try
       @http.get("http://127.0.0.1:\{port}/after-close")
     catch {
       err => Err(err)
@@ -243,7 +243,7 @@ async test "server(js): enter_passthrough_mode is callable after response end" {
       server.run_forever(
         (_req, _body, conn) => {
           conn.send_response(200, "OK")
-          conn.write("ok")
+          conn.write(b"ok")
           conn.end_response()
           conn.enter_passthrough_mode()
           conn.close()
@@ -276,10 +276,10 @@ async test "server(js): close_graceful finishes with active sse" {
           "Connection": "keep-alive",
         }
         conn.send_response(200, "OK", extra_headers=headers)
-        conn.write("data: first\n\n")
+        conn.write(b"data: first\n\n")
         conn.flush()
         @async.sleep(30)
-        conn.write("data: second\n\n")
+        conn.write(b"data: second\n\n")
         conn.end_response()
       })
     })
@@ -300,8 +300,8 @@ async test "server(js): close_graceful finishes with active sse" {
       graceful_done = true
     })
 
-    let rest = stream.read_all()
-    let rest_data : &@io.Data = rest
+    let rest : &@data.Data = stream.read_all()
+    let rest_data : &@data.Data = rest
     assert_true(rest_data.text().contains("data: second"))
 
     for _ in 0..<20 {
@@ -312,7 +312,7 @@ async test "server(js): close_graceful finishes with active sse" {
     }
     assert_true(graceful_done)
 
-    let after_close : Result[(@http.Response, &@io.Data), @http.HttpError] = try
+    let after_close : Result[(@http.Response, &@data.Data), @http.HttpError] = try
       @http.get("http://127.0.0.1:\{port}/after-close-sse")
     catch {
       err => Err(err)
@@ -334,7 +334,7 @@ async test "server(js): trust_proxy uses x-forwarded-for and x-forwarded-port" {
       server.run_forever((_req, _body, conn) => {
         seen.push(conn.client_addr())
         conn.send_response(200, "OK")
-        conn.write("ok")
+        conn.write(b"ok")
         conn.end_response()
       })
     })
@@ -396,7 +396,7 @@ async test "bench(js): graceful close time under concurrent sse" {
             ignore(conn.read_request())
             conn.skip_request_body()
             conn.send_response(200, "OK", extra_headers=headers)
-            conn.write("data: bench-start\n\n")
+            conn.write(b"data: bench-start\n\n")
             conn.flush()
             accepted_conns.push(conn)
           }
@@ -438,7 +438,7 @@ async test "client(js): generic request via Client::request" {
       server.run_forever((req, body, conn) => {
         assert_eq(req.meth, @http.RequestMethod::Patch)
         assert_eq(req.path, "/generic")
-        let payload = body.read_all()
+        let payload : &@data.Data = body.read_all()
         conn.send_response(200, "OK")
         conn.write("seen:" + payload.text())
         conn.end_response()
@@ -451,9 +451,9 @@ async test "client(js): generic request via Client::request" {
     client.request(@http.RequestMethod::Patch, request_path, extra_headers={
       "Content-Type": "text/plain",
     })
-    client.write("payload")
+    client.write(b"payload")
     let resp = client.end_request()
-    let body = client.read_all()
+    let body : &@data.Data = client.read_all()
     assert_eq(resp.code, 200)
     assert_eq(body.text(), "seen:payload")
   })
@@ -467,7 +467,7 @@ async test "client(js): get and post shortcuts" {
     let port = server.port()
     group.spawn_bg(no_wait=true, allow_failure=true, () => {
       server.run_forever((req, body, conn) => {
-        let payload = body.read_all()
+        let payload : &@data.Data = body.read_all()
         conn.send_response(200, "OK")
         conn.write(req.meth.to_string() + "|" + req.path + "|" + payload.text())
         conn.end_response()
@@ -478,12 +478,12 @@ async test "client(js): get and post shortcuts" {
     defer client.close()
 
     let get_resp = client.get("/g", body="b1")
-    let get_body = client.read_all()
+    let get_body : &@data.Data = client.read_all()
     assert_eq(get_resp.code, 200)
     assert_eq(get_body.text(), "Get|/g|b1")
 
     let post_resp = client.post("/p", "b2")
-    let post_body = client.read_all()
+    let post_body : &@data.Data = client.read_all()
     assert_eq(post_resp.code, 200)
     assert_eq(post_body.text(), "Post|/p|b2")
   })
@@ -547,13 +547,13 @@ async test "client(js): flush streams request body before end_request" {
   defer client.close()
 
   client.request(@http.RequestMethod::Post, "/stream")
-  client.write("first")
+  client.write(b"first")
   client.flush()
   @async.sleep(50)
-  client.write("second")
+  client.write(b"second")
 
   let resp = client.end_request()
-  let body = client.read_all()
+  let body : &@data.Data = client.read_all()
   assert_eq(resp.code, 200)
   assert_eq(body.text(), "ok")
 
@@ -611,7 +611,7 @@ async test "client(js): request API is rejected in passthrough mode" {
                 value => Ok(value)
               }
               if enter_result is Ok(_) {
-                client.write("ping")
+                client.write(b"ping")
                 @async.sleep(20)
                 ready = js_tunnel_probe_last_payload() == "ping"
                 if ready {
@@ -658,7 +658,7 @@ async test "server(js): request body is readable before full upload completes" {
     group.spawn_bg(no_wait=true, allow_failure=true, () => {
       server.run_forever((_req, body, conn) => {
         let first = body.read_exactly(5)
-        let first_data : &@io.Data = first
+        let first_data : &@data.Data = first
         conn.send_response(200, "OK")
         conn.write("first:" + first_data.text())
         conn.end_response()

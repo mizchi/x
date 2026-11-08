@@ -1,0 +1,8 @@
+_build/
+target/
+.mooncakes/
+profiles/
+node_modules/
+
+# Installed dependencies must not activate the development workspace.
+/moon.work

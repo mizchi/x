@@ -1,5 +1,5 @@
 ///|
-fn fixed_text(buf : FixedArray[Byte], len : Int) -> String {
+fn fixed_text(buf : FixedArray[Byte], len : Int32) -> String {
   let out = StringBuilder()
   for i in 0..<len {
     out.write_char(buf[i].to_int().unsafe_to_char())
@@ -64,19 +64,19 @@ async test "tcp roundtrip" {
       defer conn.close()
       assert_eq(peer.ip(), 0x7f000001U)
       let server_buf = FixedArray::make(16, b'\x00')
-      let server_n = conn.read(server_buf)
+      let server_n = conn.read_into(server_buf)
       assert_eq(server_n, 4)
       assert_eq(fixed_text(server_buf, server_n), "ping")
-      conn.write("pong")
+      conn.write(b"pong")
     })
 
     root.spawn_bg(() => {
       let conn = @socket.Tcp::connect(addr)
       defer conn.close()
       assert_true(conn.addr.port() > 0)
-      conn.write("ping")
+      conn.write(b"ping")
       let client_buf = FixedArray::make(16, b'\x00')
-      let client_n = conn.read(client_buf)
+      let client_n = conn.read_into(client_buf)
       assert_eq(client_n, 4)
       assert_eq(fixed_text(client_buf, client_n), "pong")
     })
@@ -112,9 +112,9 @@ async test "tcp run_forever" {
     root.spawn_bg(() => {
       server.run_forever(allow_failure=false, (conn, _peer) => {
         let server_buf = FixedArray::make(16, b'\x00')
-        let server_n = conn.read(server_buf)
+        let server_n = conn.read_into(server_buf)
         seen = fixed_text(server_buf, server_n)
-        conn.write("done")
+        conn.write(b"done")
         raise TcpServerDone
       }) catch {
         TcpServerDone => ()
@@ -125,9 +125,9 @@ async test "tcp run_forever" {
     root.spawn_bg(() => {
       let conn = @socket.Tcp::connect(addr)
       defer conn.close()
-      conn.write("ping")
+      conn.write(b"ping")
       let client_buf = FixedArray::make(16, b'\x00')
-      let client_n = conn.read(client_buf)
+      let client_n = conn.read_into(client_buf)
       assert_eq(client_n, 4)
       assert_eq(fixed_text(client_buf, client_n), "done")
     })

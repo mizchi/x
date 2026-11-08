@@ -2,13 +2,13 @@
 package "mizchi/x/array_view"
 
 // Values
-pub fn find(ArrayView[Byte], ArrayView[Byte]) -> Int?
+pub fn find(ArrayView[Byte], ArrayView[Byte]) -> Int32?
 
-pub fn find_byte(ArrayView[Byte], Byte) -> Int?
+pub fn find_byte(ArrayView[Byte], Byte) -> Int32?
 
-pub fn rev_find(ArrayView[Byte], ArrayView[Byte]) -> Int?
+pub fn rev_find(ArrayView[Byte], ArrayView[Byte]) -> Int32?
 
-pub fn rev_find_byte(ArrayView[Byte], Byte) -> Int?
+pub fn rev_find_byte(ArrayView[Byte], Byte) -> Int32?
 
 // Errors
 

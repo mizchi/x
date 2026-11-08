@@ -75,7 +75,7 @@ test "hmac sha256" {
 ///|
 test "uints_to_hex_string" {
   inspect(
-    @crypto.uints_to_hex_string([(0xdeadbeef : UInt)].iter()),
+    @crypto.uints_to_hex_string([(0xdeadbeef : UInt32)].iter()),
     content="deadbeef",
   )
 }

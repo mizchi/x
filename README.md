@@ -1,32 +1,33 @@
 # mizchi/x
 
-Node.js backend compatibility layer for `moonbitlang/async` in [MoonBit](https://docs.moonbitlang.com).
+Node.js backend compatibility layer for `moonbitlang/core/async` in [MoonBit](https://docs.moonbitlang.com).
 
-`mizchi/x` keeps native behavior by delegating to `moonbitlang/async`, and provides JS FFI implementations so the same async-style code can run on `--target js` (Node.js) with minimal changes.
+`mizchi/x` keeps native behavior by delegating to `moonbitlang/core/async`, and provides JS FFI implementations so the same async-style code can run on `--target js` (Node.js) with minimal changes.
 
 ## Primary Goal
 
-- Run code written against `moonbitlang/async` on Node.js (`--target js`).
+- Run code written against `moonbitlang/core/async` on Node.js (`--target js`).
 - Keep native (`--target native`) semantics close by forwarding to upstream implementations.
 
 ## Related Package
 
-- `mizchi/x`: API is aligned with `moonbitlang/async` contracts (native-compatible surface).
+- `mizchi/x`: API is aligned with `moonbitlang/core/async` contracts (native-compatible surface).
 - `mizchi/js/node`: API is aligned with raw Node.js/JavaScript style APIs.
 
 ## Dependencies
 
 | Dependency | Version |
 |---|---|
-| `moonbitlang/async` | 0.20.5 |
-| `moonbitlang/x` | 0.4.50 |
-| `moonbitlang/regexp` | 0.3.5 |
+| `moonbitlang/core/async` | bundled with MoonBit v0.10.20 |
+| `moonbitlang/x` | 0.5.7 |
+| `moonbitlang/regexp` | 0.3.7 |
 | `@mizchi/jsimd-moonbit-interop` (npm, JS runtime) | 0.1.0 |
 
 ## Packages
 
 | Package | Description |
 |---|---|
+| `mizchi/x/data` | Text/binary payload compatibility (`Data::text`, `Data::binary`, `Data::json`) |
 | `mizchi/x/process` | Command execution (`run`, `spawn`, `spawn_orphan`, `wait_pid`, process pipes, file/stdio redirects, native pipe redirects, `collect_output`, `collect_stdout`, `collect_stderr`, `collect_output_merged`) |
 | `mizchi/x/fs` | File system operations (`open`, `create`, `File`, `read_file`, `write_file`, `tmpdir`, `walk`, `Watcher`, `exists`, `mkdir`, `readdir`, `opendir`, `Directory::next`, `rename`, `remove`, `rmdir`) |
 | `mizchi/x/http` | HTTP client/server (`get`, `post`, `put`, `get_stream`, `post_stream`, `put_stream`, `Client`, `Server`, `Cookie`) |
@@ -39,8 +40,8 @@ Node.js backend compatibility layer for `moonbitlang/async` in [MoonBit](https:/
 | `mizchi/x/cond_var` | Async condition variable (`Cond::wait`, `Cond::signal`, `Cond::broadcast`) |
 | `mizchi/x/semaphore` | Async semaphore (`Semaphore::acquire`, `release`, `try_acquire`) |
 | `mizchi/x/websocket` | WebSocket client/server upgrade (`connect`, `from_http_server`, `Conn::send_text`, `Conn::send_binary`, `Conn::recv`, `Conn::close`) |
-| `mizchi/x/stdio` | Standard I/O (`stdin`, `stdout`, `stderr` with `@io.Reader`/`@io.Writer`) |
-| `mizchi/x/pipe` | In-memory pipes (`pipe()` → `PipeRead`/`PipeWrite` with `@io.Reader`/`@io.Writer`; native process redirect support) |
+| `mizchi/x/stdio` | Standard I/O (`stdin`, `stdout`, `stderr` with `@io.BinaryReader`/`@io.BinaryWriter`) |
+| `mizchi/x/pipe` | In-memory pipes (`pipe()` → `PipeRead`/`PipeWrite` with `@io.BinaryReader`/`@io.BinaryWriter`; native process redirect support) |
 | `mizchi/x/sys` | Environment variables and CLI args (`get_env_var`, `get_cli_args`, `exit`) |
 | `mizchi/x/regexp` | Regular expressions mirroring `moonbitlang/regexp` (`compile`, `Regexp::execute`, `match_`, `group_by_name`, `group_count`, `group_names`, `MatchResult::matched`/`get`/`groups`/`results`/`before`/`after`) |
 | `mizchi/x/json` | JSON mirroring `moonbitlang/core/json` (`parse`, `valid`, `stringify`) over the builtin `Json` value type |
@@ -54,6 +55,7 @@ Node.js backend compatibility layer for `moonbitlang/async` in [MoonBit](https:/
 
 | Package | native | js | wasm | wasm-gc |
 |---|---|---|---|---|
+| `data` | Yes | Yes | Yes | Yes |
 | `process` | Yes | Yes | Yes* | stub |
 | `fs` | Yes | Yes | Yes* | stub |
 | `http` | Yes | Yes | Yes | stub |
@@ -83,25 +85,27 @@ Node.js backend compatibility layer for `moonbitlang/async` in [MoonBit](https:/
 - **stub** — Compiles but aborts at runtime with "not supported" message.
 - **Yes\*** — Environment variables and arguments use `moonbitlang/core/env`; process exit remains unavailable on wasm-gc.
 
-On `wasm`, filesystem, process, socket, TLS, HTTP, WebSocket client, stdio, and pipe operations delegate to `moonbitlang/async`'s WASM host integration and retain the native/JS async signatures. They require capabilities granted by the WASM host (for example, `moonrun --policy` for filesystem, networking, and process spawning). `fs.Watcher`, `raw_fd`, and process groups, tree termination, and signal-based process termination are explicitly unsupported. Opaque WASM handles exposed as public `Int` file descriptors abort if they cannot be represented without truncation.
+On `wasm`, filesystem, process, socket, TLS, HTTP, WebSocket client, stdio, and pipe operations delegate to `moonbitlang/core/async`'s WASM host integration and retain the native/JS async signatures. They require capabilities granted by the WASM host (for example, `moonrun --policy` for filesystem, networking, and process spawning). `fs.Watcher`, `raw_fd`, process pipe redirection, and process groups, tree termination, and signal-based process termination are explicitly unsupported. Opaque WASM handles exposed as public `Int32` file descriptors abort if they cannot be represented without truncation.
 
 ## Upstream Compatibility
 
-Compatibility with `moonbitlang/async` 0.20.5 / `moonbitlang/x` 0.4.50.
+Tested with MoonBit `v0.10.20+65efd5b93` (2026-11-05), its bundled `moonbitlang/core/async`, `moonbitlang/x` 0.5.7, and `moonbitlang/regexp` 0.3.7. The standalone `moonbitlang/async` module is no longer a dependency.
 
-The wrapper re-exports upstream types and APIs with matching signatures. On native, each function delegates directly to the upstream implementation. On JS, equivalent behavior is provided via `extern "js"` FFI (Node.js).
+Streams implement `moonbitlang/core/async/io.BinaryReader` and `BinaryWriter`. Compatibility methods such as `read_some`, `read_all`, `write`, `collect_output`, `read_file`, and `write_file` keep their text/binary payload interface through `mizchi/x/data.Data`; native adapters translate the new HTTP connections, process results, and filesystem timestamps. On JS, equivalent behavior is provided via `extern "js"` FFI (Node.js).
+
+The workspace uses `moon.work` so `fswatch` resolves the local `mizchi/x` module. Run `just release-check-all` to validate the workspace across native, JS, wasm, and wasm-gc.
 
 ### Extension Notes
 
-`mizchi/x/fs` now exposes the upstream-style `File` API (`open`, `create`, stream `@io.Reader`/`@io.Writer`, random access, size, timestamps, sync, `tmpdir`, and `walk`) on native and Node.js. Native delegates to `moonbitlang/async/fs`; JS maps to `node:fs/promises`. JS file locking is not supported because Node.js has no standard advisory file-locking API.
+`mizchi/x/fs` now exposes the upstream-style `File` API (`open`, `create`, stream `@io.BinaryReader`/`@io.BinaryWriter`, random access, size, timestamps, sync, `tmpdir`, and `walk`) on native and Node.js. Native delegates to `moonbitlang/core/async/fs`; JS maps to `node:fs/promises`. JS file locking is not supported because Node.js has no standard advisory file-locking API.
 
-`mizchi/x/socket` currently covers TCP and UDP on native and Node.js. Native delegates to `moonbitlang/async/socket`; JS maps TCP to `node:net` and UDP to `node:dgram`. Node.js does not expose stable OS file descriptors for these sockets, so `fd()` returns `-1` on JS. TCP connect/accept/run_forever and UDP unicast roundtrips are covered by automated tests. UDP multicast helpers are mapped to Node where available, but multicast is not covered by automated tests.
+`mizchi/x/socket` currently covers TCP and UDP on native and Node.js. Native delegates to `moonbitlang/core/async/socket`; JS maps TCP to `node:net` and UDP to `node:dgram`. Node.js does not expose stable OS file descriptors for these sockets, so `fd()` returns `-1` on JS. TCP connect/accept/run_forever and UDP unicast roundtrips are covered by automated tests. UDP multicast helpers are mapped to Node where available, but multicast is not covered by automated tests.
 
-`mizchi/x/process` exposes async 0.19 process inputs/outputs, file redirection, `spawn`, `spawn_orphan`, `wait_pid`, `Process::wait`, `Process::try_wait`, and cancellation handlers. Native delegates to `moonbitlang/async/process`; JS maps to `node:child_process`.
+`mizchi/x/process` exposes process inputs/outputs, file redirection, `spawn`, `spawn_orphan`, `wait_pid`, `Process::wait`, `Process::try_wait`, and cancellation handlers. Native delegates to `moonbitlang/core/async/process`; JS maps to `node:child_process`.
 
-`mizchi/x/http` includes async 0.19 response cookies and upstream-style streaming requests: `get_stream` returns a `Client`, while `post_stream`/`put_stream` return a writable `Client` whose response is obtained with `end_request()`. Native supports upstream proxy/trust options; JS returns `NotSupported` for proxy clients and custom TLS trust.
+`mizchi/x/http` includes response cookies and upstream-style streaming requests: `get_stream` returns a `Client`, while `post_stream`/`put_stream` return a writable `Client` whose response is obtained with `end_request()`. Native supports upstream proxy/trust options; JS returns `NotSupported` for proxy clients and custom TLS trust.
 
-`mizchi/x/gzip` mirrors `moonbitlang/async/gzip` and works across native, JS, wasm, and wasm-gc via the upstream stream encoder/decoder.
+`mizchi/x/gzip` mirrors `moonbitlang/core/async/gzip` and works across native, JS, wasm, and wasm-gc via the upstream stream encoder/decoder.
 
 `mizchi/x/regexp` mirrors the public surface of `moonbitlang/regexp`. On native, wasm, and wasm-gc it delegates to the pure-MoonBit engine. On JS it drives the host `RegExp` through FFI (using the `d` flag for capture offsets and scanning the source to number named/anonymous groups), returning the same `Regexp` / `MatchResult` API. Flag letters match upstream: `i` (ignore case), `m` (multiline), `s` (dot matches newline). The JS backend reports `Err::InternalError` for any pattern the host rejects, since it cannot classify parse failures as precisely as the native parser.
 
@@ -153,7 +157,7 @@ here.
 
 `json` parse lands roughly on par rather than faster: `JSON.parse` is fast, but the dominant cost is rebuilding the MoonBit `Json` ADT (which the pure-MoonBit parser also pays), so the host parser's edge is largely consumed by marshalling. `valid` and `stringify` win clearly because they avoid that rebuild.
 
-`mizchi/x/tls` mirrors `moonbitlang/async/tls`. Native delegates to the upstream OpenSSL/Schannel implementation. JS maps to Node.js `node:tls` over any `@io.Reader`/`@io.Writer` pair and supports client/server handshakes, graceful shutdown, peer certificate access, `tls-unique`/`tls-server-end-point` style channel bindings, `rand_bytes`, and `sha1`. WASM delegates to the upstream host-backed implementation; wasm-gc remains a stub.
+`mizchi/x/tls` mirrors `moonbitlang/core/async/tls`. Native delegates to the upstream OpenSSL/Schannel implementation. JS maps to Node.js `node:tls` over any `@io.BinaryReader`/`@io.BinaryWriter` pair and supports client/server handshakes, graceful shutdown, peer certificate access, `tls-unique`/`tls-server-end-point` style channel bindings, `rand_bytes`, and `sha1`. WASM delegates to the upstream host-backed implementation; wasm-gc remains a stub.
 
 `mizchi/x/websocket` mirrors the client API and exposes `from_http_server` for native `mizchi/x/http` server connections. JS and WASM support the client API; HTTP server upgrades are native-only.
 
@@ -163,7 +167,7 @@ here.
 
 `mizchi/x/aqueue`, `mizchi/x/cond_var`, and `mizchi/x/semaphore` are thin wrappers around the async synchronization primitives, keeping the same high-level API available from this compatibility module.
 
-#### http (`moonbitlang/async/http`)
+#### http (`moonbitlang/core/async/http`)
 
 Upstream tests: 47 | Covered: 31 | Skipped: 16
 
@@ -177,25 +181,25 @@ Upstream tests: 47 | Covered: 31 | Skipped: 16
 | `request streaming` | Covered | native and JS |
 | Other 16 tests | Skip | Internal parser/sender/proxy tests |
 
-#### websocket (`moonbitlang/async/websocket`)
+#### websocket (`moonbitlang/core/async/websocket`)
 
 Upstream tests: 24 | Covered: 1 | Skipped: 23
 
 Most upstream tests are internal (frame handling, ping/pong, UTF-8 validation) and not applicable to the wrapper's high-level API. `CloseCode conversions` is covered directly; the wrapper also has independent tests covering its own API.
 
-#### pipe (`moonbitlang/async/pipe`)
+#### pipe (`moonbitlang/core/async/pipe`)
 
 Upstream tests: 3 | Covered: 3 | Skipped: 0
 
 All upstream pipe tests are fully covered.
 
-#### stdio (`moonbitlang/async/stdio`)
+#### stdio (`moonbitlang/core/async/stdio`)
 
 Upstream tests: 3 | Covered: 3 | Skipped: 0
 
 All upstream stdio/process redirect tests are covered on native and JS.
 
-#### tls (`moonbitlang/async/tls`)
+#### tls (`moonbitlang/core/async/tls`)
 
 Upstream tests: 9 | Covered: 9 | Skipped: 0
 
@@ -224,7 +228,7 @@ just test      # run tests
 
 Coverage is verified by `scripts/sync-upstream-tests.sh`, which extracts test names from the upstream packages and checks that each is either covered by a wrapper test or explicitly excluded in `scripts/upstream-exclude.conf`.
 
-#### process (`moonbitlang/async/process`)
+#### process (`moonbitlang/core/async/process`)
 
 Upstream tests: 28 | Covered: 26 | Skipped: 2
 

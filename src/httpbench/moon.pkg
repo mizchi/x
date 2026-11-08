@@ -1,7 +1,7 @@
 import {
   "mizchi/x/http",
   "mizchi/x/sys",
-  "moonbitlang/async",
+  "moonbitlang/core/async",
 }
 
 supported_targets = "-all+native+js"
@@ -9,5 +9,6 @@ supported_targets = "-all+native+js"
 pkgtype(kind: "executable")
 
 options(
+  "allow-experimental-packages": [ "moonbitlang/core/async" ],
   targets: { "main.mbt": [ "native", "js" ] },
 )

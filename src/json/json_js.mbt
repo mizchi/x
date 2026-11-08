@@ -15,9 +15,9 @@ priv type JsValue
 priv struct JsParseResult {
   ok : Bool
   is_eof : Bool
-  line : Int
-  column : Int
-  ch_code : Int
+  line : Int32
+  column : Int32
+  ch_code : Int32
   value : JsValue
 }
 
@@ -62,7 +62,7 @@ extern "js" fn js_valid(input : String) -> Bool =
   #| }
 
 ///|
-extern "js" fn js_typeof(v : JsValue) -> Int =
+extern "js" fn js_typeof(v : JsValue) -> Int32 =
   #| (v) => {
   #|   if (v === null || v === undefined) return 0;
   #|   const t = typeof v;
@@ -87,15 +87,15 @@ extern "js" fn js_to_string(v : JsValue) -> String =
   #| (v) => v
 
 ///|
-extern "js" fn js_array_len(v : JsValue) -> Int =
+extern "js" fn js_array_len(v : JsValue) -> Int32 =
   #| (v) => v.length | 0
 
 ///|
-extern "js" fn js_array_get(v : JsValue, i : Int) -> JsValue =
+extern "js" fn js_array_get(v : JsValue, i : Int32) -> JsValue =
   #| (v, i) => v[i]
 
 ///|
-extern "js" fn js_object_keys(v : JsValue) -> Array[String] =
+extern "js" fn js_object_keys(v : JsValue) -> FixedArray[String] =
   #| (v) => Object.keys(v)
 
 ///|
@@ -103,11 +103,15 @@ extern "js" fn js_object_get(v : JsValue, k : String) -> JsValue =
   #| (v, k) => v[k]
 
 ///|
-fn convert(v : JsValue, depth : Int, max_depth : Int) -> Json raise ParseError {
+fn convert(
+  v : JsValue,
+  depth : Int32,
+  max_depth : Int32,
+) -> Json raise ParseError {
   match js_typeof(v) {
-    1 => js_to_bool(v).to_json()
-    2 => js_to_number(v).to_json()
-    3 => js_to_string(v).to_json()
+    1 => @upstream.ToJson::to_json(js_to_bool(v))
+    2 => @upstream.ToJson::to_json(js_to_number(v))
+    3 => @upstream.ToJson::to_json(js_to_string(v))
     4 => {
       guard depth < max_depth else { raise DepthLimitExceeded }
       let len = js_array_len(v)
@@ -115,7 +119,7 @@ fn convert(v : JsValue, depth : Int, max_depth : Int) -> Json raise ParseError {
       for i in 0..<len {
         arr.push(convert(js_array_get(v, i), depth + 1, max_depth))
       }
-      arr.to_json()
+      @upstream.ToJson::to_json(arr)
     }
     5 => {
       guard depth < max_depth else { raise DepthLimitExceeded }
@@ -123,7 +127,7 @@ fn convert(v : JsValue, depth : Int, max_depth : Int) -> Json raise ParseError {
       for k in js_object_keys(v) {
         obj[k] = convert(js_object_get(v, k), depth + 1, max_depth)
       }
-      obj.to_json()
+      @upstream.ToJson::to_json(obj)
     }
     _ => Json::null()
   }
@@ -134,7 +138,7 @@ fn convert(v : JsValue, depth : Int, max_depth : Int) -> Json raise ParseError {
 /// 1024, matching `moonbitlang/core/json`.
 pub fn parse(
   input : StringView,
-  max_nesting_depth? : Int = 1024,
+  max_nesting_depth~ : Int32 = 1024,
 ) -> Json raise ParseError {
   let result = js_parse(input.to_owned())
   guard result.ok else {
@@ -191,7 +195,7 @@ extern "js" fn js_object_set(o : JsValue, k : String, v : JsValue) -> Unit =
   #| (o, k, v) => { o[k] = v; }
 
 ///|
-extern "js" fn js_stringify(v : JsValue, indent : Int) -> String =
+extern "js" fn js_stringify(v : JsValue, indent : Int32) -> String =
   #| (v, indent) => JSON.stringify(v, null, indent > 0 ? indent : undefined)
 
 ///|
@@ -224,8 +228,8 @@ fn to_js(json : Json) -> JsValue {
 /// `\/`; `indent` (default 0) pretty-prints with that many spaces per level.
 pub fn stringify(
   json : Json,
-  escape_slash? : Bool = false,
-  indent? : Int = 0,
+  escape_slash~ : Bool = false,
+  indent~ : Int32 = 0,
 ) -> String {
   let serialized = js_stringify(to_js(json), indent)
   if escape_slash {

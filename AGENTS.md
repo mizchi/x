@@ -15,7 +15,8 @@ just info      # generate type definition files
 
 ## Project Structure
 
-- `moon.mod.json` - Module definition
+- `moon.mod` - Module definition
+- `moon.work` - Workspace members (`mizchi/x` and `mizchi/fswatch`)
 - `moon.pkg` - Package dependencies (per directory)
 - `*.mbt` - Source files
 - `*_test.mbt` - Blackbox test files
@@ -30,8 +31,8 @@ just info      # generate type definition files
 - `src/http/` - HTTP client (`get`, `post`, `put`, `get_stream`, `post_stream`, `put_stream`)
 - `src/sys/` - Environment variables and CLI args (`get_env_var`, `get_cli_args`, `exit`)
 - `src/websocket/` - WebSocket client (`connect`, `Conn::send`, `Conn::recv`, `Conn::close`)
-- `src/stdio/` - Standard I/O (`stdin`, `stdout`, `stderr` with `@io.Reader`/`@io.Writer`)
-- `src/pipe/` - Pipes (`pipe()` → `PipeRead`/`PipeWrite` with `@io.Reader`/`@io.Writer`)
+- `src/stdio/` - Standard I/O (`stdin`, `stdout`, `stderr` with `@io.BinaryReader`/`@io.BinaryWriter`)
+- `src/pipe/` - Pipes (`pipe()` → `PipeRead`/`PipeWrite` with `@io.BinaryReader`/`@io.BinaryWriter`)
 - `src/regexp/` - Regular expressions (`compile`, `Regexp::execute`/`match_`, `MatchResult`), mirroring `moonbitlang/regexp`; JS uses native `RegExp` via FFI
 - `src/json/` - JSON (`parse`, `valid`, `stringify`) over the builtin `Json` type, mirroring `moonbitlang/core/json`; JS uses native `JSON` via FFI
 - `src/crypto/` - Hashes / HMAC / hex (`md5`, `sha1`, `sha224`, `sha256`, `sm3`, `hmac`, `bytes_to_hex_string`), mirroring `moonbitlang/x/crypto`; pure-MoonBit delegation on all targets (synchronous, so no `crypto.subtle`)
@@ -39,17 +40,20 @@ just info      # generate type definition files
 ### Cross-platform targeting
 
 Each package has platform-specific implementations:
-- `*_native.mbt` - Native target (uses `moonbitlang/async`)
+- `*_native.mbt` - Native target (uses `moonbitlang/core/async`)
 - `*_js.mbt` - JS target (uses `extern "js"` FFI)
 - `*_wasm.mbt` - WASM/WASM-GC target (stubs)
 
-Types match `moonbitlang/async` and `moonbitlang/x` upstream exactly.
+Streams implement the core async binary traits. High-level compatibility APIs use `mizchi/x/data.Data` to preserve text/binary payloads while adapting newer core APIs.
 
 ## Coding Convention
 
 - Each block is separated by `///|`
+- Use `#derive(...)` above type declarations and explicit `pub extend` for promoted trait methods
+- Use `Int32` / `UInt32` for 32-bit integers
+- JS FFI arrays use `FixedArray`; convert them to `Array` in MoonBit when needed
 - Use `moon ide` commands for code navigation (prefer over grep)
-- Use `moon doc '<Type>'` to explore APIs before implementing
+- Use `moon ide doc '<Type>'` to explore APIs before implementing
 - MoonBit code uses snake_case for variables/functions (lowercase only)
 - UpperCamelCase for types, enums, and enum variants
 - `nobreak` (not `else`) for functional for-loop exit values
@@ -64,7 +68,7 @@ Types match `moonbitlang/async` and `moonbitlang/x` upstream exactly.
 - `moon info` - update generated package interfaces (`.mbti`)
 - `moon test` - run tests. Use `moon test --update` to update snapshots.
 - `moon check --deny-warn` - type check with warnings as errors
-- `moon doc '<query>'` - discover APIs (more accurate than grep)
+- `moon ide doc '<query>'` - discover APIs (more accurate than grep)
 - `moon ide peek-def <Symbol>` - show symbol definition
 - `moon ide find-references <Symbol>` - find all references
 

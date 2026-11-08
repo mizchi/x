@@ -15,6 +15,7 @@ priv type JsWatcherHandle
 extern "js" fn js_watch_start_ffi(roots_joined_lf : String) -> JsWatcherHandle =
   #| (rootsJoinedLf) => {
   #|   const fs = require('node:fs');
+  #|   const path = require('node:path');
   #|   const handle = { watchers: [], queue: [], closed: false };
   #|   const parts = rootsJoinedLf.split('\n').filter(Boolean);
   #|   for (const root of parts) {
@@ -25,7 +26,9 @@ extern "js" fn js_watch_start_ffi(roots_joined_lf : String) -> JsWatcherHandle =
   #|         // Normalize backslash to slash so callers see the same separators
   #|         // they passed in (Node on Windows can emit either).
   #|         const rel = String(filename).replace(/\\/g, '/');
-  #|         const full = root.replace(/[\\/]+$/, '') + '/' + rel;
+  #|         const full = rel === path.basename(root)
+  #|           ? root
+  #|           : root.replace(/[\\/]+$/, '') + '/' + rel;
   #|         handle.queue.push(full);
   #|       });
   #|       w.on('error', () => {});
@@ -62,7 +65,7 @@ extern "js" fn js_watch_close_ffi(handle : JsWatcherHandle) -> Unit =
 ///|
 priv struct JsState {
   handle : JsWatcherHandle
-  interval_ms : Int
+  interval_ms : Int32
   norm : NormalizeState
 }
 
@@ -89,7 +92,7 @@ fn default_exclude(_ : String) -> Bool {
 /// for the FFI boundary).
 pub async fn start(
   roots : Array[String],
-  interval_ms? : Int,
+  interval_ms? : Int32,
   exclude? : (String) -> Bool,
 ) -> Watcher {
   let ex = exclude.unwrap_or(default_exclude)
@@ -106,7 +109,7 @@ pub async fn start(
   let handle = js_watch_start_ffi(joined.to_string())
   let norm = build_normalize_state(roots, ex)
   Watcher::{
-    state: JsState::{ handle, interval_ms: interval, norm },
+    state: JsState::{ handle, interval_ms: interval, norm, },
     closed: false,
   }
 }
@@ -117,7 +120,7 @@ pub async fn start(
 /// thing. Kept for cross-target call-site compatibility.
 pub async fn start_polling(
   roots : Array[String],
-  interval_ms? : Int,
+  interval_ms? : Int32,
   exclude? : (String) -> Bool,
 ) -> Watcher {
   start(roots, interval_ms?, exclude?)
@@ -145,9 +148,14 @@ pub async fn Watcher::next(self : Watcher) -> Array[Event] {
       if raw_path.length() == 0 {
         continue
       }
-      match classify_event(self.state.norm, raw_path) {
-        Some(e) => events.push(e)
-        None => ()
+      let kind = @xfs.kind(raw_path) catch { _ => @xfs.Unknown }
+      if kind is Directory {
+        events.append(classify_directory_changes(self.state.norm, raw_path))
+      } else {
+        match classify_event(self.state.norm, raw_path) {
+          Some(e) => events.push(e)
+          None => ()
+        }
       }
     }
     if events.length() > 0 {
@@ -165,4 +173,39 @@ pub fn Watcher::close(self : Watcher) -> Unit {
   }
   self.closed = true
   js_watch_close_ffi(self.state.handle)
+}
+
+///|
+// macOS may coalesce a child change into a directory notification.
+// Reconcile membership only for that subtree; ordinary file events stay cheap.
+async fn classify_directory_changes(
+  state : NormalizeState,
+  raw_dir : String,
+) -> Array[Event] {
+  let dir = rewrite_path(raw_dir, state.prefix_map)
+  if (state.exclude)(dir) {
+    return []
+  }
+  let events : Array[Event] = []
+  @xfs.walk(raw_dir, exclude=state.exclude, async fn(parent, names) {
+    for name in names {
+      let path = parent + "/" + name
+      if !state.known.contains(rewrite_path(path, state.prefix_map)) {
+        match classify_event(state, path) {
+          Some(event) => events.push(event)
+          None => ()
+        }
+      }
+    }
+  })
+  let known : Array[String] = state.known.keys().collect()
+  for path in known {
+    if path.has_prefix(dir + "/") && !@xfs.exists(path) {
+      match classify_event(state, path) {
+        Some(event) => events.push(event)
+        None => ()
+      }
+    }
+  }
+  events
 }

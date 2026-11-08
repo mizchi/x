@@ -1,6 +1,6 @@
 ///|
 async test "queue put get" {
-  let q : @aqueue.Queue[Int] = @aqueue.Queue(kind=@aqueue.Unbounded)
+  let q : @aqueue.Queue[Int32] = @aqueue.Queue(kind=@aqueue.Unbounded)
   q.put(1)
   inspect(q.get(), content="1")
 }

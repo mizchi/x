@@ -4,8 +4,8 @@
 #borrow(paths)
 extern "C" fn rdcw_start_ffi(
   paths : Bytes,
-  total_len : Int,
-  num_paths : Int,
+  total_len : Int32,
+  num_paths : Int32,
 ) -> Int64 = "mizchi_x_watch_rdcw_start"
 
 ///|
@@ -13,8 +13,8 @@ extern "C" fn rdcw_start_ffi(
 extern "C" fn rdcw_pop_ffi(
   handle : Int64,
   out_buf : FixedArray[Byte],
-  out_cap : Int,
-) -> Int = "mizchi_x_watch_rdcw_pop"
+  out_cap : Int32,
+) -> Int32 = "mizchi_x_watch_rdcw_pop"
 
 ///|
 extern "C" fn rdcw_close_ffi(handle : Int64) -> Unit = "mizchi_x_watch_rdcw_close"
@@ -22,7 +22,7 @@ extern "C" fn rdcw_close_ffi(handle : Int64) -> Unit = "mizchi_x_watch_rdcw_clos
 ///|
 priv struct RDCWState {
   handle : Int64
-  interval_ms : Int
+  interval_ms : Int32
   norm : NormalizeState
 }
 
@@ -31,7 +31,7 @@ priv struct RDCWState {
 /// opened with `FILE_LIST_DIRECTORY`.
 async fn rdcw_start(
   roots : Array[String],
-  interval_ms : Int,
+  interval_ms : Int32,
   exclude : (String) -> Bool,
 ) -> RDCWState? {
   let buf = StringBuilder()
@@ -45,7 +45,7 @@ async fn rdcw_start(
     return None
   }
   let norm = build_normalize_state(roots, exclude)
-  Some(RDCWState::{ handle, interval_ms, norm })
+  Some(RDCWState::{ handle, interval_ms, norm, })
 }
 
 ///|

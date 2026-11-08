@@ -1,12 +1,12 @@
 ///|
 pub struct Semaphore {
-  size : Int
+  size : Int32
   priv inner : @async_semaphore.Semaphore
 }
 
 ///|
 #alias(new, deprecated)
-pub fn Semaphore::Semaphore(size : Int, initial_value? : Int) -> Semaphore {
+pub fn Semaphore::Semaphore(size : Int32, initial_value? : Int32) -> Semaphore {
   { size, inner: @async_semaphore.Semaphore(size, initial_value?), }
 }
 

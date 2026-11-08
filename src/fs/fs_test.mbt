@@ -106,7 +106,7 @@ async test "file create open append and read all" {
   {
     let file = @fs.create(path, sync=Full)
     defer file.close()
-    file.write("alpha")
+    file.write(b"alpha")
   }
   {
     let file = @fs.open(
@@ -116,7 +116,7 @@ async test "file create open append and read all" {
       append=true,
     )
     defer file.close()
-    file.write("-beta")
+    file.write(b"-beta")
     file.sync()
   }
   {

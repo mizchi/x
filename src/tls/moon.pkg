@@ -1,8 +1,9 @@
 import {
-  "moonbitlang/async",
-  "moonbitlang/async/io",
-  "moonbitlang/async/js_async",
-  "moonbitlang/async/tls" @async_tls,
+  "mizchi/x/data",
+  "moonbitlang/core/async",
+  "moonbitlang/core/async/io",
+  "moonbitlang/core/async/js_async",
+  "moonbitlang/core/async/tls" @async_tls,
   "moonbitlang/core/cmp",
   "moonbitlang/core/debug",
   "moonbitlang/x/crypto",
@@ -18,6 +19,12 @@ import {
 warnings = "-0029-0067-0006-0009-0014-0053"
 
 options(
+  "allow-experimental-packages": [
+    "moonbitlang/core/async",
+    "moonbitlang/core/async/io",
+    "moonbitlang/core/async/js_async",
+    "moonbitlang/core/async/tls",
+  ],
   targets: {
     "tls_js.mbt": [ "js" ],
     "tls_native.mbt": [ "native", "wasm" ],

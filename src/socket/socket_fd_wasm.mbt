@@ -1,5 +1,5 @@
 ///|
-fn socket_fd_to_int(fd : UInt64) -> Int {
+fn socket_fd_to_int(fd : UInt64) -> Int32 {
   let max_int = 2147483647
   let max_uint64 = max_int.to_uint64()
   if fd > max_uint64 {

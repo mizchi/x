@@ -1,8 +1,8 @@
 ///|
-extern "C" fn open_read_fixture() -> Int = "mizchi_x_raw_fd_test_open_read"
+extern "C" fn open_read_fixture() -> Int32 = "mizchi_x_raw_fd_test_open_read"
 
 ///|
-extern "C" fn open_write_fixture() -> Int = "mizchi_x_raw_fd_test_open_write"
+extern "C" fn open_write_fixture() -> Int32 = "mizchi_x_raw_fd_test_open_write"
 
 ///|
 let write_path = "/tmp/mizchi_x_raw_fd_write_native.txt"

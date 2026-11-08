@@ -22,7 +22,7 @@ pub fn[Data : @moonbitlang/x/crypto.ByteSource] sm3(Data) -> FixedArray[Byte]
 
 pub fn sm3_from_iter(Iter[Byte]) -> FixedArray[Byte]
 
-pub fn uints_to_hex_string(Iter[UInt]) -> String
+pub fn uints_to_hex_string(Iter[UInt32]) -> String
 
 // Errors
 

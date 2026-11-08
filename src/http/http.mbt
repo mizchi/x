@@ -1,12 +1,13 @@
 ///|
 pub(all) struct Response {
-  code : Int
+  code : Int32
   reason : String
   headers : Map[String, String]
   cookies : Array[Cookie]
 }
 
 ///|
+#derive(@debug.Debug)
 pub struct Cookie {
   name : String
   value : String
@@ -17,7 +18,7 @@ pub struct Cookie {
   secure : Bool
   http_only : Bool
   extensions : Array[String]
-} derive(@debug.Debug)
+}
 
 ///|
 #alias(new, deprecated)
@@ -28,9 +29,9 @@ pub fn Cookie::Cookie(
   expires_raw? : String,
   max_age? : Int64,
   domain? : String,
-  secure? : Bool = false,
-  http_only? : Bool = false,
-  extensions? : Array[String] = [],
+  secure~ : Bool = false,
+  http_only~ : Bool = false,
+  extensions~ : Array[String] = [],
 ) -> Cookie {
   {
     name,
@@ -257,7 +258,7 @@ fn write_json_string(buf : StringBuilder, s : String) -> Unit {
 }
 
 ///|
-fn hex_digit(n : Int) -> Char {
+fn hex_digit(n : Int32) -> Char {
   if n < 10 {
     (n + '0'.to_int()).unsafe_to_char()
   } else {
@@ -284,10 +285,11 @@ fn cookies_to_json(cookies : Array[Cookie]) -> String {
 ///|
 pub(all) struct Addr {
   text : String
-  port : Int
+  port : Int32
 }
 
 ///|
+#derive(Eq, Compare, Hash, @debug.Debug)
 pub(all) enum RequestMethod {
   Get
   Head
@@ -298,7 +300,7 @@ pub(all) enum RequestMethod {
   Options
   Trace
   Patch
-} derive(Eq, Compare, Hash, @debug.Debug)
+}
 
 ///|
 pub impl Show for RequestMethod with fn output(self, logger) {
@@ -313,12 +315,13 @@ pub(all) struct Request {
 }
 
 ///|
+#derive(@debug.Debug)
 pub suberror HttpError {
   NetworkError(String)
   InvalidUrl(String)
   TimeoutError
   NotSupported
-} derive(@debug.Debug)
+}
 
 ///|
 pub impl Show for HttpError with fn output(self, logger) {
@@ -338,7 +341,7 @@ fn classify_http_error(message : String) -> HttpError {
 }
 
 ///|
-fn response_has_no_body(code : Int, meth : RequestMethod?) -> Bool {
+fn response_has_no_body(code : Int32, meth : RequestMethod?) -> Bool {
   match meth {
     Some(Head) => true
     Some(Connect) => code >= 200 && code < 300
@@ -364,3 +367,27 @@ fn headers_to_json(headers : Map[String, String]) -> String {
   buf.write_char('}')
   buf.to_string()
 }
+
+///|
+pub extend Cookie with @debug.Debug::{to_repr}
+
+///|
+pub extend RequestMethod with Eq::{not_equal, equal}
+
+///|
+pub extend RequestMethod with Compare::{op_lt, op_le, op_ge, compare, op_gt}
+
+///|
+pub extend RequestMethod with Hash::{hash, hash_combine}
+
+///|
+pub extend RequestMethod with @debug.Debug::{to_repr}
+
+///|
+pub extend RequestMethod with Show::{to_string, output}
+
+///|
+pub extend HttpError with @debug.Debug::{to_repr}
+
+///|
+pub extend HttpError with Show::{to_string, output}

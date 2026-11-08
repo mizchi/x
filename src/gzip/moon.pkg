@@ -1,7 +1,16 @@
 import {
-  "moonbitlang/async",
-  "moonbitlang/async/gzip" @async_gzip,
-  "moonbitlang/async/io",
+  "mizchi/x/data",
+  "moonbitlang/core/async",
+  "moonbitlang/core/async/gzip" @async_gzip,
+  "moonbitlang/core/async/io",
 }
 
 warnings = "-0029"
+
+options(
+  "allow-experimental-packages": [
+    "moonbitlang/core/async",
+    "moonbitlang/core/async/gzip",
+    "moonbitlang/core/async/io",
+  ],
+)

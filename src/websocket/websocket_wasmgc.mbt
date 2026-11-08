@@ -3,9 +3,7 @@ pub(all) struct Conn {}
 
 ///|
 async fn[T] unsupported() -> T raise WebSocketError {
-  @async.pause() catch {
-    err => raise WebSocketError::ProtocolError(err.to_string())
-  }
+  @async.pause()
   keep_websocket_error_constructors_used()
   raise WebSocketError::ProtocolError(
     "WebSocket is not supported on wasm-gc target",

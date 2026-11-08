@@ -1,13 +1,13 @@
 ///|
 pub struct RawFd {
-  fd : Int
+  fd : Int32
   priv mut closed : Bool
 }
 
 ///|
 extern "js" fn js_raw_fd_read(
-  fd : Int,
-  max_len : Int,
+  fd : Int32,
+  max_len : Int32,
 ) -> @js_async.Promise[Bytes] =
   #| async (fd, maxLen) => {
   #|   const fs = await import('node:fs');
@@ -24,11 +24,11 @@ extern "js" fn js_raw_fd_read(
 
 ///|
 extern "js" fn js_raw_fd_write(
-  fd : Int,
+  fd : Int32,
   data : Bytes,
-  offset : Int,
-  len : Int,
-) -> @js_async.Promise[Int] =
+  offset : Int32,
+  len : Int32,
+) -> @js_async.Promise[Int32] =
   #| async (fd, data, offset, len) => {
   #|   const fs = await import('node:fs');
   #|   const start = Math.max(0, Number(offset || 0) | 0);
@@ -44,7 +44,7 @@ extern "js" fn js_raw_fd_write(
   #| }
 
 ///|
-extern "js" fn js_raw_fd_close(fd : Int) -> Unit =
+extern "js" fn js_raw_fd_close(fd : Int32) -> Unit =
   #| (fd) => {
   #|   try {
   #|     const fs = require('node:fs');
@@ -54,7 +54,7 @@ extern "js" fn js_raw_fd_close(fd : Int) -> Unit =
 
 ///|
 #alias(new, deprecated)
-pub async fn RawFd::RawFd(fd : Int) -> RawFd {
+pub async fn RawFd::RawFd(fd : Int32) -> RawFd {
   { fd, closed: false, }
 }
 
@@ -70,9 +70,9 @@ pub fn RawFd::close(self : RawFd) -> Unit {
 pub async fn RawFd::read(
   self : RawFd,
   buf : FixedArray[Byte],
-  offset? : Int = 0,
-  max_len? : Int = buf.length() - offset,
-) -> Int {
+  offset~ : Int32 = 0,
+  max_len~ : Int32 = buf.length() - offset,
+) -> Int32 {
   if self.closed || max_len <= 0 {
     return 0
   }
@@ -88,9 +88,9 @@ pub async fn RawFd::read(
 pub async fn RawFd::write(
   self : RawFd,
   buf : Bytes,
-  offset? : Int = 0,
-  len? : Int = buf.length() - offset,
-) -> Int {
+  offset~ : Int32 = 0,
+  len~ : Int32 = buf.length() - offset,
+) -> Int32 {
   if self.closed || len <= 0 {
     return 0
   }

@@ -26,19 +26,19 @@ test "nested access" {
 ///|
 test "stringify scalars" {
   inspect(
-    @json.stringify("hi".to_json()),
+    @json.stringify(@upstream.ToJson::to_json("hi")),
     content=(
       #|"hi"
     ),
   )
-  inspect(@json.stringify(3.5.to_json()), content="3.5")
-  inspect(@json.stringify(true.to_json()), content="true")
+  inspect(@json.stringify(@upstream.ToJson::to_json(3.5)), content="3.5")
+  inspect(@json.stringify(@upstream.ToJson::to_json(true)), content="true")
   inspect(@json.stringify(Json::null()), content="null")
 }
 
 ///|
 test "escape slash" {
-  let j = "a/b".to_json()
+  let j = @upstream.ToJson::to_json("a/b")
   inspect(
     @json.stringify(j),
     content=(

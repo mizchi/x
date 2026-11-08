@@ -13,6 +13,7 @@ fn map_parse_error(e : @upstream.ParseError) -> ParseError {
     InvalidEof => InvalidEof
     InvalidNumber(pos, s) => InvalidNumber(map_position(pos), s)
     InvalidIdentEscape(pos) => InvalidIdentEscape(map_position(pos))
+    DuplicateKey(pos, key) => DuplicateKey(map_position(pos), key)
     DepthLimitExceeded => DepthLimitExceeded
   }
 }
@@ -22,7 +23,7 @@ fn map_parse_error(e : @upstream.ParseError) -> ParseError {
 /// 1024, matching `moonbitlang/core/json`.
 pub fn parse(
   input : StringView,
-  max_nesting_depth? : Int = 1024,
+  max_nesting_depth~ : Int32 = 1024,
 ) -> Json raise ParseError {
   @upstream.parse(input, max_nesting_depth~) catch {
     e => raise map_parse_error(e)
@@ -40,8 +41,8 @@ pub fn valid(input : StringView) -> Bool {
 /// `\/`; `indent` (default 0) pretty-prints with that many spaces per level.
 pub fn stringify(
   json : Json,
-  escape_slash? : Bool = false,
-  indent? : Int = 0,
+  escape_slash~ : Bool = false,
+  indent~ : Int32 = 0,
 ) -> String {
   json.stringify(escape_slash~, indent~)
 }

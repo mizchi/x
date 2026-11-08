@@ -76,7 +76,7 @@ async test "stdio cancel" {
     })
     defer we_write.close()
     defer we_read.close()
-    we_write.write("abcd")
+    we_write.write(b"abcd")
     debug_inspect(
       we_read.read_some(),
       content=(
@@ -92,8 +92,8 @@ async test "stdio cancel" {
 
 ///|
 test "stdio implements process redirects" {
-  let input : &@process.ProcessInput = stdin
-  let output : &@process.ProcessOutput = stdout
-  let error : &@process.ProcessOutput = stderr
+  let input : &@process.ProcessInput = @stdio.stdin
+  let output : &@process.ProcessOutput = @stdio.stdout
+  let error : &@process.ProcessOutput = @stdio.stderr
   ignore((input, output, error))
 }

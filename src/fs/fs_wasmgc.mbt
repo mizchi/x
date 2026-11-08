@@ -2,7 +2,7 @@
 pub fn read_file(
   _path : StringView,
   sync_timestamp? : Bool,
-) -> &@io.Data raise IOError {
+) -> &@data.Data raise IOError {
   ignore(sync_timestamp)
   raise IOError::IOError("read_file is not supported on wasm target")
 }
@@ -10,12 +10,12 @@ pub fn read_file(
 ///|
 pub fn write_file(
   _path : StringView,
-  _content : &@io.Data,
+  _content : &@data.Data,
   create_mode? : CreateMode,
-  permission? : Int,
+  permission? : Int32,
   sync? : SyncMode,
   append? : Bool,
-  create? : Int,
+  create? : Int32,
   truncate? : Bool,
 ) -> Unit raise IOError {
   ignore(create_mode)
@@ -48,7 +48,7 @@ pub fn can_execute(_path : StringView) -> Bool {
 }
 
 ///|
-pub fn chmod(_path : StringView, _permission : Int) -> Unit raise IOError {
+pub fn chmod(_path : StringView, _permission : Int32) -> Unit raise IOError {
   raise IOError::IOError("chmod is not supported on wasm target")
 }
 
@@ -56,7 +56,7 @@ pub fn chmod(_path : StringView, _permission : Int) -> Unit raise IOError {
 pub fn atime(
   _path : StringView,
   follow_symlink? : Bool,
-) -> (Int64, Int) raise IOError {
+) -> (Int64, Int32) raise IOError {
   ignore(follow_symlink)
   raise IOError::IOError("atime is not supported on wasm target")
 }
@@ -65,7 +65,7 @@ pub fn atime(
 pub fn mtime(
   _path : StringView,
   follow_symlink? : Bool,
-) -> (Int64, Int) raise IOError {
+) -> (Int64, Int32) raise IOError {
   ignore(follow_symlink)
   raise IOError::IOError("mtime is not supported on wasm target")
 }
@@ -74,7 +74,7 @@ pub fn mtime(
 pub fn ctime(
   _path : StringView,
   follow_symlink? : Bool,
-) -> (Int64, Int) raise IOError {
+) -> (Int64, Int32) raise IOError {
   ignore(follow_symlink)
   raise IOError::IOError("ctime is not supported on wasm target")
 }
@@ -82,7 +82,7 @@ pub fn ctime(
 ///|
 pub fn mkdir(
   _path : StringView,
-  permission? : Int,
+  permission? : Int32,
   recursive? : Bool,
 ) -> Unit raise IOError {
   ignore(permission)
@@ -157,8 +157,8 @@ pub fn open(
   sync? : SyncMode,
   append? : Bool,
   create_mode? : CreateMode,
-  permission? : Int,
-  create? : Int,
+  permission? : Int32,
+  create? : Int32,
   truncate? : Bool,
 ) -> File raise IOError {
   ignore((mode, sync, append, create_mode, permission, create, truncate))
@@ -169,7 +169,7 @@ pub fn open(
 pub fn create(
   _path : StringView,
   allow_existing? : Bool,
-  permission? : Int,
+  permission? : Int32,
   sync? : SyncMode,
 ) -> File raise IOError {
   ignore((allow_existing, permission, sync))
@@ -182,7 +182,7 @@ pub fn File::close(self : File) -> Unit {
 }
 
 ///|
-pub fn File::fd(self : File) -> Int {
+pub fn File::fd(self : File) -> Int32 {
   ignore(self)
   -1
 }
@@ -206,19 +206,19 @@ pub fn File::size(self : File) -> Int64 raise IOError {
 }
 
 ///|
-pub fn File::atime(self : File) -> (Int64, Int) raise IOError {
+pub fn File::atime(self : File) -> (Int64, Int32) raise IOError {
   ignore(self)
   raise IOError::IOError("File::atime is not supported on wasm target")
 }
 
 ///|
-pub fn File::mtime(self : File) -> (Int64, Int) raise IOError {
+pub fn File::mtime(self : File) -> (Int64, Int32) raise IOError {
   ignore(self)
   raise IOError::IOError("File::mtime is not supported on wasm target")
 }
 
 ///|
-pub fn File::ctime(self : File) -> (Int64, Int) raise IOError {
+pub fn File::ctime(self : File) -> (Int64, Int32) raise IOError {
   ignore(self)
   raise IOError::IOError("File::ctime is not supported on wasm target")
 }
@@ -228,9 +228,9 @@ pub fn File::read_at(
   self : File,
   _buf : FixedArray[Byte],
   position~ : Int64,
-  offset? : Int,
-  len? : Int,
-) -> Int raise IOError {
+  offset? : Int32,
+  len? : Int32,
+) -> Int32 raise IOError {
   ignore((self, position, offset, len))
   raise IOError::IOError("File::read_at is not supported on wasm target")
 }
@@ -238,7 +238,7 @@ pub fn File::read_at(
 ///|
 pub fn File::read_exactly_at(
   self : File,
-  _len : Int,
+  _len : Int32,
   position~ : Int64,
 ) -> Bytes raise IOError {
   ignore((self, position))
@@ -281,19 +281,29 @@ pub fn File::unlock(self : File) -> Unit {
 }
 
 ///|
-pub impl @io.Reader for File with fn _get_internal_buffer(self) {
+impl @io.BinaryReaderImpl for File with fn get_controller(self) {
   ignore(self)
-  @io.ReaderBuffer::new()
+  @io.BinaryReaderController()
 }
 
 ///|
-pub impl @io.Reader for File with fn _direct_read(self, _buf, offset~, max_len~) {
+impl @io.BinaryReaderImpl for File with fn raw_read_impl(
+  self,
+  _buf,
+  offset~,
+  max_len~,
+) {
   ignore((self, offset, max_len))
   raise IOError::IOError("File::read is not supported on wasm target")
 }
 
 ///|
-pub impl @io.Writer for File with fn write_once(self, _buf, offset~, len~) {
+impl @io.BinaryWriterImpl for File with fn raw_write_impl(
+  self,
+  _buf,
+  offset~,
+  len~,
+) {
   ignore((self, offset, len))
   raise IOError::IOError("File::write is not supported on wasm target")
 }
@@ -309,7 +319,7 @@ pub fn walk(
   _path : StringView,
   _f : async (String, Array[String]) -> Unit,
   exclude? : (String) -> Bool,
-  max_concurrency? : Int,
+  max_concurrency? : Int32,
   allow_failure? : Bool,
 ) -> Unit raise IOError {
   ignore((exclude, max_concurrency, allow_failure))
@@ -359,8 +369,8 @@ pub(all) struct Watcher {}
 ///|
 pub fn Watcher::Watcher(
   path : String,
-  debounce_timeout? : Int,
-  max_debounce_delay? : Int,
+  debounce_timeout? : Int32,
+  max_debounce_delay? : Int32,
   ignored_paths? : (String) -> Bool,
 ) -> Watcher raise IOError {
   ignore((path, debounce_timeout, max_debounce_delay, ignored_paths))
@@ -376,4 +386,32 @@ pub fn Watcher::close(self : Watcher) -> Unit {
 pub fn Watcher::wait_any(self : Watcher) -> Unit raise IOError {
   ignore(self)
   raise IOError::IOError("Watcher::wait_any is not supported on wasm target")
+}
+
+///|
+pub impl @io.BinaryReader for File
+
+///|
+pub extend File with @io.BinaryReader::{
+  read_into,
+  read_at_least,
+  peek,
+  peek_at_least,
+  read_exactly,
+  drop_exactly,
+  peek_exactly,
+  drop_all,
+  peek_until,
+}
+
+///|
+pub impl @io.BinaryWriter for File
+
+///|
+pub extend File with @io.BinaryWriter::{write_reader}
+
+///|
+impl @io.BinaryWriterImpl for File with fn get_controller(self) {
+  ignore(self)
+  abort("writer not supported on this target")
 }

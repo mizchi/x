@@ -2,15 +2,15 @@
 package "mizchi/x/string_view"
 
 // Values
-pub fn compare(StringView, StringView) -> Int
+pub fn compare(StringView, StringView) -> Int32
 
-pub fn find(StringView, StringView) -> Int?
+pub fn find(StringView, StringView) -> Int32?
 
-pub fn find_code_unit(StringView, UInt16) -> Int?
+pub fn find_code_unit(StringView, UInt16) -> Int32?
 
-pub fn rev_find(StringView, StringView) -> Int?
+pub fn rev_find(StringView, StringView) -> Int32?
 
-pub fn rev_find_code_unit(StringView, UInt16) -> Int?
+pub fn rev_find_code_unit(StringView, UInt16) -> Int32?
 
 // Errors
 

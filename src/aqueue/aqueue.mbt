@@ -1,13 +1,14 @@
 ///|
 pub(all) enum Kind {
   Unbounded
-  Blocking(Int)
-  DiscardOldest(Int)
-  DiscardLatest(Int)
+  Blocking(Int32)
+  DiscardOldest(Int32)
+  DiscardLatest(Int32)
 }
 
 ///|
-pub suberror QueueAlreadyClosed derive(ToJson, @debug.Debug)
+#derive(ToJson, @debug.Debug)
+pub suberror QueueAlreadyClosed
 
 ///|
 pub impl Show for QueueAlreadyClosed with fn output(_self, logger) {
@@ -78,3 +79,12 @@ pub fn[X] Queue::try_put(self : Queue[X], item : X) -> Bool raise {
     err => raise classify_queue_error(err)
   }
 }
+
+///|
+pub extend QueueAlreadyClosed with ToJson::{to_json}
+
+///|
+pub extend QueueAlreadyClosed with @debug.Debug::{to_repr}
+
+///|
+pub extend QueueAlreadyClosed with Show::{to_string, output}

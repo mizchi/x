@@ -24,6 +24,6 @@ pub fn unset_env_var(name : String) -> Unit {
 }
 
 ///|
-pub fn exit(_code : Int) -> Unit {
+pub fn exit(_code : Int32) -> Unit {
   abort("exit is not supported on wasm-gc target")
 }

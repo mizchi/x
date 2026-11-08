@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # sync-upstream-tests.sh
 #
-# Extracts test names from upstream moonbitlang/async packages
+# Extracts test names from upstream moonbitlang/core/async packages
 # and compares with mizchi/x wrapper tests to find coverage gaps.
 #
 # Usage:
@@ -11,15 +11,12 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-ASYNC_VERSION=$(jq -r '.deps["moonbitlang/async"]' "$ROOT/moon.mod.json")
-ZIP="$HOME/.moon/registry/cache/moonbitlang/async/${ASYNC_VERSION}.zip"
+CORE_ASYNC_DIR="${MOON_HOME:-$HOME/.moon}/lib/core/async"
 EXCLUDE_FILE="$ROOT/scripts/upstream-exclude.conf"
-TMPDIR=$(mktemp -d)
-trap 'rm -rf "$TMPDIR"' EXIT
 
-if [ ! -f "$ZIP" ]; then
-  echo "ERROR: Upstream package not found at $ZIP"
-  echo "Run 'moon install' first."
+if [ ! -d "$CORE_ASYNC_DIR" ]; then
+  echo "ERROR: Core async sources not found at $CORE_ASYNC_DIR"
+  echo "Run 'moon upgrade' to install the current toolchain and core library."
   exit 1
 fi
 
@@ -46,7 +43,7 @@ wrapper_dir_for() {
 
 upstream_dir_for() {
   case "$1" in
-    http|websocket|pipe|stdio|process|tls) echo "src/$1" ;;
+    http|websocket|pipe|stdio|process|tls) echo "$CORE_ASYNC_DIR/$1" ;;
     *)
       echo "ERROR: unknown package '$1'" >&2
       exit 1
@@ -86,10 +83,7 @@ for pkg in "${packages[@]}"; do
   upstream_dir="$(upstream_dir_for "$pkg")"
   wrapper_dir="$(wrapper_dir_for "$pkg")"
 
-  # Extract upstream test files
-  unzip -qo "$ZIP" "${upstream_dir}/*_test.mbt" "${upstream_dir}/*_wbtest.mbt" -d "$TMPDIR" 2>/dev/null || true
-
-  upstream_tests="$TMPDIR/$upstream_dir"
+  upstream_tests="$upstream_dir"
   wrapper_tests="$ROOT/$wrapper_dir"
 
   if [ ! -d "$upstream_tests" ]; then
@@ -99,7 +93,7 @@ for pkg in "${packages[@]}"; do
 
   excludes=$(load_excludes "$pkg")
 
-  echo "=== $pkg (upstream: moonbitlang/async/$ASYNC_VERSION) ==="
+  echo "=== $pkg (upstream: moonbitlang/core/async/$pkg) ==="
   echo ""
 
   # Extract and compare test names

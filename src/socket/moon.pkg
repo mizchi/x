@@ -1,8 +1,9 @@
 import {
-  "moonbitlang/async",
-  "moonbitlang/async/io",
-  "moonbitlang/async/socket" @async_socket,
-  "moonbitlang/async/js_async",
+  "mizchi/x/data",
+  "moonbitlang/core/async",
+  "moonbitlang/core/async/io",
+  "moonbitlang/core/async/socket" @async_socket,
+  "moonbitlang/core/async/js_async",
   "moonbitlang/core/debug",
   "moonbitlang/core/string",
 }
@@ -10,6 +11,12 @@ import {
 warnings = "-0029-0014-0001-0009-0067"
 
 options(
+  "allow-experimental-packages": [
+    "moonbitlang/core/async",
+    "moonbitlang/core/async/io",
+    "moonbitlang/core/async/js_async",
+    "moonbitlang/core/async/socket",
+  ],
   targets: {
     "socket_js.mbt": [ "js" ],
     "socket_fd_native.mbt": [ "native" ],

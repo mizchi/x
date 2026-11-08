@@ -1,7 +1,7 @@
 ///|
 pub async fn Addr::resolve(
   _host : String,
-  port~ : Int,
+  port~ : Int32,
   protocol? : IpProtocolPreference,
 ) -> Addr raise ResolveHostnameError {
   ignore((port, protocol))
@@ -19,7 +19,7 @@ pub fn Tcp::close(_self : Tcp) -> Unit {
 }
 
 ///|
-pub fn Tcp::fd(_self : Tcp) -> Int {
+pub fn Tcp::fd(_self : Tcp) -> Int32 {
   -1
 }
 
@@ -36,7 +36,7 @@ pub async fn Tcp::connect(_addr : Addr) -> Tcp {
 ///|
 pub async fn Tcp::connect_to_host(
   _host : StringView,
-  port~ : Int,
+  port~ : Int32,
   protocol? : IpProtocolPreference,
 ) -> Tcp {
   ignore((port, protocol))
@@ -46,28 +46,38 @@ pub async fn Tcp::connect_to_host(
 ///|
 pub fn Tcp::enable_keepalive(
   _self : Tcp,
-  idle_before_keep_alive? : Int,
-  keep_alive_count? : Int,
-  keep_alive_interval? : Int,
+  idle_before_keep_alive? : Int32,
+  keep_alive_count? : Int32,
+  keep_alive_interval? : Int32,
 ) -> Unit raise {
   ignore((idle_before_keep_alive, keep_alive_count, keep_alive_interval))
   raise Failure::Failure("tcp is not supported on wasm-gc target")
 }
 
 ///|
-pub impl @io.Reader for Tcp with fn _get_internal_buffer(self) {
+impl @io.BinaryReaderImpl for Tcp with fn get_controller(self) {
   ignore(self)
-  @io.ReaderBuffer::new()
+  @io.BinaryReaderController()
 }
 
 ///|
-pub impl @io.Reader for Tcp with fn _direct_read(self, _buf, offset~, max_len~) {
+impl @io.BinaryReaderImpl for Tcp with fn raw_read_impl(
+  self,
+  _buf,
+  offset~,
+  max_len~,
+) {
   ignore((self, offset, max_len))
   abort("tcp is not supported on wasm-gc target")
 }
 
 ///|
-pub impl @io.Writer for Tcp with fn write_once(self, _buf, offset~, len~) {
+impl @io.BinaryWriterImpl for Tcp with fn raw_write_impl(
+  self,
+  _buf,
+  offset~,
+  len~,
+) {
   ignore((self, offset, len))
   abort("tcp is not supported on wasm-gc target")
 }
@@ -92,7 +102,7 @@ pub fn TcpServer::close(_self : TcpServer) -> Unit {
 }
 
 ///|
-pub fn TcpServer::fd(_self : TcpServer) -> Int {
+pub fn TcpServer::fd(_self : TcpServer) -> Int32 {
   -1
 }
 
@@ -112,7 +122,7 @@ pub async fn TcpServer::run_forever(
   _self : TcpServer,
   _f : async (Tcp, Addr) -> Unit,
   allow_failure? : Bool,
-  max_connections? : Int,
+  max_connections? : Int32,
 ) -> Unit {
   ignore((allow_failure, max_connections))
   abort("tcp is not supported on wasm-gc target")
@@ -133,7 +143,7 @@ pub fn UdpClient::close(_self : UdpClient) -> Unit {
 }
 
 ///|
-pub fn UdpClient::fd(_self : UdpClient) -> Int {
+pub fn UdpClient::fd(_self : UdpClient) -> Int32 {
   -1
 }
 
@@ -152,9 +162,9 @@ pub fn UdpClient::connect(_self : UdpClient, _addr : Addr) -> Unit raise {
 pub async fn UdpClient::recv(
   _self : UdpClient,
   _buf : FixedArray[Byte],
-  offset? : Int,
-  max_len? : Int,
-) -> Int {
+  offset? : Int32,
+  max_len? : Int32,
+) -> Int32 {
   ignore((offset, max_len))
   abort("udp is not supported on wasm-gc target")
 }
@@ -163,9 +173,9 @@ pub async fn UdpClient::recv(
 pub async fn UdpClient::recvfrom(
   _self : UdpClient,
   _buf : FixedArray[Byte],
-  offset? : Int,
-  max_len? : Int,
-) -> (Int, Addr) {
+  offset? : Int32,
+  max_len? : Int32,
+) -> (Int32, Addr) {
   ignore((offset, max_len))
   abort("udp is not supported on wasm-gc target")
 }
@@ -174,8 +184,8 @@ pub async fn UdpClient::recvfrom(
 pub async fn UdpClient::send(
   _self : UdpClient,
   _buf : Bytes,
-  offset? : Int,
-  len? : Int,
+  offset? : Int32,
+  len? : Int32,
 ) -> Unit {
   ignore((offset, len))
   abort("udp is not supported on wasm-gc target")
@@ -208,7 +218,7 @@ pub fn UdpClient::set_multicast_loopback(
 ///|
 pub fn UdpClient::set_multicast_ttl(
   _self : UdpClient,
-  _ttl : Int,
+  _ttl : Int32,
 ) -> Unit raise {
   raise Failure::Failure("udp is not supported on wasm-gc target")
 }
@@ -241,7 +251,7 @@ pub fn UdpServer::close(_self : UdpServer) -> Unit {
 }
 
 ///|
-pub fn UdpServer::fd(_self : UdpServer) -> Int {
+pub fn UdpServer::fd(_self : UdpServer) -> Int32 {
   -1
 }
 
@@ -255,9 +265,9 @@ pub fn UdpServer::addr(_self : UdpServer) -> Addr {
 pub async fn UdpServer::recvfrom(
   _self : UdpServer,
   _buf : FixedArray[Byte],
-  offset? : Int,
-  max_len? : Int,
-) -> (Int, Addr) {
+  offset? : Int32,
+  max_len? : Int32,
+) -> (Int32, Addr) {
   ignore((offset, max_len))
   abort("udp is not supported on wasm-gc target")
 }
@@ -267,8 +277,8 @@ pub async fn UdpServer::sendto(
   _self : UdpServer,
   _buf : Bytes,
   _addr : Addr,
-  offset? : Int,
-  len? : Int,
+  offset? : Int32,
+  len? : Int32,
 ) -> Unit {
   ignore((offset, len))
   abort("udp is not supported on wasm-gc target")
@@ -321,7 +331,35 @@ pub fn UdpServer::set_multicast_loopback(
 ///|
 pub fn UdpServer::set_multicast_ttl(
   _self : UdpServer,
-  _ttl : Int,
+  _ttl : Int32,
 ) -> Unit raise {
   raise Failure::Failure("udp is not supported on wasm-gc target")
+}
+
+///|
+pub impl @io.BinaryReader for Tcp
+
+///|
+pub extend Tcp with @io.BinaryReader::{
+  read_into,
+  read_at_least,
+  peek,
+  peek_at_least,
+  read_exactly,
+  drop_exactly,
+  peek_exactly,
+  drop_all,
+  peek_until,
+}
+
+///|
+pub impl @io.BinaryWriter for Tcp
+
+///|
+pub extend Tcp with @io.BinaryWriter::{write_reader}
+
+///|
+impl @io.BinaryWriterImpl for Tcp with fn get_controller(self) {
+  ignore(self)
+  abort("writer not supported on this target")
 }

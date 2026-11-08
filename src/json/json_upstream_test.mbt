@@ -17,19 +17,19 @@ fn test_parse(input : String, loc~ : SourceLoc) -> Json raise Error {
 
 ///|
 test "parses empty object" {
-  debug_inspect(try? @json.parse("{}"), content="Ok(Object({}))")
+  debug_inspect(try_parse("{}"), content="Ok(Object({}))")
 }
 
 ///|
 test "parses object" {
   debug_inspect(
-    try? @json.parse("{\"a\":1}"),
+    try_parse("{\"a\":1}"),
     content=(
       #|Ok(Object({ "a": Number(1) }))
     ),
   )
   debug_inspect(
-    try? @json.parse("{\"a\":1,\"b\":2}"),
+    try_parse("{\"a\":1,\"b\":2}"),
     content=(
       #|Ok(Object({ "a": Number(1), "b": Number(2) }))
     ),
@@ -39,7 +39,7 @@ test "parses object" {
 ///|
 test "parses multiple properties" {
   debug_inspect(
-    try? @json.parse("{\"abc\":1,\"def\":2}"),
+    try_parse("{\"abc\":1,\"def\":2}"),
     content=(
       #|Ok(Object({ "abc": Number(1), "def": Number(2) }))
     ),
@@ -49,7 +49,7 @@ test "parses multiple properties" {
 ///|
 test "parses nested objects" {
   debug_inspect(
-    try? @json.parse("{\"a\":{\"b\":2}}"),
+    try_parse("{\"a\":{\"b\":2}}"),
     content=(
       #|Ok(Object({ "a": Object({ "b": Number(2) }) }))
     ),
@@ -248,7 +248,7 @@ test "valid" {
 
 ///|
 test "parse unexpected token in value" {
-  let result = try? @json.parse("{a:1}")
+  let result = try_parse("{a:1}")
   debug_inspect(
     result,
     content=(
@@ -259,7 +259,7 @@ test "parse unexpected token in value" {
 
 ///|
 test "parse unexpected token in object property name" {
-  let result = try? @json.parse("{\"a\":1, b:2}")
+  let result = try_parse("{\"a\":1, b:2}")
   debug_inspect(
     result,
     content=(
@@ -270,7 +270,7 @@ test "parse unexpected token in object property name" {
 
 ///|
 test "parse unexpected token after object property name" {
-  let result = try? @json.parse("{\"a\" b:2}")
+  let result = try_parse("{\"a\" b:2}")
   debug_inspect(
     result,
     content=(
@@ -281,7 +281,7 @@ test "parse unexpected token after object property name" {
 
 ///|
 test "parse unexpected token after object value" {
-  let result = try? @json.parse("{\"a\":1 b:2}")
+  let result = try_parse("{\"a\":1 b:2}")
   debug_inspect(
     result,
     content=(
@@ -292,7 +292,7 @@ test "parse unexpected token after object value" {
 
 ///|
 test "parse unexpected token in array" {
-  let result = try? @json.parse("[1, 2 a]")
+  let result = try_parse("[1, 2 a]")
   debug_inspect(
     result,
     content=(
@@ -303,7 +303,7 @@ test "parse unexpected token in array" {
 
 ///|
 test "parse multi-lines json" {
-  let result = try? @json.parse(
+  let result = try_parse(
     (
       #|{
       #|  "a":2,
@@ -322,19 +322,19 @@ test "parse multi-lines json" {
 ///|
 test "parser error" {
   debug_inspect(
-    try? @json.parse("]"),
+    try_parse("]"),
     content=(
       #|Err(InvalidChar({ line: 1, column: 0 }, ']'))
     ),
   )
   debug_inspect(
-    try? @json.parse("}"),
+    try_parse("}"),
     content=(
       #|Err(InvalidChar({ line: 1, column: 0 }, '}'))
     ),
   )
   debug_inspect(
-    try? @json.parse(","),
+    try_parse(","),
     content=(
       #|Err(InvalidChar({ line: 1, column: 0 }, ','))
     ),
@@ -345,26 +345,26 @@ test "parser error" {
 test "emoji" {
   debug_inspect(
     // test first char is emoji
-    try? @json.parse("\u{1F600}"),
+    try_parse("\u{1F600}"),
     content=(
       #|Err(InvalidChar({ line: 1, column: 0 }, '😀'))
     ),
   )
   debug_inspect(
-    try? @json.parse("a😀"),
+    try_parse("a😀"),
     content=(
       #|Err(InvalidChar({ line: 1, column: 0 }, 'a'))
     ),
   )
   debug_inspect(
-    try? @json.parse("a"),
+    try_parse("a"),
     content=(
       #|Err(InvalidChar({ line: 1, column: 0 }, 'a'))
     ),
   )
   debug_inspect(
     // test first char is emoji (standalone emoji)
-    try? @json.parse("😀"),
+    try_parse("😀"),
     content=(
       #|Err(InvalidChar({ line: 1, column: 0 }, '😀'))
     ),
@@ -373,82 +373,82 @@ test "emoji" {
 
 ///|
 test "parse error branches" {
-  guard (try? @json.parse("")) is Err(InvalidEof) else {
+  guard try_parse("") is Err(InvalidEof) else {
     fail("expected InvalidEof for empty input")
   }
-  guard (try? @json.parse(" \t\r\n")) is Err(InvalidEof) else {
+  guard try_parse(" \t\r\n") is Err(InvalidEof) else {
     fail("expected InvalidEof for whitespace-only input")
   }
-  guard (try? @json.parse("@")) is Err(InvalidChar(_, _)) else {
+  guard try_parse("@") is Err(InvalidChar(_, _)) else {
     fail("expected InvalidChar for invalid start")
   }
-  guard (try? @json.parse("nullx")) is Err(InvalidChar(_, _)) else {
+  guard try_parse("nullx") is Err(InvalidChar(_, _)) else {
     fail("expected InvalidChar for trailing data")
   }
-  guard (try? @json.parse("\u{00A0}null")) is Err(InvalidChar(_, _)) else {
+  guard try_parse("\u{00A0}null") is Err(InvalidChar(_, _)) else {
     fail("expected InvalidChar for leading non-breaking space")
   }
-  guard (try? @json.parse("tx")) is Err(InvalidChar(_, _)) else {
+  guard try_parse("tx") is Err(InvalidChar(_, _)) else {
     fail("expected InvalidChar for invalid literal")
   }
-  guard (try? @json.parse("-x")) is Err(InvalidChar(_, _)) else {
+  guard try_parse("-x") is Err(InvalidChar(_, _)) else {
     fail("expected InvalidChar for invalid minus")
   }
-  guard (try? @json.parse("-")) is Err(InvalidEof) else {
+  guard try_parse("-") is Err(InvalidEof) else {
     fail("expected InvalidEof for dangling minus")
   }
-  guard (try? @json.parse("1.")) is Err(InvalidEof) else {
+  guard try_parse("1.") is Err(InvalidEof) else {
     fail("expected InvalidEof for trailing dot")
   }
-  guard (try? @json.parse("1.a")) is Err(InvalidChar(_, _)) else {
+  guard try_parse("1.a") is Err(InvalidChar(_, _)) else {
     fail("expected InvalidChar for bad fraction")
   }
-  guard (try? @json.parse("1eA")) is Err(InvalidChar(_, _)) else {
+  guard try_parse("1eA") is Err(InvalidChar(_, _)) else {
     fail("expected InvalidChar for bad exponent")
   }
-  guard (try? @json.parse("1e+a")) is Err(InvalidChar(_, _)) else {
+  guard try_parse("1e+a") is Err(InvalidChar(_, _)) else {
     fail("expected InvalidChar for bad exponent sign")
   }
-  guard (try? @json.parse("1e+")) is Err(InvalidEof) else {
+  guard try_parse("1e+") is Err(InvalidEof) else {
     fail("expected InvalidEof for missing exponent")
   }
-  guard (try? @json.parse("\"line\nbreak\"")) is Err(InvalidChar(_, _)) else {
+  guard try_parse("\"line\nbreak\"") is Err(InvalidChar(_, _)) else {
     fail("expected InvalidChar for newline in string")
   }
-  guard (try? @json.parse("\"\\q\"")) is Err(InvalidChar(_, _)) else {
+  guard try_parse("\"\\q\"") is Err(InvalidChar(_, _)) else {
     fail("expected InvalidChar for invalid escape")
   }
-  guard (try? @json.parse("\"a\u{1}b\"")) is Err(InvalidChar(_, _)) else {
+  guard try_parse("\"a\u{1}b\"") is Err(InvalidChar(_, _)) else {
     fail("expected InvalidChar for control char")
   }
-  guard (try? @json.parse("\"unterminated")) is Err(InvalidEof) else {
+  guard try_parse("\"unterminated") is Err(InvalidEof) else {
     fail("expected InvalidEof for unterminated string")
   }
-  guard (try? @json.parse("\"endswith\\")) is Err(InvalidEof) else {
+  guard try_parse("\"endswith\\") is Err(InvalidEof) else {
     fail("expected InvalidEof for trailing escape")
   }
-  guard (try? @json.parse("\"\\u:000\"")) is Err(InvalidChar(_, _)) else {
+  guard try_parse("\"\\u:000\"") is Err(InvalidChar(_, _)) else {
     fail("expected InvalidChar for invalid hex digit")
   }
-  guard (try? @json.parse("\"\\u/000\"")) is Err(InvalidChar(_, _)) else {
+  guard try_parse("\"\\u/000\"") is Err(InvalidChar(_, _)) else {
     fail("expected InvalidChar for invalid hex digit")
   }
-  guard (try? @json.parse("\"\\uG000\"")) is Err(InvalidChar(_, _)) else {
+  guard try_parse("\"\\uG000\"") is Err(InvalidChar(_, _)) else {
     fail("expected InvalidChar for invalid hex letter")
   }
-  guard (try? @json.parse("[1")) is Err(InvalidEof) else {
+  guard try_parse("[1") is Err(InvalidEof) else {
     fail("expected InvalidEof for incomplete array")
   }
-  guard (try? @json.parse("{\"a\"")) is Err(InvalidEof) else {
+  guard try_parse("{\"a\"") is Err(InvalidEof) else {
     fail("expected InvalidEof for missing colon")
   }
-  guard (try? @json.parse("{\"a\":1")) is Err(InvalidEof) else {
+  guard try_parse("{\"a\":1") is Err(InvalidEof) else {
     fail("expected InvalidEof for incomplete object")
   }
-  guard (try? @json.parse("{\"a\":1,")) is Err(InvalidEof) else {
+  guard try_parse("{\"a\":1,") is Err(InvalidEof) else {
     fail("expected InvalidEof after trailing comma")
   }
-  let depth_result : Result[Json, _] = try? @json.parse(
+  let depth_result : Result[Json, _] = try_parse(
     String::make(1025, '[') + String::make(1025, ']'),
   )
   guard depth_result is Err(err) else { fail("expected DepthLimitExceeded") }
@@ -486,4 +486,12 @@ test "stringify with custom indents" {
   let json : Json = { "a": 1 }
   inspect(@json.stringify(json, indent=5), content="{\n     \"a\": 1\n}")
   inspect(@json.stringify(json, indent=7), content="{\n       \"a\": 1\n}")
+}
+
+///|
+#warnings("-result_error_return")
+fn try_parse(input : String) -> Result[Json, @json.ParseError] {
+  Ok(@json.parse(input)) catch {
+    err => Err(err)
+  }
 }

@@ -8,24 +8,24 @@ fn[T, U] JsPromise::cast(self : JsPromise[T]) -> @js_async.Promise[U] = "%identi
 ///|
 priv struct JsUdpAddr {
   host : String
-  port : Int
-  family : Int
+  port : Int32
+  family : Int32
 }
 
 ///|
 priv struct JsUdpSocketResult {
-  id : Int
+  id : Int32
   host : String
-  port : Int
-  family : Int
+  port : Int32
+  family : Int32
 }
 
 ///|
 priv struct JsUdpRecvResult {
   data : Bytes
   host : String
-  port : Int
-  family : Int
+  port : Int32
+  family : Int32
 }
 
 ///|
@@ -34,7 +34,7 @@ async fn[T] run_js_promise(promise : JsPromise[T]) -> T {
 }
 
 ///|
-fn addr_from_js(host : String, port : Int, family : Int) -> Addr {
+fn addr_from_js(host : String, port : Int32, family : Int32) -> Addr {
   if family == 6 {
     Addr::{ host, port, ip: 0U, is_ipv6: true, }
   } else {
@@ -60,8 +60,8 @@ fn addr_to_js(addr : Addr) -> JsUdpAddr {
 ///|
 extern "js" fn js_udp_resolve(
   host : String,
-  port : Int,
-  protocol : Int,
+  port : Int32,
+  protocol : Int32,
 ) -> JsPromise[JsUdpSocketResult] =
   #| async (host, port, protocol) => {
   #|   const dns = await import('node:dns/promises');
@@ -132,7 +132,7 @@ extern "js" fn js_udp_server_new(
   #| }
 
 ///|
-extern "js" fn js_udp_close(id : Int) -> Unit =
+extern "js" fn js_udp_close(id : Int32) -> Unit =
   #| (id) => {
   #|   const state = globalThis.__xudp;
   #|   const handle = state?.sockets?.get(id);
@@ -145,7 +145,7 @@ extern "js" fn js_udp_close(id : Int) -> Unit =
   #| }
 
 ///|
-extern "js" fn js_udp_recv(id : Int) -> JsPromise[JsUdpRecvResult] =
+extern "js" fn js_udp_recv(id : Int32) -> JsPromise[JsUdpRecvResult] =
   #| async (id) => {
   #|   const handle = globalThis.__xudp?.sockets?.get(id);
   #|   if (!handle) throw new Error('udp socket not found');
@@ -156,10 +156,10 @@ extern "js" fn js_udp_recv(id : Int) -> JsPromise[JsUdpRecvResult] =
 
 ///|
 extern "js" fn js_udp_send(
-  id : Int,
+  id : Int32,
   data : Bytes,
-  offset : Int,
-  len : Int,
+  offset : Int32,
+  len : Int32,
 ) -> JsPromise[Unit] =
   #| async (id, data, offset, len) => {
   #|   const handle = globalThis.__xudp?.sockets?.get(id);
@@ -170,11 +170,11 @@ extern "js" fn js_udp_send(
 
 ///|
 extern "js" fn js_udp_sendto(
-  id : Int,
+  id : Int32,
   data : Bytes,
   addr : JsUdpAddr,
-  offset : Int,
-  len : Int,
+  offset : Int32,
+  len : Int32,
 ) -> JsPromise[Unit] =
   #| async (id, data, addr, offset, len) => {
   #|   const handle = globalThis.__xudp?.sockets?.get(id);
@@ -184,7 +184,7 @@ extern "js" fn js_udp_sendto(
   #| }
 
 ///|
-extern "js" fn js_udp_connect(id : Int, addr : JsUdpAddr) -> String =
+extern "js" fn js_udp_connect(id : Int32, addr : JsUdpAddr) -> String =
   #| (id, addr) => {
   #|   try {
   #|     const handle = globalThis.__xudp?.sockets?.get(id);
@@ -197,7 +197,7 @@ extern "js" fn js_udp_connect(id : Int, addr : JsUdpAddr) -> String =
   #| }
 
 ///|
-extern "js" fn js_udp_set_multicast_ttl(id : Int, ttl : Int) -> String =
+extern "js" fn js_udp_set_multicast_ttl(id : Int32, ttl : Int32) -> String =
   #| (id, ttl) => {
   #|   try {
   #|     const handle = globalThis.__xudp?.sockets?.get(id);
@@ -211,7 +211,7 @@ extern "js" fn js_udp_set_multicast_ttl(id : Int, ttl : Int) -> String =
 
 ///|
 extern "js" fn js_udp_set_multicast_loopback(
-  id : Int,
+  id : Int32,
   loopback : Bool,
 ) -> String =
   #| (id, loopback) => {
@@ -227,7 +227,7 @@ extern "js" fn js_udp_set_multicast_loopback(
 
 ///|
 extern "js" fn js_udp_set_multicast_interface(
-  id : Int,
+  id : Int32,
   address : String,
 ) -> String =
   #| (id, address) => {
@@ -243,7 +243,7 @@ extern "js" fn js_udp_set_multicast_interface(
 
 ///|
 extern "js" fn js_udp_join_multicast_group(
-  id : Int,
+  id : Int32,
   multi_host : String,
   interface_host : String,
 ) -> String =
@@ -260,13 +260,13 @@ extern "js" fn js_udp_join_multicast_group(
 
 ///|
 priv struct JsTcpAcceptResult {
-  conn_id : Int
+  conn_id : Int32
   conn_host : String
-  conn_port : Int
-  conn_family : Int
+  conn_port : Int32
+  conn_family : Int32
   peer_host : String
-  peer_port : Int
-  peer_family : Int
+  peer_port : Int32
+  peer_family : Int32
 }
 
 ///|
@@ -395,7 +395,7 @@ extern "js" fn js_tcp_server_new(
   #| }
 
 ///|
-extern "js" fn js_tcp_accept(id : Int) -> JsPromise[JsTcpAcceptResult] =
+extern "js" fn js_tcp_accept(id : Int32) -> JsPromise[JsTcpAcceptResult] =
   #| async (id) => {
   #|   const handle = globalThis.__xtcp?.servers?.get(id);
   #|   if (!handle) throw new Error('tcp server not found');
@@ -405,7 +405,7 @@ extern "js" fn js_tcp_accept(id : Int) -> JsPromise[JsTcpAcceptResult] =
   #| }
 
 ///|
-extern "js" fn js_tcp_close(id : Int) -> Unit =
+extern "js" fn js_tcp_close(id : Int32) -> Unit =
   #| (id) => {
   #|   const state = globalThis.__xtcp;
   #|   const handle = state?.conns?.get(id);
@@ -417,7 +417,7 @@ extern "js" fn js_tcp_close(id : Int) -> Unit =
   #| }
 
 ///|
-extern "js" fn js_tcp_server_close(id : Int) -> Unit =
+extern "js" fn js_tcp_server_close(id : Int32) -> Unit =
   #| (id) => {
   #|   const state = globalThis.__xtcp;
   #|   const handle = state?.servers?.get(id);
@@ -429,7 +429,7 @@ extern "js" fn js_tcp_server_close(id : Int) -> Unit =
   #| }
 
 ///|
-extern "js" fn js_tcp_read(id : Int, max_len : Int) -> JsPromise[Bytes] =
+extern "js" fn js_tcp_read(id : Int32, max_len : Int32) -> JsPromise[Bytes] =
   #| async (id, maxLen) => {
   #|   const handle = globalThis.__xtcp?.conns?.get(id);
   #|   if (!handle) throw new Error('tcp connection not found');
@@ -446,11 +446,11 @@ extern "js" fn js_tcp_read(id : Int, max_len : Int) -> JsPromise[Bytes] =
 
 ///|
 extern "js" fn js_tcp_write(
-  id : Int,
+  id : Int32,
   data : Bytes,
-  offset : Int,
-  len : Int,
-) -> JsPromise[Int] =
+  offset : Int32,
+  len : Int32,
+) -> JsPromise[Int32] =
   #| async (id, data, offset, len) => {
   #|   const handle = globalThis.__xtcp?.conns?.get(id);
   #|   if (!handle) throw new Error('tcp connection not found');
@@ -462,8 +462,8 @@ extern "js" fn js_tcp_write(
 
 ///|
 extern "js" fn js_tcp_enable_keepalive(
-  id : Int,
-  idle_before_keep_alive : Int,
+  id : Int32,
+  idle_before_keep_alive : Int32,
 ) -> String =
   #| (id, idleBeforeKeepAlive) => {
   #|   try {
@@ -478,7 +478,7 @@ extern "js" fn js_tcp_enable_keepalive(
   #| }
 
 ///|
-fn protocol_to_js(protocol : IpProtocolPreference) -> Int {
+fn protocol_to_js(protocol : IpProtocolPreference) -> Int32 {
   match protocol {
     OnlyV4 => 4
     OnlyV6 => 6
@@ -491,7 +491,7 @@ fn protocol_to_js(protocol : IpProtocolPreference) -> Int {
 ///|
 pub async fn Addr::resolve(
   host : String,
-  port~ : Int,
+  port~ : Int32,
   protocol? : IpProtocolPreference,
 ) -> Addr raise ResolveHostnameError {
   let result = run_js_promise(
@@ -504,9 +504,10 @@ pub async fn Addr::resolve(
 
 ///|
 pub struct Tcp {
+  priv write_controller : @io.BinaryWriterController
   addr : Addr
-  priv id : Int
-  priv read_buf : @io.ReaderBuffer
+  priv id : Int32
+  priv read_buf : @io.BinaryReaderController
 }
 
 ///|
@@ -515,7 +516,7 @@ pub fn Tcp::close(self : Tcp) -> Unit {
 }
 
 ///|
-pub fn Tcp::fd(_self : Tcp) -> Int {
+pub fn Tcp::fd(_self : Tcp) -> Int32 {
   -1
 }
 
@@ -528,16 +529,17 @@ pub fn Tcp::addr(self : Tcp) -> Addr {
 pub async fn Tcp::connect(addr : Addr) -> Tcp {
   let result = run_js_promise(js_tcp_connect(addr_to_js(addr)))
   Tcp::{
+    write_controller: @io.BinaryWriterController(),
     id: result.id,
     addr: addr_from_js(result.host, result.port, result.family),
-    read_buf: @io.ReaderBuffer::new(),
+    read_buf: @io.BinaryReaderController(),
   }
 }
 
 ///|
 pub async fn Tcp::connect_to_host(
   host : StringView,
-  port~ : Int,
+  port~ : Int32,
   protocol? : IpProtocolPreference,
 ) -> Tcp {
   let addr = Addr::resolve(host.to_owned(), port~, protocol?)
@@ -547,9 +549,9 @@ pub async fn Tcp::connect_to_host(
 ///|
 pub fn Tcp::enable_keepalive(
   self : Tcp,
-  idle_before_keep_alive? : Int,
-  keep_alive_count? : Int,
-  keep_alive_interval? : Int,
+  idle_before_keep_alive? : Int32,
+  keep_alive_count? : Int32,
+  keep_alive_interval? : Int32,
 ) -> Unit raise {
   ignore((keep_alive_count, keep_alive_interval))
   let err = js_tcp_enable_keepalive(
@@ -562,12 +564,17 @@ pub fn Tcp::enable_keepalive(
 }
 
 ///|
-pub impl @io.Reader for Tcp with fn _get_internal_buffer(self) {
+impl @io.BinaryReaderImpl for Tcp with fn get_controller(self) {
   self.read_buf
 }
 
 ///|
-pub impl @io.Reader for Tcp with fn _direct_read(self, buf, offset~, max_len~) {
+impl @io.BinaryReaderImpl for Tcp with fn raw_read_impl(
+  self,
+  buf,
+  offset~,
+  max_len~,
+) {
   if max_len <= 0 {
     0
   } else {
@@ -586,7 +593,12 @@ pub impl @io.Reader for Tcp with fn _direct_read(self, buf, offset~, max_len~) {
 }
 
 ///|
-pub impl @io.Writer for Tcp with fn write_once(self, buf, offset~, len~) {
+impl @io.BinaryWriterImpl for Tcp with fn raw_write_impl(
+  self,
+  buf,
+  offset~,
+  len~,
+) {
   let available = buf.length() - offset
   let n = if len < available { len } else { available }
   if n <= 0 {
@@ -599,7 +611,7 @@ pub impl @io.Writer for Tcp with fn write_once(self, buf, offset~, len~) {
 ///|
 pub struct TcpServer {
   addr : Addr
-  priv id : Int
+  priv id : Int32
 }
 
 ///|
@@ -628,7 +640,7 @@ pub fn TcpServer::close(self : TcpServer) -> Unit {
 }
 
 ///|
-pub fn TcpServer::fd(_self : TcpServer) -> Int {
+pub fn TcpServer::fd(_self : TcpServer) -> Int32 {
   -1
 }
 
@@ -643,9 +655,10 @@ pub async fn TcpServer::accept(self : TcpServer) -> (Tcp, Addr) {
   let result = run_js_promise(js_tcp_accept(self.id))
   (
     Tcp::{
+      write_controller: @io.BinaryWriterController(),
       id: result.conn_id,
       addr: addr_from_js(result.conn_host, result.conn_port, result.conn_family),
-      read_buf: @io.ReaderBuffer::new(),
+      read_buf: @io.BinaryReaderController(),
     },
     addr_from_js(result.peer_host, result.peer_port, result.peer_family),
   )
@@ -656,7 +669,7 @@ pub async fn TcpServer::run_forever(
   self : TcpServer,
   f : async (Tcp, Addr) -> Unit,
   allow_failure? : Bool,
-  max_connections? : Int,
+  max_connections? : Int32,
 ) -> Unit {
   defer self.close()
   let conn_limit = match max_connections {
@@ -686,9 +699,9 @@ pub async fn TcpServer::run_forever(
 fn copy_recv(
   result : JsUdpRecvResult,
   buf : FixedArray[Byte],
-  offset : Int,
-  max_len : Int,
-) -> Int {
+  offset : Int32,
+  max_len : Int32,
+) -> Int32 {
   let n = if result.data.length() < max_len {
     result.data.length()
   } else {
@@ -701,7 +714,7 @@ fn copy_recv(
 ///|
 pub struct UdpClient {
   addr : Addr
-  priv id : Int
+  priv id : Int32
 }
 
 ///|
@@ -720,7 +733,7 @@ pub fn UdpClient::close(self : UdpClient) -> Unit {
 }
 
 ///|
-pub fn UdpClient::fd(_self : UdpClient) -> Int {
+pub fn UdpClient::fd(_self : UdpClient) -> Int32 {
   -1
 }
 
@@ -742,9 +755,9 @@ pub fn UdpClient::connect(self : UdpClient, addr : Addr) -> Unit raise {
 pub async fn UdpClient::recv(
   self : UdpClient,
   buf : FixedArray[Byte],
-  offset? : Int,
-  max_len? : Int,
-) -> Int {
+  offset? : Int32,
+  max_len? : Int32,
+) -> Int32 {
   let offset = offset.unwrap_or(0)
   let max_len = max_len.unwrap_or(buf.length() - offset)
   let result = run_js_promise(js_udp_recv(self.id))
@@ -755,9 +768,9 @@ pub async fn UdpClient::recv(
 pub async fn UdpClient::recvfrom(
   self : UdpClient,
   buf : FixedArray[Byte],
-  offset? : Int,
-  max_len? : Int,
-) -> (Int, Addr) {
+  offset? : Int32,
+  max_len? : Int32,
+) -> (Int32, Addr) {
   let offset = offset.unwrap_or(0)
   let max_len = max_len.unwrap_or(buf.length() - offset)
   let result = run_js_promise(js_udp_recv(self.id))
@@ -769,8 +782,8 @@ pub async fn UdpClient::recvfrom(
 pub async fn UdpClient::send(
   self : UdpClient,
   buf : Bytes,
-  offset? : Int,
-  len? : Int,
+  offset? : Int32,
+  len? : Int32,
 ) -> Unit {
   let offset = offset.unwrap_or(0)
   let len = len.unwrap_or(buf.length() - offset)
@@ -811,7 +824,10 @@ pub fn UdpClient::set_multicast_loopback(
 }
 
 ///|
-pub fn UdpClient::set_multicast_ttl(self : UdpClient, ttl : Int) -> Unit raise {
+pub fn UdpClient::set_multicast_ttl(
+  self : UdpClient,
+  ttl : Int32,
+) -> Unit raise {
   let err = js_udp_set_multicast_ttl(self.id, ttl)
   if err != "" {
     raise Failure::Failure(err)
@@ -821,7 +837,7 @@ pub fn UdpClient::set_multicast_ttl(self : UdpClient, ttl : Int) -> Unit raise {
 ///|
 pub struct UdpServer {
   addr : Addr
-  priv id : Int
+  priv id : Int32
 }
 
 ///|
@@ -853,7 +869,7 @@ pub fn UdpServer::close(self : UdpServer) -> Unit {
 }
 
 ///|
-pub fn UdpServer::fd(_self : UdpServer) -> Int {
+pub fn UdpServer::fd(_self : UdpServer) -> Int32 {
   -1
 }
 
@@ -867,9 +883,9 @@ pub fn UdpServer::addr(self : UdpServer) -> Addr {
 pub async fn UdpServer::recvfrom(
   self : UdpServer,
   buf : FixedArray[Byte],
-  offset? : Int,
-  max_len? : Int,
-) -> (Int, Addr) {
+  offset? : Int32,
+  max_len? : Int32,
+) -> (Int32, Addr) {
   let offset = offset.unwrap_or(0)
   let max_len = max_len.unwrap_or(buf.length() - offset)
   let result = run_js_promise(js_udp_recv(self.id))
@@ -882,8 +898,8 @@ pub async fn UdpServer::sendto(
   self : UdpServer,
   buf : Bytes,
   addr : Addr,
-  offset? : Int,
-  len? : Int,
+  offset? : Int32,
+  len? : Int32,
 ) -> Unit {
   let offset = offset.unwrap_or(0)
   let len = len.unwrap_or(buf.length() - offset)
@@ -956,9 +972,39 @@ pub fn UdpServer::set_multicast_loopback(
 }
 
 ///|
-pub fn UdpServer::set_multicast_ttl(self : UdpServer, ttl : Int) -> Unit raise {
+pub fn UdpServer::set_multicast_ttl(
+  self : UdpServer,
+  ttl : Int32,
+) -> Unit raise {
   let err = js_udp_set_multicast_ttl(self.id, ttl)
   if err != "" {
     raise Failure::Failure(err)
   }
+}
+
+///|
+pub impl @io.BinaryReader for Tcp
+
+///|
+pub extend Tcp with @io.BinaryReader::{
+  read_into,
+  read_at_least,
+  peek,
+  peek_at_least,
+  read_exactly,
+  drop_exactly,
+  peek_exactly,
+  drop_all,
+  peek_until,
+}
+
+///|
+pub impl @io.BinaryWriter for Tcp
+
+///|
+pub extend Tcp with @io.BinaryWriter::{write_reader}
+
+///|
+impl @io.BinaryWriterImpl for Tcp with fn get_controller(self) {
+  self.write_controller
 }

@@ -60,3 +60,9 @@ pub impl Show for RegexpError with fn output(self, logger) {
   Show::output(source_fragment, logger)
   logger.write_string(")")
 }
+
+///|
+pub extend Err with Show::{to_string, output}
+
+///|
+pub extend RegexpError with Show::{to_string, output}

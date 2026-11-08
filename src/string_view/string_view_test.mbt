@@ -1,7 +1,7 @@
 ///|
 test "view-relative UTF-16 search" {
   let source = "xxab😀abyy"
-  let view = source.view(start_offset=2, end_offset=8)
+  let view = source.exact_view(start=2, end=8)
   @debug.debug_inspect(@string_view.find(view, "ab"[:]), content="Some(0)")
   @debug.debug_inspect(@string_view.rev_find(view, "ab"[:]), content="Some(4)")
   @debug.debug_inspect(
@@ -19,7 +19,7 @@ test "view-relative UTF-16 search" {
 ///|
 test "view bounds exclude surrounding strings" {
   let source = "ZaaaaZ"
-  let view = source.view(start_offset=1, end_offset=5)
+  let view = source.exact_view(start=1, end=5)
   @debug.debug_inspect(@string_view.find(view, "Z"[:]), content="None")
   @debug.debug_inspect(@string_view.rev_find(view, "Z"[:]), content="None")
 }

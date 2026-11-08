@@ -2,19 +2,19 @@
 package "mizchi/x/bytes"
 
 // Values
-pub fn compare(Bytes, Bytes) -> Int
+pub fn compare(Bytes, Bytes) -> Int32
 
 pub fn equal(Bytes, Bytes) -> Bool
 
-pub fn find(Bytes, BytesView) -> Int?
+pub fn find(Bytes, BytesView) -> Int32?
 
-pub fn find_byte(Bytes, Byte) -> Int?
+pub fn find_byte(Bytes, Byte) -> Int32?
 
-pub fn find_non_ascii(Bytes) -> Int?
+pub fn find_non_ascii(Bytes) -> Int32?
 
-pub fn rev_find(Bytes, BytesView) -> Int?
+pub fn rev_find(Bytes, BytesView) -> Int32?
 
-pub fn rev_find_byte(Bytes, Byte) -> Int?
+pub fn rev_find_byte(Bytes, Byte) -> Int32?
 
 // Errors
 

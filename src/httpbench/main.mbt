@@ -1,5 +1,5 @@
 ///|
-fn parse_port(raw : String) -> Int? {
+fn parse_port(raw : String) -> Int32? {
   if raw.length() == 0 {
     None
   } else {
@@ -19,7 +19,7 @@ fn parse_port(raw : String) -> Int? {
 }
 
 ///|
-fn env_port() -> Int {
+fn env_port() -> Int32 {
   match @sys.get_env_var("PORT") {
     Some(raw) =>
       match parse_port(raw) {

@@ -57,7 +57,7 @@ fn extract_path_from_url(url : String) -> String {
 }
 
 ///|
-fn to_response(resp : @async_http.Response) -> Response {
+fn to_response(resp : @async_http.ResponseHeader) -> Response {
   let headers : Map[String, String] = Map([])
   for k, v in resp.headers {
     headers[k.to_string().to_lower()] = v
@@ -113,7 +113,9 @@ fn from_request_method(meth : RequestMethod) -> @async_http.RequestMethod {
 
 ///|
 pub struct Client {
-  inner : @async_http.Client
+  priv write_controller : @io.BinaryWriterController
+  priv mut read_controller : @io.BinaryReaderController
+  inner : @async_http.ClientConnection
   priv mut request_method : RequestMethod?
   priv mut response_has_no_body : Bool
 }
@@ -123,7 +125,7 @@ pub async fn Client::new(
   url : String,
   headers? : Map[String, String],
   proxy? : Client,
-  verify? : Bool = true,
+  verify~ : Bool = true,
   trust? : @tls.TrustedRoot,
 ) -> Client raise HttpError {
   let proxy = proxy.map(fn(proxy) { proxy.inner })
@@ -131,7 +133,7 @@ pub async fn Client::new(
     Some(trust) => trust
     None => if verify { @tls.SystemRoot } else { @tls.NoVerification }
   }
-  let client = @async_http.Client(
+  let client = @async_http.ClientConnection(
     url,
     headers=to_upstream_headers(headers.unwrap_or({})),
     proxy?,
@@ -139,7 +141,13 @@ pub async fn Client::new(
   ) catch {
     _ => raise HttpError::InvalidUrl(url)
   }
-  Client::{ inner: client, request_method: None, response_has_no_body: false, }
+  Client::{
+    write_controller: @io.BinaryWriterController(),
+    read_controller: @io.BinaryReaderController(),
+    inner: client,
+    request_method: None,
+    response_has_no_body: false,
+  }
 }
 
 ///|
@@ -154,6 +162,7 @@ pub async fn Client::request(
   path : StringView,
   extra_headers? : Map[String, String],
 ) -> Unit raise HttpError {
+  self.read_controller = @io.BinaryReaderController()
   self.request_method = Some(meth)
   self.response_has_no_body = false
   self.inner.request(
@@ -186,6 +195,7 @@ pub async fn Client::flush(self : Client) -> Unit raise HttpError {
 
 ///|
 pub async fn Client::skip_response_body(self : Client) -> Unit raise HttpError {
+  self.read_controller = @io.BinaryReaderController()
   self.inner.skip_response_body() catch {
     err => raise classify_http_error(err.to_string())
   }
@@ -196,6 +206,7 @@ pub async fn Client::skip_response_body(self : Client) -> Unit raise HttpError {
 pub async fn Client::enter_passthrough_mode(
   self : Client,
 ) -> Unit raise HttpError {
+  self.read_controller = @io.BinaryReaderController()
   self.response_has_no_body = false
   self.inner.enter_passthrough_mode() catch {
     err => raise classify_http_error(err.to_string())
@@ -207,11 +218,11 @@ pub async fn Client::get(
   self : Client,
   path : String,
   extra_headers? : Map[String, String],
-  body? : &@io.Data,
+  body? : &@data.Data,
 ) -> Response raise HttpError {
   self.request(Get, path, extra_headers=extra_headers.unwrap_or({}))
   ignore(
-    self.write(body.unwrap_or("")) catch {
+    self.write(body.unwrap_or("").binary()[:]) catch {
       err => raise classify_http_error(err.to_string())
     },
   )
@@ -222,47 +233,37 @@ pub async fn Client::get(
 pub async fn Client::post(
   self : Client,
   path : String,
-  body : &@io.Data,
+  body : &@data.Data,
   extra_headers? : Map[String, String],
 ) -> Response raise HttpError {
-  let response = self.inner.post(
-    path,
-    body,
-    extra_headers=to_upstream_headers(extra_headers.unwrap_or({})),
-  ) catch {
+  self.request(Post, path, extra_headers?)
+  self.write(body.binary()[:]) catch {
     err => raise classify_http_error(err.to_string())
   }
-  let resp = to_response(response)
-  self.response_has_no_body = response_has_no_body(resp.code, Some(Post))
-  resp
+  self.end_request()
 }
 
 ///|
 pub async fn Client::put(
   self : Client,
   path : String,
-  body : &@io.Data,
+  body : &@data.Data,
   extra_headers? : Map[String, String],
 ) -> Response raise HttpError {
-  let response = self.inner.put(
-    path,
-    body,
-    extra_headers=to_upstream_headers(extra_headers.unwrap_or({})),
-  ) catch {
+  self.request(Put, path, extra_headers?)
+  self.write(body.binary()[:]) catch {
     err => raise classify_http_error(err.to_string())
   }
-  let resp = to_response(response)
-  self.response_has_no_body = response_has_no_body(resp.code, Some(Put))
-  resp
+  self.end_request()
 }
 
 ///|
-pub impl @io.Reader for Client with fn _get_internal_buffer(self) {
-  @io.Reader::_get_internal_buffer(self.inner)
+impl @io.BinaryReaderImpl for Client with fn get_controller(self) {
+  self.read_controller
 }
 
 ///|
-pub impl @io.Reader for Client with fn _direct_read(
+impl @io.BinaryReaderImpl for Client with fn raw_read_impl(
   self,
   buf,
   offset~,
@@ -271,13 +272,19 @@ pub impl @io.Reader for Client with fn _direct_read(
   if self.response_has_no_body {
     0
   } else {
-    @io.Reader::_direct_read(self.inner, buf, offset~, max_len~)
+    self.inner.read_into(buf, offset~, max_len~)
   }
 }
 
 ///|
-pub impl @io.Writer for Client with fn write_once(self, buf, offset~, len~) {
-  @io.Writer::write_once(self.inner, buf, offset~, len~)
+impl @io.BinaryWriterImpl for Client with fn raw_write_impl(
+  self,
+  buf,
+  offset~,
+  len~,
+) {
+  self.inner.write(buf[offset:offset + len])
+  len
 }
 
 ///|
@@ -285,25 +292,25 @@ async fn request_internal(
   url : String,
   meth : String,
   headers : Map[String, String],
-  body : &@io.Data,
+  body : &@data.Data,
   proxy? : Client,
-) -> (Response, &@io.Data) raise HttpError {
+) -> (Response, &@data.Data) raise HttpError {
   let upstream_proxy = proxy.map(fn(proxy) { proxy.inner })
   let (resp, body_data) = try {
     match meth {
       "POST" => {
-        let (resp, body_data) = @async_http.post(
+        let (resp, body_data) = @async_http.post_binary(
           url,
-          body,
+          body.binary()[:],
           headers=to_upstream_headers(headers),
           proxy?=upstream_proxy,
         )
         (to_response(resp), body_data)
       }
       "PUT" => {
-        let (resp, body_data) = @async_http.put(
+        let (resp, body_data) = @async_http.put_binary(
           url,
-          body,
+          body.binary()[:],
           headers=to_upstream_headers(headers),
           proxy?=upstream_proxy,
         )
@@ -317,7 +324,7 @@ async fn request_internal(
           extra_headers=headers,
           body~,
         )
-        (resp, client.read_all())
+        (resp, client.read_all().binary())
       }
     }
   } catch {
@@ -331,7 +338,7 @@ async fn create_stream_client(
   url : String,
   meth : RequestMethod,
   headers : Map[String, String],
-  body : &@io.Data,
+  body : &@data.Data,
   proxy? : Client,
 ) -> (Response, Client) raise HttpError {
   let host_url = extract_host_url(url)
@@ -342,7 +349,7 @@ async fn create_stream_client(
       Get => {
         client.request(Get, path, extra_headers=headers)
         ignore(
-          client.write(body) catch {
+          client.write(body.binary()[:]) catch {
             err => raise classify_http_error(err.to_string())
           },
         )
@@ -351,7 +358,7 @@ async fn create_stream_client(
       _ => {
         client.request(meth, path, extra_headers=headers)
         ignore(
-          client.write(body) catch {
+          client.write(body.binary()[:]) catch {
             err => raise classify_http_error(err.to_string())
           },
         )
@@ -371,7 +378,7 @@ async fn create_stream_client(
 
 ///|
 pub struct Stream {
-  inner : @async_http.Client
+  inner : @async_http.ClientConnection
 }
 
 ///|
@@ -379,36 +386,28 @@ async fn stream_request_internal(
   url : String,
   meth : String,
   headers : Map[String, String],
-  body : &@io.Data,
+  body : &@data.Data,
 ) -> (Response, Stream) raise HttpError {
-  let host_url = extract_host_url(url)
-  let path = extract_path_from_url(url)
-  let client = @async_http.Client(
-    host_url,
-    headers=to_upstream_headers(headers),
-  ) catch {
-    _ => raise HttpError::InvalidUrl(url)
-  }
-  let resp = try {
-    match meth {
-      "POST" => client.post(path, body)
-      "PUT" => client.put(path, body)
-      _ => client.get(path)
-    }
-  } catch {
-    err => {
-      client.close()
-      raise classify_http_error(err.to_string())
-    }
-  }
-  (to_response(resp), Stream::{ inner: client, })
+  let (resp, client) = create_stream_client(
+    url,
+    if meth == "POST" {
+      Post
+    } else if meth == "PUT" {
+      Put
+    } else {
+      Get
+    },
+    headers,
+    body,
+  )
+  (resp, Stream::{ inner: client.inner, })
 }
 
 ///|
 pub async fn get_stream(
   url : String,
   headers? : Map[String, String],
-  body? : &@io.Data = "",
+  body~ : &@data.Data = "",
   proxy? : Client,
 ) -> (Response, Client) raise HttpError {
   create_stream_client(url, Get, headers.unwrap_or({}), body, proxy?)
@@ -454,14 +453,14 @@ pub async fn put_stream(
 
 ///|
 pub async fn Stream::read_some(self : Stream) -> Bytes? raise HttpError {
-  self.inner.read_some() catch {
+  self.inner.read() catch {
     err => raise classify_http_error(err.to_string())
   }
 }
 
 ///|
 pub async fn Stream::read_all(self : Stream) -> Bytes raise HttpError {
-  let data : &@io.Data = @io.Reader::read_all(self.inner) catch {
+  let data : &@data.Data = @io.BinaryReader::read_all(self.inner) catch {
     err => raise classify_http_error(err.to_string())
   }
   data.binary()
@@ -478,29 +477,29 @@ pub fn Stream::close(self : Stream) -> Unit {
 pub async fn get(
   url : String,
   headers? : Map[String, String],
-  body? : &@io.Data = "",
+  body~ : &@data.Data = "",
   proxy? : Client,
-) -> (Response, &@io.Data) raise HttpError {
+) -> (Response, &@data.Data) raise HttpError {
   request_internal(url, "GET", headers.unwrap_or({}), body, proxy?)
 }
 
 ///|
 pub async fn post(
   url : String,
-  body : &@io.Data,
+  body : &@data.Data,
   headers? : Map[String, String],
   proxy? : Client,
-) -> (Response, &@io.Data) raise HttpError {
+) -> (Response, &@data.Data) raise HttpError {
   request_internal(url, "POST", headers.unwrap_or({}), body, proxy?)
 }
 
 ///|
 pub async fn put(
   url : String,
-  body : &@io.Data,
+  body : &@data.Data,
   headers? : Map[String, String],
   proxy? : Client,
-) -> (Response, &@io.Data) raise HttpError {
+) -> (Response, &@data.Data) raise HttpError {
   request_internal(url, "PUT", headers.unwrap_or({}), body, proxy?)
 }
 
@@ -513,11 +512,15 @@ pub struct Server {
 
 ///|
 pub struct ServerConnection {
+  priv write_controller : @io.BinaryWriterController
+  priv mut read_controller : @io.BinaryReaderController
   inner : @async_http.ServerConnection
 }
 
 ///|
-fn to_request_method(meth : @async_http.RequestMethod) -> RequestMethod {
+fn to_request_method(
+  meth : @async_http.RequestMethod,
+) -> RequestMethod raise HttpError {
   match meth {
     Get => RequestMethod::Get
     Head => RequestMethod::Head
@@ -528,11 +531,12 @@ fn to_request_method(meth : @async_http.RequestMethod) -> RequestMethod {
     Options => RequestMethod::Options
     Trace => RequestMethod::Trace
     Patch => RequestMethod::Patch
+    _ => raise HttpError::NotSupported
   }
 }
 
 ///|
-fn to_request(req : @async_http.Request) -> Request {
+fn to_request(req : @async_http.RequestHeader) -> Request raise HttpError {
   let headers : Map[String, String] = Map([])
   for k, v in req.headers {
     headers[k.to_string().to_lower()] = v
@@ -548,15 +552,15 @@ fn to_addr(addr : @socket.Addr) -> Addr {
 ///|
 pub async fn Server::new(
   host? : String,
-  port? : Int,
+  port? : Int32,
   headers? : Map[String, String],
   dual_stack? : Bool,
   reuse_addr? : Bool,
-  max_request_body_bytes? : Int,
-  request_timeout_ms? : Int,
-  keep_alive_timeout_ms? : Int,
-  headers_timeout_ms? : Int,
-  accept_queue_limit? : Int,
+  max_request_body_bytes? : Int32,
+  request_timeout_ms? : Int32,
+  keep_alive_timeout_ms? : Int32,
+  headers_timeout_ms? : Int32,
+  accept_queue_limit? : Int32,
   trust_proxy? : Bool,
 ) -> Server raise HttpError {
   ignore(max_request_body_bytes)
@@ -582,7 +586,7 @@ pub async fn Server::new(
 }
 
 ///|
-pub fn Server::port(self : Server) -> Int {
+pub fn Server::port(self : Server) -> Int32 {
   self.inner.addr.port()
 }
 
@@ -599,15 +603,13 @@ pub fn Server::close(self : Server) -> Unit {
 ///|
 pub async fn Server::close_graceful(
   self : Server,
-  timeout_ms? : Int,
+  timeout_ms? : Int32,
 ) -> Unit raise HttpError {
   let timeout = timeout_ms.unwrap_or(30000)
   if timeout < 0 {
     raise HttpError::NetworkError("timeout_ms must be >= 0")
   }
-  @async.sleep(0) catch {
-    err => raise classify_http_error(err.to_string())
-  }
+  @async.sleep(0)
   self.close()
 }
 
@@ -618,20 +620,31 @@ pub async fn Server::accept(
   let (conn, addr) = self.inner.accept() catch {
     err => raise classify_http_error(err.to_string())
   }
-  (ServerConnection::{ inner: conn, }, to_addr(addr))
+  (
+    ServerConnection::{
+      write_controller: @io.BinaryWriterController(),
+      read_controller: @io.BinaryReaderController(),
+      inner: conn,
+    },
+    to_addr(addr),
+  )
 }
 
 ///|
 pub async fn Server::run_forever(
   self : Server,
-  f : async (Request, &@io.Reader, ServerConnection) -> Unit,
+  f : async (Request, &@io.BinaryReader, ServerConnection) -> Unit,
   allow_failure? : Bool,
-  max_connections? : Int,
+  max_connections? : Int32,
 ) -> Unit raise HttpError {
   self.inner.run_forever(
-    (req, body, conn) => {
-      let wrapped = ServerConnection::{ inner: conn, }
-      f(to_request(req), body, wrapped)
+    (req, conn) => {
+      let wrapped = ServerConnection::{
+        write_controller: @io.BinaryWriterController(),
+        read_controller: @io.BinaryReaderController(),
+        inner: conn,
+      }
+      f(to_request(req), wrapped, wrapped)
     },
     allow_failure?,
     max_connections?,
@@ -654,6 +667,7 @@ pub fn ServerConnection::client_addr(self : ServerConnection) -> Addr {
 pub async fn ServerConnection::read_request(
   self : ServerConnection,
 ) -> Request raise HttpError {
+  self.read_controller = @io.BinaryReaderController()
   let req = self.inner.read_request() catch {
     err => raise classify_http_error(err.to_string())
   }
@@ -664,6 +678,7 @@ pub async fn ServerConnection::read_request(
 pub async fn ServerConnection::skip_request_body(
   self : ServerConnection,
 ) -> Unit raise HttpError {
+  self.read_controller = @io.BinaryReaderController()
   self.inner.skip_request_body() catch {
     err => raise classify_http_error(err.to_string())
   }
@@ -672,10 +687,10 @@ pub async fn ServerConnection::skip_request_body(
 ///|
 pub async fn ServerConnection::send_response(
   self : ServerConnection,
-  code : Int,
+  code : Int32,
   reason : String,
   extra_headers? : Map[String, String],
-  cookies? : Array[Cookie] = [],
+  cookies~ : Array[Cookie] = [],
 ) -> Unit raise HttpError {
   let cookies = cookies.map(from_cookie)
   self.inner.send_response(
@@ -710,32 +725,88 @@ pub async fn ServerConnection::end_response(
 pub async fn ServerConnection::enter_passthrough_mode(
   self : ServerConnection,
 ) -> Unit raise HttpError {
+  self.read_controller = @io.BinaryReaderController()
   self.inner.enter_passthrough_mode() catch {
     err => raise classify_http_error(err.to_string())
   }
 }
 
 ///|
-pub impl @io.Reader for ServerConnection with fn _get_internal_buffer(self) {
-  @io.Reader::_get_internal_buffer(self.inner)
+impl @io.BinaryReaderImpl for ServerConnection with fn get_controller(self) {
+  self.read_controller
 }
 
 ///|
-pub impl @io.Reader for ServerConnection with fn _direct_read(
+impl @io.BinaryReaderImpl for ServerConnection with fn raw_read_impl(
   self,
   buf,
   offset~,
   max_len~,
 ) {
-  @io.Reader::_direct_read(self.inner, buf, offset~, max_len~)
+  self.inner.read_into(buf, offset~, max_len~)
 }
 
 ///|
-pub impl @io.Writer for ServerConnection with fn write_once(
+impl @io.BinaryWriterImpl for ServerConnection with fn raw_write_impl(
   self,
   buf,
   offset~,
   len~,
 ) {
-  @io.Writer::write_once(self.inner, buf, offset~, len~)
+  self.inner.write(buf[offset:offset + len])
+  len
+}
+
+///|
+pub impl @io.BinaryReader for Client
+
+///|
+pub extend Client with @io.BinaryReader::{
+  read_into,
+  read_at_least,
+  peek,
+  peek_at_least,
+  read_exactly,
+  drop_exactly,
+  peek_exactly,
+  drop_all,
+  peek_until,
+}
+
+///|
+pub impl @io.BinaryReader for ServerConnection
+
+///|
+pub extend ServerConnection with @io.BinaryReader::{
+  read_into,
+  read_at_least,
+  peek,
+  peek_at_least,
+  read_exactly,
+  drop_exactly,
+  peek_exactly,
+  drop_all,
+  peek_until,
+}
+
+///|
+pub impl @io.BinaryWriter for Client
+
+///|
+pub extend Client with @io.BinaryWriter::{write_reader}
+
+///|
+impl @io.BinaryWriterImpl for Client with fn get_controller(self) {
+  self.write_controller
+}
+
+///|
+pub impl @io.BinaryWriter for ServerConnection
+
+///|
+pub extend ServerConnection with @io.BinaryWriter::{write_reader}
+
+///|
+impl @io.BinaryWriterImpl for ServerConnection with fn get_controller(self) {
+  self.write_controller
 }

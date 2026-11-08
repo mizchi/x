@@ -1,10 +1,11 @@
 import {
-  "moonbitlang/async",
-  "moonbitlang/async/fs" @async_fs,
-  "moonbitlang/async/process" @async_process,
-  "moonbitlang/async/io" @async_io,
-  "moonbitlang/async/js_async",
-  "moonbitlang/async/signal" @async_signal,
+  "mizchi/x/data",
+  "moonbitlang/core/async",
+  "moonbitlang/core/async/fs" @async_fs,
+  "moonbitlang/core/async/process" @async_process,
+  "moonbitlang/core/async/io" @async_io,
+  "moonbitlang/core/async/js_async",
+  "moonbitlang/core/async/signal" @async_signal,
   "moonbitlang/core/env",
   "mizchi/x/fs",
   "mizchi/x/signal",
@@ -14,6 +15,14 @@ import {
 warnings = "-0029-0014-0024-0009-0067"
 
 options(
+  "allow-experimental-packages": [
+    "moonbitlang/core/async",
+    "moonbitlang/core/async/fs",
+    "moonbitlang/core/async/io",
+    "moonbitlang/core/async/js_async",
+    "moonbitlang/core/async/process",
+    "moonbitlang/core/async/signal",
+  ],
   "native-stub": [ "process_native.c" ],
   targets: {
     "process_common.mbt": [ "native", "wasm" ],

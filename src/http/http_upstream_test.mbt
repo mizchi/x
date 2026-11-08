@@ -1,5 +1,5 @@
 ///|
-fn fixed_ascii(buf : FixedArray[Byte], len : Int) -> String {
+fn fixed_ascii(buf : FixedArray[Byte], len : Int32) -> String {
   let out = StringBuilder()
   for i in 0..<len {
     out.write_char(buf[i].to_int().unsafe_to_char())
@@ -25,7 +25,7 @@ async fn read_http_headers(conn : @x_socket.Tcp) -> String {
 }
 
 ///|
-fn content_length_from_headers(headers : String) -> Int {
+fn content_length_from_headers(headers : String) -> Int32 {
   for line in headers.split("\r\n") {
     let lower = line.to_lower()
     if lower.has_prefix("content-length:") {
@@ -55,7 +55,8 @@ async fn read_http_request(conn : @x_socket.Tcp) -> String {
 }
 
 ///|
-async fn gzip_bytes(data : &@io.Data) -> Bytes {
+async fn gzip_bytes(data : &@data.Data) -> Bytes {
+  let mut result = b""
   @async.with_task_group(root => {
     let (r, w) = @io.pipe()
     root.spawn_bg(() => {
@@ -65,16 +66,17 @@ async fn gzip_bytes(data : &@io.Data) -> Bytes {
       enc.end()
     })
     defer r.close()
-    r.read_all().binary()
+    result = r.read_all()
   })
+  result
 }
 
 ///|
 async fn raw_request(
   meth : @http.RequestMethod,
   path : String,
-  response : &@io.Data,
-  hold_open_ms? : Int = 0,
+  response : &@data.Data,
+  hold_open_ms~ : Int32 = 0,
 ) -> (@http.Response, String, String) {
   let mut response_headers = @http.Response::{
     code: 0,
@@ -108,8 +110,8 @@ async fn raw_request(
 
 ///|
 async fn raw_get(
-  response : &@io.Data,
-  hold_open_ms? : Int = 0,
+  response : &@data.Data,
+  hold_open_ms~ : Int32 = 0,
 ) -> (@http.Response, String, String) {
   raw_request(@http.Get, "/", response, hold_open_ms~)
 }
@@ -260,13 +262,16 @@ async test "read_response 304 Not Modified (no body)" {
 }
 
 ///|
-async test "read_response 100 Continue (no body)" {
+async test "read_response informational responses followed by final response" {
   let result = @async.with_timeout_opt(1000, () => {
-    raw_get("HTTP/1.1 100 Continue\r\n\r\n", hold_open_ms=2000)
+    raw_get(
+      "HTTP/1.1 100 Continue\r\n\r\nHTTP/1.1 103 Early Hints\r\n\r\nHTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok",
+      hold_open_ms=2000,
+    )
   })
   guard result is Some((resp, body, _)) else { fail("100 response blocked") }
-  assert_eq(resp.code, 100)
-  assert_eq(body, "")
+  assert_eq(resp.code, 200)
+  assert_eq(body, "ok")
 }
 
 ///|
@@ -319,7 +324,7 @@ async test "should_read_body_until_close - true cases" {
 
 ///|
 async test "should_read_body_until_close - false cases (bodyless status codes)" {
-  for code in [100, 101, 199, 204, 205, 304] {
+  for code in [101, 204, 205, 304] {
     let result = @async.with_timeout_opt(1000, () => {
       raw_get(
         "HTTP/1.1 \{code} OK\r\nConnection: keep-alive\r\n\r\n",
@@ -484,9 +489,9 @@ async test "request cancel" {
           defer conn.close()
           ignore(read_http_request(conn))
           @async.sleep(240)
-          conn.write("HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok")
+          conn.write(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok")
         })
-        @http.get("http://127.0.0.1:\{port}/")
+        ignore(@http.get("http://127.0.0.1:\{port}/"))
       })
     })
   catch {
@@ -513,12 +518,12 @@ async test "send fixed length" {
       let (conn, _) = server.accept()
       defer conn.close()
       request = read_http_request(conn)
-      conn.write("HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok")
+      conn.write(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok")
     })
     let client = @http.Client::new("http://127.0.0.1:\{port}")
     defer client.close()
     client.request(@http.Post, "/fixed", extra_headers={ "Content-Length": "3" })
-    client.write("abc")
+    client.write(b"abc")
     let resp = client.end_request()
     let body = client.read_all().text()
     assert_eq(resp.code, 200)
@@ -540,17 +545,17 @@ async test "send fixed length with flush" {
       let (conn, _) = server.accept()
       defer conn.close()
       request = read_http_request(conn)
-      conn.write("HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok")
+      conn.write(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok")
     })
     let client = @http.Client::new("http://127.0.0.1:\{port}")
     defer client.close()
     client.request(@http.Post, "/fixed-flush", extra_headers={
       "Content-Length": "3",
     })
-    client.write("a")
+    client.write(b"a")
     client.flush()
     @async.sleep(20)
-    client.write("bc")
+    client.write(b"bc")
     let resp = client.end_request()
     let body = client.read_all().text()
     assert_eq(resp.code, 200)
@@ -565,7 +570,7 @@ async test "send fixed length with flush" {
 async test "sender write incorrect length" {
   with_dummy_client(client => {
     client.request(@http.Post, "/bad", extra_headers={ "Content-Length": "1" })
-    let result = try client.write("ab") catch {
+    let result = try client.write(b"ab") catch {
       err => Err(err)
     } noraise {
       value => Ok(value)
@@ -584,7 +589,7 @@ async test "sender write_reader incorrect length" {
       let (r, w) = @io.pipe()
       root.spawn_bg(no_wait=true, allow_failure=true, () => {
         defer w.close()
-        w.write("ab")
+        w.write(b"ab")
       })
       let result = try client.write_reader(r) catch {
         err => Err(err)
@@ -600,7 +605,7 @@ async test "sender write_reader incorrect length" {
 async test "sender end_body incorrect length" {
   with_dummy_client(client => {
     client.request(@http.Post, "/short", extra_headers={ "Content-Length": "4" })
-    client.write("ab")
+    client.write(b"ab")
     let result = try client.end_request() catch {
       err => Err(err)
     } noraise {
@@ -659,13 +664,16 @@ async test "send_request empty body" {
   assert_eq(resp.code, 200)
   assert_eq(body, "ok")
   assert_true(request.has_prefix("POST /empty HTTP/1.1"))
-  assert_true(request.to_lower().contains("content-length: 0"))
+  assert_eq(content_length_from_headers(request), 0)
+  let header_end = request.find("\r\n\r\n").unwrap() + 4
+  assert_eq(request[header_end:], "")
 }
 
 ///|
 async test "send_response empty body" {
-  for code in [200, 102, 204, 304] {
+  for code in [200, 204, 205, 304] {
     let result = @async.with_timeout_opt(500, () => {
+      let mut response = None
       @async.with_task_group(root => {
         let server = @http.Server::new(port=0)
         defer server.close()
@@ -676,8 +684,9 @@ async test "send_response empty body" {
           })
         })
         @async.sleep(20)
-        @http.get("http://127.0.0.1:\{server.port()}/")
+        response = Some(@http.get("http://127.0.0.1:\{server.port()}/"))
       })
+      response.unwrap()
     })
     guard result is Some((resp, body)) else { fail("empty response blocked") }
     assert_eq(resp.code, code)

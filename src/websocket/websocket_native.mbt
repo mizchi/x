@@ -33,7 +33,7 @@ fn to_upstream_request_method(
 }
 
 ///|
-fn to_upstream_request(request : @http.Request) -> @async_http.Request {
+fn to_upstream_request(request : @http.Request) -> @async_http.RequestHeader {
   {
     meth: to_upstream_request_method(request.meth),
     path: request.path,
@@ -113,7 +113,7 @@ pub async fn Conn::recv(self : Conn) -> Message raise WebSocketError {
       )
     err => raise WebSocketError::ProtocolError(err.to_string())
   }
-  let data : &@io.Data = @io.Reader::read_all(msg) catch {
+  let data : &@data.Data = @io.BinaryReader::read_all(msg) catch {
     err => raise WebSocketError::ProtocolError(err.to_string())
   }
   match msg.kind {

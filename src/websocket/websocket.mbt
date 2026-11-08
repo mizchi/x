@@ -1,8 +1,9 @@
 ///|
+#derive(@debug.Debug)
 pub(all) enum MessageKind {
   Binary
   Text
-} derive(@debug.Debug)
+}
 
 ///|
 pub impl Show for MessageKind with fn output(self, logger) {
@@ -10,6 +11,7 @@ pub impl Show for MessageKind with fn output(self, logger) {
 }
 
 ///|
+#derive(Eq, @debug.Debug)
 pub(all) enum CloseCode {
   Normal
   GoingAway
@@ -22,7 +24,7 @@ pub(all) enum CloseCode {
   MissingExtension
   InternalError
   Other(UInt16)
-} derive(Eq, @debug.Debug)
+}
 
 ///|
 pub impl Show for CloseCode with fn output(self, logger) {
@@ -30,11 +32,12 @@ pub impl Show for CloseCode with fn output(self, logger) {
 }
 
 ///|
+#derive(@debug.Debug)
 pub suberror WebSocketError {
   ConnectionClosed(CloseCode, String?)
   InvalidHandshake(String)
   ProtocolError(String)
-} derive(@debug.Debug)
+}
 
 ///|
 pub impl Show for WebSocketError with fn output(self, logger) {
@@ -54,7 +57,7 @@ pub(all) enum Message {
 }
 
 ///|
-fn close_code_from_int(code : Int) -> CloseCode {
+fn close_code_from_int(code : Int32) -> CloseCode {
   match code {
     1000 => Normal
     1001 => GoingAway
@@ -71,7 +74,7 @@ fn close_code_from_int(code : Int) -> CloseCode {
 }
 
 ///|
-fn close_code_to_int(code : CloseCode) -> Int {
+fn close_code_to_int(code : CloseCode) -> Int32 {
   match code {
     Normal => 1000
     GoingAway => 1001
@@ -88,3 +91,24 @@ fn close_code_to_int(code : CloseCode) -> Int {
 }
 
 ///|
+
+///|
+pub extend MessageKind with @debug.Debug::{to_repr}
+
+///|
+pub extend MessageKind with Show::{to_string, output}
+
+///|
+pub extend CloseCode with Eq::{not_equal, equal}
+
+///|
+pub extend CloseCode with @debug.Debug::{to_repr}
+
+///|
+pub extend CloseCode with Show::{to_string, output}
+
+///|
+pub extend WebSocketError with @debug.Debug::{to_repr}
+
+///|
+pub extend WebSocketError with Show::{to_string, output}

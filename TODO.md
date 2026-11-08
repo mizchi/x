@@ -2,7 +2,7 @@
 
 ## Goal
 
-Port advanced APIs from upstream `moonbitlang/async/process` to `mizchi/x/process` with native/JS dual-target support. Reduce upstream-exclude.conf SKIP count from 18 to 3.
+Port advanced APIs from upstream `moonbitlang/core/async/process` to `mizchi/x/process` with native/JS dual-target support. Reduce upstream-exclude.conf SKIP count from 18 to 3.
 
 ## APIs to port
 

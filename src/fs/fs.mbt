@@ -11,9 +11,10 @@ pub impl Show for IOError with fn output(self, logger) {
 }
 
 ///|
-/// File kind, mirroring `moonbitlang/async/fs.FileKind` (same variants and
+/// File kind, mirroring `moonbitlang/core/async/fs.FileKind` (same variants and
 /// numeric tags) so the same code compiles for native (delegates to
 /// upstream) and JS (translated from Node `fs.lstat` / `fs.stat`).
+#derive(Eq, @debug.Debug)
 pub(all) enum FileKind {
   Unknown = 0
   Regular = 1
@@ -23,7 +24,7 @@ pub(all) enum FileKind {
   Pipe = 5
   BlockDevice = 6
   CharDevice = 7
-} derive(Eq, @debug.Debug)
+}
 
 ///|
 pub impl Show for FileKind with fn output(self, logger) {
@@ -76,3 +77,15 @@ pub(all) enum Lock {
   Shared
   Exclusive
 }
+
+///|
+pub extend IOError with Show::{to_string, output}
+
+///|
+pub extend FileKind with Eq::{not_equal, equal}
+
+///|
+pub extend FileKind with @debug.Debug::{to_repr}
+
+///|
+pub extend FileKind with Show::{to_string, output}

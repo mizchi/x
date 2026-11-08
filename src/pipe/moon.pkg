@@ -1,17 +1,25 @@
 import {
-  "moonbitlang/async/pipe" @async_pipe,
-  "moonbitlang/async/io",
+  "mizchi/x/data",
+  "moonbitlang/core/async/process" @async_process,
+  "moonbitlang/core/async/pipe" @async_pipe,
+  "moonbitlang/core/async/io",
   "mizchi/x/process",
 }
 
 import {
-  "moonbitlang/async",
+  "moonbitlang/core/async",
   "moonbitlang/core/encoding/utf8",
 } for "test"
 
 warnings = "-0029-0024"
 
 options(
+  "allow-experimental-packages": [
+    "moonbitlang/core/async/process",
+    "moonbitlang/core/async",
+    "moonbitlang/core/async/io",
+    "moonbitlang/core/async/pipe",
+  ],
   targets: {
     "pipe_js.mbt": [ "js" ],
     "pipe_native.mbt": [ "native", "wasm" ],

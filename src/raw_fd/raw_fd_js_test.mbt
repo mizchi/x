@@ -1,5 +1,5 @@
 ///|
-extern "js" fn open_read_fixture() -> Int =
+extern "js" fn open_read_fixture() -> Int32 =
   #| () => {
   #|   const fs = require('node:fs');
   #|   const path = '/tmp/mizchi_x_raw_fd_read_js.txt';
@@ -9,7 +9,7 @@ extern "js" fn open_read_fixture() -> Int =
   #| }
 
 ///|
-extern "js" fn open_write_fixture() -> Int =
+extern "js" fn open_write_fixture() -> Int32 =
   #| () => {
   #|   const fs = require('node:fs');
   #|   const path = '/tmp/mizchi_x_raw_fd_write_js.txt';

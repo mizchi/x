@@ -1,5 +1,5 @@
 import {
-  "moonbitlang/async",
+  "moonbitlang/core/async",
   "moonbitlang/core/encoding/utf8",
   "mizchi/x/fs" @xfs,
 }
@@ -7,15 +7,18 @@ import {
 warnings = "-0029-0014"
 
 options(
+  "allow-experimental-packages": [ "moonbitlang/core/async" ],
   "native-stub": [ "watch_fsevents.c", "watch_inotify.c", "watch_rdcw.c" ],
   link: { "native": { "cc-link-flags": "-lpthread" } },
   targets: {
+    "watch_normalize.mbt": [ "native", "js" ],
     "watch_native.mbt": [ "native" ],
     "watch_polling.mbt": [ "native" ],
     "watch_fsevents.mbt": [ "native" ],
     "watch_inotify.mbt": [ "native" ],
     "watch_rdcw.mbt": [ "native" ],
     "watch_js.mbt": [ "js" ],
+    "watch_js_wbtest.mbt": [ "js" ],
     "watch_test.mbt": [ "native", "js" ],
   },
 )

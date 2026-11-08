@@ -10,14 +10,19 @@ import {
 pub async fn from_http_server(@http.Request, @http.ServerConnection) -> Conn raise WebSocketError
 
 // Errors
+#derive(@debug.Debug)
 pub suberror WebSocketError {
   ConnectionClosed(CloseCode, String?)
   InvalidHandshake(String)
   ProtocolError(String)
-} derive(@debug.Debug)
+}
+pub fn WebSocketError::output(Self, &Logger) -> Unit
+pub fn WebSocketError::to_repr(Self) -> @debug.Repr
+pub fn WebSocketError::to_string(Self) -> String
 pub impl Show for WebSocketError
 
 // Types and methods
+#derive(Eq, @debug.Debug)
 pub(all) enum CloseCode {
   Normal
   GoingAway
@@ -30,11 +35,16 @@ pub(all) enum CloseCode {
   MissingExtension
   InternalError
   Other(UInt16)
-} derive(Eq, @debug.Debug)
+}
+pub fn CloseCode::equal(Self, Self) -> Bool
+pub fn CloseCode::not_equal(Self, Self) -> Bool
+pub fn CloseCode::output(Self, &Logger) -> Unit
+pub fn CloseCode::to_repr(Self) -> @debug.Repr
+pub fn CloseCode::to_string(Self) -> String
 pub impl Show for CloseCode
 
 pub struct Conn {
-  inner : @moonbitlang/async/websocket.Conn
+  inner : @moonbitlang/core/async/websocket.Conn
 }
 pub fn Conn::close(Self) -> Unit
 pub async fn Conn::connect(String, headers? : Map[String, String]) -> Self raise WebSocketError
@@ -49,10 +59,14 @@ pub(all) enum Message {
   Binary(Bytes)
 }
 
+#derive(@debug.Debug)
 pub(all) enum MessageKind {
   Binary
   Text
-} derive(@debug.Debug)
+}
+pub fn MessageKind::output(Self, &Logger) -> Unit
+pub fn MessageKind::to_repr(Self) -> @debug.Repr
+pub fn MessageKind::to_string(Self) -> String
 pub impl Show for MessageKind
 
 // Type aliases

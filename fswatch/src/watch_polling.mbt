@@ -3,15 +3,16 @@
 /// filesystems give nanosecond-resolution mtime, so successive writes within
 /// the same second still differ. Falling back to sec-only would silently
 /// drop those Modified events.
+#derive(Eq)
 priv struct Fingerprint {
   sec : Int64
-  nsec : Int
-} derive(Eq)
+  nsec : Int32
+}
 
 ///|
 priv struct PollingState {
   roots : Array[String]
-  interval_ms : Int
+  interval_ms : Int32
   exclude : (String) -> Bool
   mut snapshot : Map[String, Fingerprint]
 }
@@ -19,11 +20,11 @@ priv struct PollingState {
 ///|
 async fn polling_start(
   roots : Array[String],
-  interval_ms : Int,
+  interval_ms : Int32,
   exclude : (String) -> Bool,
 ) -> PollingState {
   let initial = polling_snapshot(roots, exclude)
-  PollingState::{ roots, interval_ms, exclude, snapshot: initial }
+  PollingState::{ roots, interval_ms, exclude, snapshot: initial, }
 }
 
 ///|
@@ -64,7 +65,7 @@ async fn polling_snapshot(
               value => Ok(value)
             }
             match m {
-              Ok((sec, nsec)) => snap[full] = Fingerprint::{ sec, nsec }
+              Ok((sec, nsec)) => snap[full] = Fingerprint::{ sec, nsec, }
               Err(_) => ()
             }
           }
@@ -84,16 +85,16 @@ fn polling_diff(
   let events : Array[Event] = []
   for path, fp in fresh {
     match old.get(path) {
-      None => events.push(Event::{ path, kind: Created })
+      None => events.push(Event::{ path, kind: Created, })
       Some(prev) =>
         if prev != fp {
-          events.push(Event::{ path, kind: Modified })
+          events.push(Event::{ path, kind: Modified, })
         }
     }
   }
   for path, _ in old {
     if !fresh.contains(path) {
-      events.push(Event::{ path, kind: Removed })
+      events.push(Event::{ path, kind: Removed, })
     }
   }
   events
