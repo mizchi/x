@@ -16,8 +16,11 @@ MOONBIT_FFI_EXPORT int mizchi_x_pipe_close(int fd) {
 #include <fcntl.h>
 #include <unistd.h>
 
-// Create an OS pipe whose ends are not inherited by child processes (the
-// read or write end reaches a child only through an explicit redirect).
+// Create an OS pipe whose ends are close-on-exec, so a child receives one
+// only through an explicit redirect. On Linux the flag is set atomically by
+// pipe2(); elsewhere (e.g. macOS, which has no pipe2) it is set right after
+// pipe(), so a child spawned concurrently by another thread in that window
+// can still inherit an end.
 MOONBIT_FFI_EXPORT int mizchi_x_pipe_open(int *fds) {
   int p[2];
 #if defined(__linux__)

@@ -68,8 +68,6 @@ Node.js backend compatibility layer for `moonbitlang/core/async` in [MoonBit](ht
 | `cond_var` | Yes | Yes | Yes | Yes |
 | `semaphore` | Yes | Yes | Yes | Yes |
 | `websocket` | Yes | Yes | client | stub |
-
-\*\* TLS server mode needs the JS target: `moonbitlang/core/async/tls` is client-only since MoonBit v0.10.21.
 | `stdio` | Yes | Yes | Yes | stub |
 | `pipe` | Yes | Yes | stub | stub |
 | `sys` | Yes | Yes | Yes | Yes* |
@@ -81,9 +79,11 @@ Node.js backend compatibility layer for `moonbitlang/core/async` in [MoonBit](ht
 | `string_view` | Yes | Yes (native UTF-16) | Yes | Yes |
 | `array_view` | Yes | Yes (native byte search) | Yes | Yes |
 
+
 - **Yes** — Full upstream-backed implementation.
 - **Yes\*** — Implemented, with explicitly unsupported host-specific APIs.
 - **client** — WebSocket client support; HTTP server upgrades are unavailable on wasm.
+- **client\*\*** — TLS client only: `moonbitlang/core/async/tls` is client-only since MoonBit v0.10.21, so TLS server mode needs the JS target.
 - **stub** — Compiles but aborts at runtime with "not supported" message.
 - **Yes\*** — Environment variables and arguments use `moonbitlang/core/env`; process exit remains unavailable on wasm-gc.
 
