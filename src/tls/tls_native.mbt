@@ -95,7 +95,7 @@ pub async fn[Inner : @io.BinaryReader + @io.BinaryWriter] Tls::server(
     ),
   )
   raise TlsError(
-    "TLS server mode is not supported on the native target: moonbitlang/core async/tls is client-only",
+    "TLS server mode is not supported on this target: moonbitlang/core async/tls is client-only",
   )
 }
 
@@ -114,7 +114,7 @@ pub async fn[R : @io.BinaryReader, W : @io.BinaryWriter] Tls::server_from_pair(
     ),
   )
   raise TlsError(
-    "TLS server mode is not supported on the native target: moonbitlang/core async/tls is client-only",
+    "TLS server mode is not supported on this target: moonbitlang/core async/tls is client-only",
   )
 }
 
@@ -220,5 +220,7 @@ impl @io.BinaryWriterImpl for Tls with fn name(_self) {
 
 ///|
 impl @io.BinaryWriterImpl for Tls with fn flush_partial_data(self) {
-  self.inner.flush_partial_data()
+  self.inner.flush_partial_data() catch {
+    err => raise_tls_error(err)
+  }
 }

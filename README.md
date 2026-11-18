@@ -69,7 +69,7 @@ Node.js backend compatibility layer for `moonbitlang/core/async` in [MoonBit](ht
 | `semaphore` | Yes | Yes | Yes | Yes |
 | `websocket` | Yes | Yes | client | stub |
 | `stdio` | Yes | Yes | Yes | stub |
-| `pipe` | Yes | Yes | stub | stub |
+| `pipe` | Unix | Yes | stub | stub |
 | `sys` | Yes | Yes | Yes | Yes* |
 | `regexp` | Yes | Yes (FFI) | Yes | Yes |
 | `json` | Yes | Yes (FFI) | Yes | Yes |
@@ -85,6 +85,7 @@ Node.js backend compatibility layer for `moonbitlang/core/async` in [MoonBit](ht
 - **client** — WebSocket client support; HTTP server upgrades are unavailable on wasm.
 - **client\*\*** — TLS client only: `moonbitlang/core/async/tls` is client-only since MoonBit v0.10.21, so TLS server mode needs the JS target.
 - **stub** — Compiles but aborts at runtime with "not supported" message.
+- **Unix** — Native `pipe()` creates an OS pipe on Unix; on Windows it raises `PipeError(ENOSYS)`.
 - **Yes\*** — Environment variables and arguments use `moonbitlang/core/env`; process exit remains unavailable on wasm-gc.
 
 On `wasm`, filesystem, process, socket, TLS client, HTTP, WebSocket client, and stdio operations delegate to `moonbitlang/core/async`'s WASM host integration and retain the native/JS async signatures. They require capabilities granted by the WASM host (for example, `moonrun --policy` for filesystem, networking, and process spawning). `fs.Watcher`, `raw_fd`, `pipe`, process pipe redirection, and process groups, tree termination, and signal-based process termination are explicitly unsupported. Opaque WASM handles exposed as public `Int32` file descriptors abort if they cannot be represented without truncation.

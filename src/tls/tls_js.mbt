@@ -619,7 +619,9 @@ impl @io.BinaryWriterImpl for Tls with fn name(_self) {
 ///|
 impl @io.BinaryWriterImpl for Tls with fn flush_partial_data(self) {
   self.flush_encrypted()
-  @io.BinaryWriter::flush_partial_data(self.writer)
+  @io.BinaryWriter::flush_partial_data(self.writer) catch {
+    err => raise_transport_error(err)
+  }
 }
 
 ///|
