@@ -36,7 +36,12 @@ async test "mkdir" {
 async test "rmdir refuses a regular file" {
   let dir = @fs.tmpdir(prefix="mizchi_x_fs_rmdir_")
   let path = "\{dir}/file"
-  @fs.write_file(path, "keep")
+  @fs.write_file(path, "keep") catch {
+    err => {
+      @fs.rmdir(dir, recursive=true)
+      fail("write_file failed: \{err}")
+    }
+  }
   let result = try @fs.rmdir(path) catch {
     _ => false
   } noraise {
