@@ -22,7 +22,10 @@ async fn wait_for_event(
         break observed
       }
     }
-  })
+  }) catch {
+    @async.TimeoutError => fail("Timed out waiting for \{kind} at \{path}")
+    err => raise err
+  }
 }
 
 ///|
@@ -124,7 +127,7 @@ async test "watch exclude prunes paths" {
     p.contains("/skip")
   })
   defer watcher.close()
-  ready_watcher(watcher, dir)
+  ready_watcher(watcher, dir + "/keep")
   let mut skip_leaked = false
   @async.with_task_group(group => {
     group.spawn_bg(() => {

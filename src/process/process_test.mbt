@@ -104,13 +104,16 @@ async test "collect_output blocked" {
 
 ///|
 async test "basic_ls" {
+  let dir = @fs.tmpdir(prefix="mizchi_x_process_ls")
+  defer @async.protect_from_cancel(() => @fs.rmdir(dir, recursive=true))
+  @fs.write_file(dir + "/entry.txt", "test")
   let (code, stdout) = @process.collect_stdout(
     "node",
     ["-e", "require('fs').readdirSync('.').sort().forEach(f=>console.log(f))"],
-    cwd="/tmp",
+    cwd=dir,
   )
   inspect(code, content="0")
-  inspect(stdout.text().length() > 0, content="true")
+  assert_eq(stdout.text().trim().to_owned(), "entry.txt")
 }
 
 ///|

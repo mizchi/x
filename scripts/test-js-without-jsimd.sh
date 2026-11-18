@@ -42,7 +42,7 @@ fi
   moon test --target js src/json
 )
 
-if rg -n "@mizchi/jsimd-moonbit-interop" "$fixture_dir/_build"; then
+if grep -rF --include='*.js' "@mizchi/jsimd-moonbit-interop" "$fixture_dir/_build"; then
   echo "unused jsimd interop leaked into the JS output" >&2
   exit 1
 fi
