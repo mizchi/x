@@ -461,3 +461,33 @@ impl @io.BinaryWriterImpl for ServerConnection with fn get_controller(self) {
   ignore(self)
   abort("writer not supported on this target")
 }
+
+///|
+impl @io.BinaryReaderImpl for Client with fn name(_self) {
+  "Client"
+}
+
+///|
+impl @io.BinaryReaderImpl for ServerConnection with fn name(_self) {
+  "ServerConnection"
+}
+
+///|
+impl @io.BinaryWriterImpl for Client with fn name(_self) {
+  "Client"
+}
+
+///|
+impl @io.BinaryWriterImpl for Client with fn flush_partial_data(_self) {
+  ()
+}
+
+///|
+impl @io.BinaryWriterImpl for ServerConnection with fn name(_self) {
+  "ServerConnection"
+}
+
+///|
+impl @io.BinaryWriterImpl for ServerConnection with fn flush_partial_data(_self) {
+  ()
+}

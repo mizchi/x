@@ -1283,3 +1283,18 @@ pub extend File with @io.BinaryWriter::{write_reader}
 impl @io.BinaryWriterImpl for File with fn get_controller(self) {
   self.write_controller
 }
+
+///|
+impl @io.BinaryReaderImpl for File with fn name(_self) {
+  "File"
+}
+
+///|
+impl @io.BinaryWriterImpl for File with fn name(_self) {
+  "File"
+}
+
+///|
+impl @io.BinaryWriterImpl for File with fn flush_partial_data(_self) {
+  ()
+}

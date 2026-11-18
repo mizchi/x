@@ -22,10 +22,10 @@ fn Addr::to_async(self : Addr) -> @async_socket.Addr raise InvalidAddr {
 fn addr_from_async(addr : @async_socket.Addr) -> Addr {
   Addr::parse("\{addr}") catch {
     _ =>
-      if addr.is_ipv6() {
-        Addr::{ host: "::", port: addr.port(), ip: 0U, is_ipv6: true, }
-      } else {
-        Addr::new(addr.ip(), addr.port())
+      match addr.ip {
+        Ipv6(_) =>
+          Addr::{ host: "::", port: addr.port.to_int(), ip: 0U, is_ipv6: true, }
+        Ipv4(ip) => Addr::new(ip, addr.port.to_int())
       }
   }
 }
@@ -37,7 +37,10 @@ pub async fn Addr::resolve(
   protocol? : IpProtocolPreference,
 ) -> Addr raise ResolveHostnameError {
   let protocol = to_async_protocol(protocol.unwrap_or(NoPreference))
-  let addr = @async_socket.Addr::resolve(host, port~, protocol~) catch {
+  guard port >= 0 && port <= 65535 else {
+    raise ResolveHostnameError::ResolveHostnameError("invalid port \{port}")
+  }
+  let addr = @async_socket.Addr::resolve(host, port=port.to_uint16(), protocol~) catch {
     err => raise ResolveHostnameError::ResolveHostnameError(err.to_string())
   }
   addr_from_async(addr)
@@ -87,9 +90,10 @@ pub async fn Tcp::connect_to_host(
   port~ : Int32,
   protocol? : IpProtocolPreference,
 ) -> Tcp {
+  guard port >= 0 && port <= 65535 else { raise InvalidAddr }
   let inner = @async_socket.Tcp::connect_to_host(
     host,
-    port~,
+    port=port.to_uint16(),
     protocol=to_async_protocol(protocol.unwrap_or(NoPreference)),
   )
   Tcp::{
@@ -262,7 +266,7 @@ pub async fn UdpClient::recv(
   offset? : Int32,
   max_len? : Int32,
 ) -> Int32 {
-  self.inner.recv(buf, offset?, max_len?)
+  self.inner.recv_into(buf, offset?, max_len?)
 }
 
 ///|
@@ -272,7 +276,7 @@ pub async fn UdpClient::recvfrom(
   offset? : Int32,
   max_len? : Int32,
 ) -> (Int32, Addr) {
-  let (n, addr) = self.inner.recvfrom(buf, offset?, max_len?)
+  let (n, addr) = self.inner.recv_into_with_addr(buf, offset?, max_len?)
   (n, addr_from_async(addr))
 }
 
@@ -291,7 +295,7 @@ pub fn UdpClient::set_multicast_interface(
   self : UdpClient,
   addr : Addr,
 ) -> Unit raise {
-  self.inner.set_multicast_interface(addr.to_async())
+  self.inner.set_multicast_interface(addr.to_async().ip)
 }
 
 ///|
@@ -345,12 +349,15 @@ pub async fn UdpServer::multicast(
     multi_addr.to_async() catch {
       _ => abort("@socket.UdpServer::multicast: invalid address")
     },
-    interface_addr=match interface_addr {
+    interface_addr?=match interface_addr {
       Some(addr) =>
-        addr.to_async() catch {
-          _ => abort("@socket.UdpServer::multicast: invalid interface address")
-        }
-      None => @async_socket.Addr::new(0U, 0)
+        Some(
+          (addr.to_async() catch {
+            _ =>
+              abort("@socket.UdpServer::multicast: invalid interface address")
+          }).ip,
+        )
+      None => None
     },
   )
   UdpServer::{ addr: addr_from_async(inner.addr), inner, }
@@ -379,7 +386,7 @@ pub async fn UdpServer::recvfrom(
   offset? : Int32,
   max_len? : Int32,
 ) -> (Int32, Addr) {
-  let (n, addr) = self.inner.recvfrom(buf, offset?, max_len?)
+  let (n, addr) = self.inner.recv_into(buf, offset?, max_len?)
   (n, addr_from_async(addr))
 }
 
@@ -391,7 +398,7 @@ pub async fn UdpServer::sendto(
   offset? : Int32,
   len? : Int32,
 ) -> Unit {
-  self.inner.sendto(
+  self.inner.send(
     buf,
     addr.to_async() catch {
       _ => abort("@socket.UdpServer::sendto: invalid address")
@@ -409,9 +416,9 @@ pub fn UdpServer::join_multicast_group(
 ) -> Unit raise {
   self.inner.join_multicast_group(
     multi_addr.to_async(),
-    interface_addr=match interface_addr {
-      Some(addr) => addr.to_async()
-      None => @async_socket.Addr::new(0U, 0)
+    interface_addr?=match interface_addr {
+      Some(addr) => Some(addr.to_async().ip)
+      None => None
     },
   )
 }
@@ -430,7 +437,7 @@ pub fn UdpServer::set_multicast_interface(
   self : UdpServer,
   addr : Addr,
 ) -> Unit raise {
-  self.inner.set_multicast_interface(addr.to_async())
+  self.inner.set_multicast_interface(addr.to_async().ip)
 }
 
 ///|
@@ -482,4 +489,19 @@ pub extend Tcp with @io.BinaryWriter::{write_reader}
 ///|
 impl @io.BinaryWriterImpl for Tcp with fn get_controller(self) {
   self.write_controller
+}
+
+///|
+impl @io.BinaryReaderImpl for Tcp with fn name(_self) {
+  "Tcp"
+}
+
+///|
+impl @io.BinaryWriterImpl for Tcp with fn name(_self) {
+  "Tcp"
+}
+
+///|
+impl @io.BinaryWriterImpl for Tcp with fn flush_partial_data(_self) {
+  ()
 }

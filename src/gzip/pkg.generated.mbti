@@ -17,17 +17,17 @@ pub struct Decoder[R] {
 #alias(new, deprecated)
 pub fn[R] Decoder::Decoder(R) -> Self[R]
 pub async fn[R : @io.BinaryReader] Decoder::drop(Self[R], Int32) -> Int32
-pub async fn[R : @io.BinaryReader] Decoder::drop_all(Self[R]) -> Int64
-pub async fn[R : @io.BinaryReader] Decoder::drop_exactly(Self[R], Int32) -> Unit
-pub async fn[R : @io.BinaryReader] Decoder::peek(Self[R]) -> BytesView?
-pub async fn[R : @io.BinaryReader] Decoder::peek_at_least(Self[R], Int32) -> BytesView
-pub async fn[R : @io.BinaryReader] Decoder::peek_exactly(Self[R], Int32) -> BytesView
-pub async fn[R : @io.BinaryReader] Decoder::peek_until(Self[R], BytesView, include_delimiter? : Bool) -> BytesView?
+pub async fn[R : @io.BinaryReader] Decoder::drop_all(Self[R]) -> Int64 raise @io.ReaderError
+pub async fn[R : @io.BinaryReader] Decoder::drop_exactly(Self[R], Int32) -> Unit raise @io.ReaderError
+pub async fn[R : @io.BinaryReader] Decoder::peek(Self[R]) -> BytesView? raise @io.ReaderError
+pub async fn[R : @io.BinaryReader] Decoder::peek_at_least(Self[R], Int32) -> BytesView raise @io.ReaderError
+pub async fn[R : @io.BinaryReader] Decoder::peek_exactly(Self[R], Int32) -> BytesView raise @io.ReaderError
+pub async fn[R : @io.BinaryReader] Decoder::peek_until(Self[R], BytesView, include_delimiter? : Bool) -> BytesView? raise @io.ReaderError
 pub async fn[R : @io.BinaryReader] Decoder::read(Self[R], FixedArray[Byte], offset? : Int32, max_len? : Int32) -> Int32
 pub async fn[R : @io.BinaryReader] Decoder::read_all(Self[R]) -> &@data.Data
-pub async fn[R : @io.BinaryReader] Decoder::read_at_least(Self[R], Int32) -> Bytes
-pub async fn[R : @io.BinaryReader] Decoder::read_exactly(Self[R], Int32) -> Bytes
-pub async fn[R : @io.BinaryReader] Decoder::read_into(Self[R], FixedArray[Byte], offset? : Int32, max_len? : Int32) -> Int32
+pub async fn[R : @io.BinaryReader] Decoder::read_at_least(Self[R], Int32) -> Bytes raise @io.ReaderError
+pub async fn[R : @io.BinaryReader] Decoder::read_exactly(Self[R], Int32) -> Bytes raise @io.ReaderError
+pub async fn[R : @io.BinaryReader] Decoder::read_into(Self[R], FixedArray[Byte], offset? : Int32, max_len? : Int32) -> Int32 raise @io.ReaderError
 pub async fn[R : @io.BinaryReader] Decoder::read_some(Self[R], max_len? : Int32) -> Bytes?
 pub async fn[R : @io.BinaryReader] Decoder::read_until(Self[R], StringView) -> String?
 pub impl[R : @io.BinaryReader] @io.BinaryReader for Decoder[R]

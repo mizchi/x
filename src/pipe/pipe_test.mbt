@@ -67,7 +67,7 @@ async test "read_exactly failure" {
     content=(
       #|first message sent
       #|first message: abcd
-      #|moonbitlang/core/async/io.ReaderClosed.ReaderClosed
+      #|moonbitlang/core/async/io.ReaderError.UnexpectedEof
       #|
     ),
   )

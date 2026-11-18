@@ -1,18 +1,58 @@
 ///|
+/// The read end of an OS pipe.
 pub struct PipeRead {
   priv read_controller : @io.BinaryReaderController
-  inner : @async_pipe.PipeRead
+  inner : @async_fs.File
 }
 
 ///|
+/// The write end of an OS pipe.
 pub struct PipeWrite {
   priv write_controller : @io.BinaryWriterController
-  inner : @async_pipe.PipeWrite
+  inner : @async_fs.File
 }
 
 ///|
-pub fn pipe() -> (PipeRead, PipeWrite) raise {
-  let (r, w) = @async_pipe.pipe()
+#borrow(fds)
+extern "C" fn pipe_open_ffi(fds : FixedArray[Int32]) -> Int32 = "mizchi_x_pipe_open"
+
+///|
+extern "C" fn pipe_close_ffi(fd : Int32) -> Int32 = "mizchi_x_pipe_close"
+
+///|
+fn pipe_fd_to_int(fd : @types.Fd) -> Int32 = "%identity"
+
+///|
+/// Failure to create an OS pipe, carrying the `errno` value.
+pub suberror PipeError {
+  PipeError(Int32)
+}
+
+///|
+pub async fn pipe() -> (PipeRead, PipeWrite) {
+  let fds : FixedArray[Int32] = [-1, -1]
+  let err = pipe_open_ffi(fds)
+  if err != 0 {
+    raise PipeError(err)
+  }
+  // Reopen both ends through /dev/fd so core's async fs drives them (it
+  // handles pipes; core's fd-based `raw_fd` is native-only, and importing it
+  // would drop the js build of this package). Each raw descriptor from
+  // pipe(2) is closed as soon as its replacement is owned.
+  let mut raw_read_open = true
+  defer {
+    if raw_read_open {
+      ignore(pipe_close_ffi(fds[0]))
+    }
+    ignore(pipe_close_ffi(fds[1]))
+  }
+  let r = @async_fs.open("/dev/fd/\{fds[0]}", mode=ReadOnly)
+  ignore(pipe_close_ffi(fds[0]))
+  raw_read_open = false
+  let mut opened = false
+  defer (if !opened { r.close() })
+  let w = @async_fs.open("/dev/fd/\{fds[1]}", mode=WriteOnly)
+  opened = true
   (
     PipeRead::{ read_controller: @io.BinaryReaderController(), inner: r, },
     PipeWrite::{ write_controller: @io.BinaryWriterController(), inner: w, },
@@ -31,14 +71,17 @@ pub fn PipeWrite::close(self : PipeWrite) -> Unit {
 
 ///|
 pub fn PipeRead::fd(self : PipeRead) -> Int32 {
-  let fd = self.inner.fd()
-  pipe_fd_to_int(fd)
+  pipe_fd_to_int(self.inner.fd())
 }
 
 ///|
 pub fn PipeWrite::fd(self : PipeWrite) -> Int32 {
-  let fd = self.inner.fd()
-  pipe_fd_to_int(fd)
+  pipe_fd_to_int(self.inner.fd())
+}
+
+///|
+impl @io.BinaryReaderImpl for PipeRead with fn name(_self) {
+  "@pipe.PipeRead"
 }
 
 ///|
@@ -57,6 +100,16 @@ impl @io.BinaryReaderImpl for PipeRead with fn raw_read_impl(
 }
 
 ///|
+impl @io.BinaryWriterImpl for PipeWrite with fn name(_self) {
+  "@pipe.PipeWrite"
+}
+
+///|
+impl @io.BinaryWriterImpl for PipeWrite with fn get_controller(self) {
+  self.write_controller
+}
+
+///|
 impl @io.BinaryWriterImpl for PipeWrite with fn raw_write_impl(
   self,
   buf,
@@ -65,6 +118,11 @@ impl @io.BinaryWriterImpl for PipeWrite with fn raw_write_impl(
 ) {
   self.inner.write(buf[offset:offset + len])
   len
+}
+
+///|
+impl @io.BinaryWriterImpl for PipeWrite with fn flush_partial_data(_self) {
+  ()
 }
 
 ///|
@@ -88,8 +146,3 @@ pub impl @io.BinaryWriter for PipeWrite
 
 ///|
 pub extend PipeWrite with @io.BinaryWriter::{write_reader}
-
-///|
-impl @io.BinaryWriterImpl for PipeWrite with fn get_controller(self) {
-  self.write_controller
-}

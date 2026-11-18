@@ -46,24 +46,24 @@ pub struct Client {
 }
 pub fn Client::close(Self) -> Unit
 pub async fn Client::drop(Self, Int32) -> Int32
-pub async fn Client::drop_all(Self) -> Int64
-pub async fn Client::drop_exactly(Self, Int32) -> Unit
+pub async fn Client::drop_all(Self) -> Int64 raise @io.ReaderError
+pub async fn Client::drop_exactly(Self, Int32) -> Unit raise @io.ReaderError
 pub async fn Client::end_request(Self) -> Response raise HttpError
 pub async fn Client::enter_passthrough_mode(Self) -> Unit raise HttpError
 pub async fn Client::flush(Self) -> Unit raise HttpError
 pub async fn Client::get(Self, String, extra_headers? : Map[String, String], body? : &@data.Data) -> Response raise HttpError
 pub async fn Client::new(String, headers? : Map[String, String], proxy? : Self, verify? : Bool, trust? : @tls.TrustedRoot) -> Self raise HttpError
-pub async fn Client::peek(Self) -> BytesView?
-pub async fn Client::peek_at_least(Self, Int32) -> BytesView
-pub async fn Client::peek_exactly(Self, Int32) -> BytesView
-pub async fn Client::peek_until(Self, BytesView, include_delimiter? : Bool) -> BytesView?
+pub async fn Client::peek(Self) -> BytesView? raise @io.ReaderError
+pub async fn Client::peek_at_least(Self, Int32) -> BytesView raise @io.ReaderError
+pub async fn Client::peek_exactly(Self, Int32) -> BytesView raise @io.ReaderError
+pub async fn Client::peek_until(Self, BytesView, include_delimiter? : Bool) -> BytesView? raise @io.ReaderError
 pub async fn Client::post(Self, String, &@data.Data, extra_headers? : Map[String, String]) -> Response raise HttpError
 pub async fn Client::put(Self, String, &@data.Data, extra_headers? : Map[String, String]) -> Response raise HttpError
 pub async fn Client::read(Self, FixedArray[Byte], offset? : Int32, max_len? : Int32) -> Int32
 pub async fn Client::read_all(Self) -> &@data.Data
-pub async fn Client::read_at_least(Self, Int32) -> Bytes
-pub async fn Client::read_exactly(Self, Int32) -> Bytes
-pub async fn Client::read_into(Self, FixedArray[Byte], offset? : Int32, max_len? : Int32) -> Int32
+pub async fn Client::read_at_least(Self, Int32) -> Bytes raise @io.ReaderError
+pub async fn Client::read_exactly(Self, Int32) -> Bytes raise @io.ReaderError
+pub async fn Client::read_into(Self, FixedArray[Byte], offset? : Int32, max_len? : Int32) -> Int32 raise @io.ReaderError
 pub async fn Client::read_some(Self, max_len? : Int32) -> Bytes?
 pub async fn Client::read_until(Self, StringView) -> String?
 pub async fn Client::request(Self, RequestMethod, StringView, extra_headers? : Map[String, String]) -> Unit raise HttpError
@@ -147,20 +147,20 @@ pub struct ServerConnection {
 pub fn ServerConnection::client_addr(Self) -> Addr
 pub fn ServerConnection::close(Self) -> Unit
 pub async fn ServerConnection::drop(Self, Int32) -> Int32
-pub async fn ServerConnection::drop_all(Self) -> Int64
-pub async fn ServerConnection::drop_exactly(Self, Int32) -> Unit
+pub async fn ServerConnection::drop_all(Self) -> Int64 raise @io.ReaderError
+pub async fn ServerConnection::drop_exactly(Self, Int32) -> Unit raise @io.ReaderError
 pub async fn ServerConnection::end_response(Self) -> Unit raise HttpError
 pub async fn ServerConnection::enter_passthrough_mode(Self) -> Unit raise HttpError
 pub async fn ServerConnection::flush(Self) -> Unit raise HttpError
-pub async fn ServerConnection::peek(Self) -> BytesView?
-pub async fn ServerConnection::peek_at_least(Self, Int32) -> BytesView
-pub async fn ServerConnection::peek_exactly(Self, Int32) -> BytesView
-pub async fn ServerConnection::peek_until(Self, BytesView, include_delimiter? : Bool) -> BytesView?
+pub async fn ServerConnection::peek(Self) -> BytesView? raise @io.ReaderError
+pub async fn ServerConnection::peek_at_least(Self, Int32) -> BytesView raise @io.ReaderError
+pub async fn ServerConnection::peek_exactly(Self, Int32) -> BytesView raise @io.ReaderError
+pub async fn ServerConnection::peek_until(Self, BytesView, include_delimiter? : Bool) -> BytesView? raise @io.ReaderError
 pub async fn ServerConnection::read(Self, FixedArray[Byte], offset? : Int32, max_len? : Int32) -> Int32
 pub async fn ServerConnection::read_all(Self) -> &@data.Data
-pub async fn ServerConnection::read_at_least(Self, Int32) -> Bytes
-pub async fn ServerConnection::read_exactly(Self, Int32) -> Bytes
-pub async fn ServerConnection::read_into(Self, FixedArray[Byte], offset? : Int32, max_len? : Int32) -> Int32
+pub async fn ServerConnection::read_at_least(Self, Int32) -> Bytes raise @io.ReaderError
+pub async fn ServerConnection::read_exactly(Self, Int32) -> Bytes raise @io.ReaderError
+pub async fn ServerConnection::read_into(Self, FixedArray[Byte], offset? : Int32, max_len? : Int32) -> Int32 raise @io.ReaderError
 pub async fn ServerConnection::read_request(Self) -> Request raise HttpError
 pub async fn ServerConnection::read_some(Self, max_len? : Int32) -> Bytes?
 pub async fn ServerConnection::read_until(Self, StringView) -> String?

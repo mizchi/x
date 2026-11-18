@@ -566,3 +566,20 @@ impl ProcessInput for NativeProcessInput with fn _release_input_native(self) {
 impl ProcessOutput for NativeProcessOutput with fn _release_output_native(self) {
   self.inner.close()
 }
+
+///|
+impl @async_io.BinaryReaderImpl for ReadFromProcess with fn name(_self) {
+  "@process.ReadFromProcess"
+}
+
+///|
+impl @async_io.BinaryWriterImpl for WriteToProcess with fn name(_self) {
+  "@process.WriteToProcess"
+}
+
+///|
+impl @async_io.BinaryWriterImpl for WriteToProcess with fn flush_partial_data(
+  _self,
+) {
+  ()
+}

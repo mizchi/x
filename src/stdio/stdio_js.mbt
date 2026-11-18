@@ -85,7 +85,7 @@ impl @io.BinaryReaderImpl for Input with fn raw_read_impl(
   max_len~,
 ) {
   ignore(self)
-  let controller = @js_async.AbortController::new()
+  let controller = @js_async.AbortController::AbortController()
   let promise = js_stdin_read(max_len)
   let data = @js_async.Promise::wait(promise, abort_controller=controller) catch {
     _ => return 0
@@ -170,3 +170,18 @@ pub extend Input with @process.ProcessInput::{_process_input_js}
 
 ///|
 pub extend Output with @process.ProcessOutput::{_process_output_js}
+
+///|
+impl @io.BinaryReaderImpl for Input with fn name(_self) {
+  "Input"
+}
+
+///|
+impl @io.BinaryWriterImpl for Output with fn name(_self) {
+  "Output"
+}
+
+///|
+impl @io.BinaryWriterImpl for Output with fn flush_partial_data(_self) {
+  ()
+}

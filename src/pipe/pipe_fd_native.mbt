@@ -1,9 +1,4 @@
 ///|
-fn pipe_fd_to_int(fd : Int32) -> Int32 {
-  fd
-}
-
-///|
 pub impl @process.ProcessInput for PipeRead with fn _process_input_native(self) {
   @async_process.FromFile("/dev/fd/\{self.fd()}")
 }

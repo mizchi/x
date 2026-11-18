@@ -45,7 +45,7 @@ fn ipv4_host_from_ip(ip : UInt32) -> String {
 
 ///|
 fn parse_port(raw : StringView) -> Int32 raise InvalidAddr {
-  let port = @string.parse_int(raw, base=10) catch { _ => raise InvalidAddr }
+  let port = @string.parse_int(raw, radix=10) catch { _ => raise InvalidAddr }
   guard 0 <= port && port < 65536 else { raise InvalidAddr }
   port
 }
@@ -56,7 +56,7 @@ fn parse_ipv4_host(raw : StringView) -> UInt32 raise InvalidAddr {
   guard parts.length() == 4 else { raise InvalidAddr }
   let mut ip = 0U
   for part in parts {
-    let value = @string.parse_int(part, base=10) catch {
+    let value = @string.parse_int(part, radix=10) catch {
       _ => raise InvalidAddr
     }
     guard 0 <= value && value <= 255 else { raise InvalidAddr }

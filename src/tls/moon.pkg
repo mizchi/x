@@ -11,7 +11,6 @@ import {
 
 import {
   "mizchi/x/fs",
-  "mizchi/x/pipe",
   "mizchi/x/socket",
   "moonbitlang/core/encoding/utf8",
 } for "test"
@@ -25,9 +24,12 @@ options(
     "moonbitlang/core/async/js_async",
     "moonbitlang/core/async/tls",
   ],
+  "native-stub": [ "tls_native.c" ],
   targets: {
     "tls_js.mbt": [ "js" ],
     "tls_native.mbt": [ "native", "wasm" ],
+    "tls_rand_native.mbt": [ "native" ],
+    "tls_rand_wasm.mbt": [ "wasm" ],
     "tls_stub.mbt": [ "wasm-gc" ],
     "tls_test.mbt": [ "native", "js" ],
   },

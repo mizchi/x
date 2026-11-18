@@ -114,7 +114,7 @@ pub async fn Conn::recv(self : Conn) -> Message raise WebSocketError {
     err => raise WebSocketError::ProtocolError(err.to_string())
   }
   let data : &@data.Data = @io.BinaryReader::read_all(msg) catch {
-    err => raise WebSocketError::ProtocolError(err.to_string())
+    err => raise WebSocketError::ProtocolError((err : Error).to_string())
   }
   match msg.kind {
     @async_ws.Text => Message::Text(data.text() catch { _ => "" })

@@ -957,3 +957,20 @@ pub extend WriteToProcess with @async_io.BinaryWriter::{write_reader}
 impl @async_io.BinaryWriterImpl for WriteToProcess with fn get_controller(self) {
   self.write_controller
 }
+
+///|
+impl @async_io.BinaryReaderImpl for ReadFromProcess with fn name(_self) {
+  "ReadFromProcess"
+}
+
+///|
+impl @async_io.BinaryWriterImpl for WriteToProcess with fn name(_self) {
+  "WriteToProcess"
+}
+
+///|
+impl @async_io.BinaryWriterImpl for WriteToProcess with fn flush_partial_data(
+  _self,
+) {
+  ()
+}
