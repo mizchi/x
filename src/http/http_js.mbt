@@ -3202,8 +3202,8 @@ impl @io.BinaryWriterImpl for Client with fn name(_self) {
 }
 
 ///|
-impl @io.BinaryWriterImpl for Client with fn flush_partial_data(_self) {
-  ()
+impl @io.BinaryWriterImpl for Client with fn flush_partial_data(self) {
+  self.flush()
 }
 
 ///|
@@ -3212,6 +3212,6 @@ impl @io.BinaryWriterImpl for ServerConnection with fn name(_self) {
 }
 
 ///|
-impl @io.BinaryWriterImpl for ServerConnection with fn flush_partial_data(_self) {
-  ()
+impl @io.BinaryWriterImpl for ServerConnection with fn flush_partial_data(self) {
+  self.flush()
 }

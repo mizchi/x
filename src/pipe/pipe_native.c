@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include <moonbit.h>
 #include <errno.h>
 
@@ -19,6 +20,13 @@ MOONBIT_FFI_EXPORT int mizchi_x_pipe_close(int fd) {
 // read or write end reaches a child only through an explicit redirect).
 MOONBIT_FFI_EXPORT int mizchi_x_pipe_open(int *fds) {
   int p[2];
+#if defined(__linux__)
+  // Atomic close-on-exec: no window where a concurrently spawned child could
+  // inherit an end.
+  if (pipe2(p, O_CLOEXEC) != 0) {
+    return errno;
+  }
+#else
   if (pipe(p) != 0) {
     return errno;
   }
@@ -30,6 +38,7 @@ MOONBIT_FFI_EXPORT int mizchi_x_pipe_open(int *fds) {
       return err;
     }
   }
+#endif
   fds[0] = p[0];
   fds[1] = p[1];
   return 0;

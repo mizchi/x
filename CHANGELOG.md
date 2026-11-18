@@ -6,7 +6,9 @@
 - Implement the new required `name` / `flush_partial_data` members of core's `BinaryReaderImpl` / `BinaryWriterImpl` for every stream type; reader/writer methods now raise `@io.ReaderError` / `@io.WriterError`.
 - Socket: follow core's `Addr { ip : IpAddr, port : UInt16 }`, `recv_into` / `recv_into_with_addr` / `send`, and `IpAddr` multicast interfaces. `fd()` keeps returning `Int32` (core's `@types.Fd` is now opaque).
 - FS: `File::read_at` / `read_exactly_at` / `write_at` use core's `File::at(position)` views; `read_file`'s `sync_timestamp` is accepted and ignored.
-- TLS: core's `async/tls` is client-only now, so `Tls::server` / `server_from_pair` raise `TlsError` on native (JS keeps server support); `rand_bytes` uses the OS entropy source directly.
+- **Breaking (native/wasm):** core's `async/tls` is client-only now, so `Tls::server` / `server_from_pair` raise `TlsError` on native and wasm (JS keeps server support; terminate TLS in a proxy otherwise). `rand_bytes` uses the OS entropy source on native and raises on wasm.
+- **Breaking (wasm):** `mizchi/x/pipe` is a stub on wasm; core's OS pipe is internal now. Use `process.read_from_process` / `write_to_process` for process channels.
+- Partial flushes (`flush_partial_data`) of HTTP clients/server connections and TLS streams are forwarded to the underlying writer.
 - HTTP: `flush` maps to core's `flush_partial_data`; one-shot POST/PUT bodies come from core's `MessageBody`.
 
 ## 0.7.0 - 2026-11-09
