@@ -88,7 +88,9 @@ pub async fn read_file(
   path : StringView,
   sync_timestamp? : Bool,
 ) -> &@data.Data raise IOError {
-  @async_fs.read_binary(path, sync_timestamp?) catch {
+  // Core no longer exposes `sync_timestamp`; it is accepted and ignored.
+  ignore(sync_timestamp)
+  @async_fs.read_binary(path) catch {
     err => raise IOError::IOError(err.to_string())
   }
 }
@@ -224,7 +226,7 @@ pub async fn rename(
 
 ///|
 pub async fn rmdir(path : StringView, recursive? : Bool) -> Unit raise IOError {
-  @async_fs.rmdir(path, recursive?) catch {
+  @async_fs.remove(path, recursive?) catch {
     err => raise IOError::IOError(err.to_string())
   }
 }
@@ -397,8 +399,8 @@ pub async fn File::read_at(
   offset? : Int32,
   len? : Int32,
 ) -> Int32 raise IOError {
-  self.inner.read_at(buf, position~, offset?, len?) catch {
-    err => raise IOError::IOError(err.to_string())
+  self.inner.at(position).read_into(buf, offset?, max_len?=len) catch {
+    err => raise IOError::IOError(error_message(err))
   }
 }
 
@@ -408,8 +410,8 @@ pub async fn File::read_exactly_at(
   len : Int32,
   position~ : Int64,
 ) -> Bytes raise IOError {
-  self.inner.read_exactly_at(len, position~) catch {
-    err => raise IOError::IOError(err.to_string())
+  self.inner.at(position).read_exactly(len) catch {
+    err => raise IOError::IOError(error_message(err))
   }
 }
 
@@ -419,8 +421,8 @@ pub async fn File::write_at(
   buf : BytesView,
   position~ : Int64,
 ) -> Unit raise IOError {
-  self.inner.write_at(buf, position~) catch {
-    err => raise IOError::IOError(err.to_string())
+  self.inner.at(position).write(buf) catch {
+    err => raise IOError::IOError(error_message(err))
   }
 }
 
@@ -565,4 +567,25 @@ pub extend File with @io.BinaryWriter::{write_reader}
 ///|
 impl @io.BinaryWriterImpl for File with fn get_controller(self) {
   self.write_controller
+}
+
+///|
+impl @io.BinaryReaderImpl for File with fn name(_self) {
+  "File"
+}
+
+///|
+impl @io.BinaryWriterImpl for File with fn name(_self) {
+  "File"
+}
+
+///|
+impl @io.BinaryWriterImpl for File with fn flush_partial_data(_self) {
+  ()
+}
+
+///|
+/// Core's reader/writer errors only derive `Debug`; `Error` still has `Show`.
+fn error_message(err : Error) -> String {
+  err.to_string()
 }

@@ -3,6 +3,7 @@ import {
   "moonbitlang/core/async",
   "moonbitlang/core/async/io",
   "moonbitlang/core/async/socket" @async_socket,
+  "moonbitlang/core/async/types",
   "moonbitlang/core/async/js_async",
   "moonbitlang/core/debug",
   "moonbitlang/core/string",
@@ -16,6 +17,7 @@ options(
     "moonbitlang/core/async/io",
     "moonbitlang/core/async/js_async",
     "moonbitlang/core/async/socket",
+    "moonbitlang/core/async/types",
   ],
   targets: {
     "socket_js.mbt": [ "js" ],

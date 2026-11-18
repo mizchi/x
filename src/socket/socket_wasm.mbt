@@ -363,3 +363,18 @@ impl @io.BinaryWriterImpl for Tcp with fn get_controller(self) {
   ignore(self)
   abort("writer not supported on this target")
 }
+
+///|
+impl @io.BinaryReaderImpl for Tcp with fn name(_self) {
+  "Tcp"
+}
+
+///|
+impl @io.BinaryWriterImpl for Tcp with fn name(_self) {
+  "Tcp"
+}
+
+///|
+impl @io.BinaryWriterImpl for Tcp with fn flush_partial_data(_self) {
+  ()
+}

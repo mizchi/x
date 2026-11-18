@@ -88,3 +88,18 @@ impl @io.BinaryWriterImpl for PipeWrite with fn get_controller(self) {
   ignore(self)
   abort("writer not supported on this target")
 }
+
+///|
+impl @io.BinaryReaderImpl for PipeRead with fn name(_self) {
+  "PipeRead"
+}
+
+///|
+impl @io.BinaryWriterImpl for PipeWrite with fn name(_self) {
+  "PipeWrite"
+}
+
+///|
+impl @io.BinaryWriterImpl for PipeWrite with fn flush_partial_data(_self) {
+  ()
+}

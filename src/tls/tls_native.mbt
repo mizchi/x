@@ -15,14 +15,6 @@ fn to_async_trust(trust : TrustedRoot) -> @async_tls.TrustedRoot {
 }
 
 ///|
-fn to_async_file_type(t : X509FileType) -> @async_tls.X509FileType {
-  match t {
-    PEM => @async_tls.PEM
-    ANS1 => @async_tls.ANS1
-  }
-}
-
-///|
 fn[T] raise_tls_error(err : Error) -> T raise {
   let message = err.to_string()
   if err is @async_tls.ConnectionClosed {
@@ -32,10 +24,21 @@ fn[T] raise_tls_error(err : Error) -> T raise {
 }
 
 ///|
+#borrow(buf)
+extern "C" fn rand_bytes_ffi(buf : FixedArray[Byte], len : Int32) -> Int32 = "mizchi_x_tls_rand_bytes"
+
+///|
+/// Cryptographically secure random bytes from the OS (core's async/tls no
+/// longer exposes `rand_bytes`).
 pub fn rand_bytes(num : Int32) -> Bytes raise {
-  @async_tls.rand_bytes(num) catch {
-    err => raise_tls_error(err)
+  if num < 0 {
+    raise TlsError("rand_bytes length must be non-negative")
   }
+  let buf = FixedArray::make(num, b'\x00')
+  if rand_bytes_ffi(buf, num) != 0 {
+    raise TlsError("rand_bytes: the OS random source failed")
+  }
+  Bytes::from_array(buf)
 }
 
 ///|
@@ -104,20 +107,14 @@ pub async fn[Inner : @io.BinaryReader + @io.BinaryWriter] Tls::server(
   certificate_file~ : String,
   certificate_type~ : X509FileType,
 ) -> Tls {
-  let inner = @async_tls.Tls::server(
-    inner,
-    private_key_file~,
-    private_key_type=to_async_file_type(private_key_type),
-    certificate_file~,
-    certificate_type=to_async_file_type(certificate_type),
-  ) catch {
-    err => raise_tls_error(err)
-  }
-  Tls::{
-    write_controller: @io.BinaryWriterController(),
-    read_controller: @io.BinaryReaderController(),
-    inner,
-  }
+  ignore(
+    (
+      inner, private_key_file, private_key_type, certificate_file, certificate_type,
+    ),
+  )
+  raise TlsError(
+    "TLS server mode is not supported on the native target: moonbitlang/core async/tls is client-only",
+  )
 }
 
 ///|
@@ -129,21 +126,14 @@ pub async fn[R : @io.BinaryReader, W : @io.BinaryWriter] Tls::server_from_pair(
   certificate_file~ : String,
   certificate_type~ : X509FileType,
 ) -> Tls {
-  let inner = @async_tls.Tls::server_from_pair(
-    reader,
-    writer,
-    private_key_file~,
-    private_key_type=to_async_file_type(private_key_type),
-    certificate_file~,
-    certificate_type=to_async_file_type(certificate_type),
-  ) catch {
-    err => raise_tls_error(err)
-  }
-  Tls::{
-    write_controller: @io.BinaryWriterController(),
-    read_controller: @io.BinaryReaderController(),
-    inner,
-  }
+  ignore(
+    (
+      reader, writer, private_key_file, private_key_type, certificate_file, certificate_type,
+    ),
+  )
+  raise TlsError(
+    "TLS server mode is not supported on the native target: moonbitlang/core async/tls is client-only",
+  )
 }
 
 ///|
@@ -234,4 +224,19 @@ pub extend Tls with @io.BinaryWriter::{write_reader}
 ///|
 impl @io.BinaryWriterImpl for Tls with fn get_controller(self) {
   self.write_controller
+}
+
+///|
+impl @io.BinaryReaderImpl for Tls with fn name(_self) {
+  "Tls"
+}
+
+///|
+impl @io.BinaryWriterImpl for Tls with fn name(_self) {
+  "Tls"
+}
+
+///|
+impl @io.BinaryWriterImpl for Tls with fn flush_partial_data(_self) {
+  ()
 }

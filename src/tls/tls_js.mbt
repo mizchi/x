@@ -324,8 +324,8 @@ async fn Tls::flush_encrypted(self : Tls) -> Unit {
     check_js_error(chunk.error)
     if chunk.ok {
       self.writer.write(chunk.data) catch {
-        @io.PipeClosed => raise ConnectionClosed
-        err => raise TlsError(err.to_string())
+        TransportError(@io.PipeClosed, ..) => raise ConnectionClosed
+        err => raise TlsError((err : Error).to_string())
       }
     } else {
       break
@@ -336,8 +336,8 @@ async fn Tls::flush_encrypted(self : Tls) -> Unit {
 ///|
 async fn Tls::read_underlying_once(self : Tls) -> Bool {
   let data = self.reader.read() catch {
-    @io.PipeClosed => raise ConnectionClosed
-    err => raise TlsError(err.to_string())
+    TransportError(@io.PipeClosed, ..) => raise ConnectionClosed
+    err => raise TlsError((err : Error).to_string())
   }
   match data {
     Some(data) => {
@@ -608,4 +608,19 @@ pub extend Tls with @io.BinaryWriter::{write_reader}
 ///|
 impl @io.BinaryWriterImpl for Tls with fn get_controller(self) {
   self.write_controller
+}
+
+///|
+impl @io.BinaryReaderImpl for Tls with fn name(_self) {
+  "Tls"
+}
+
+///|
+impl @io.BinaryWriterImpl for Tls with fn name(_self) {
+  "Tls"
+}
+
+///|
+impl @io.BinaryWriterImpl for Tls with fn flush_partial_data(_self) {
+  ()
 }

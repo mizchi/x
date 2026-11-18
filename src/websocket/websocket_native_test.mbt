@@ -53,7 +53,9 @@ async test "websocket text echo" {
         }
       }
     })
-    let client = @websocket.Conn::connect("ws://127.0.0.1:\{addr.port()}")
+    let client = @websocket.Conn::connect(
+      "ws://127.0.0.1:\{addr.port.to_int()}",
+    )
     defer client.close()
     client.send_text("hello")
     let msg = client.recv()
@@ -87,7 +89,9 @@ async test "websocket binary echo" {
         }
       }
     })
-    let client = @websocket.Conn::connect("ws://127.0.0.1:\{addr.port()}")
+    let client = @websocket.Conn::connect(
+      "ws://127.0.0.1:\{addr.port.to_int()}",
+    )
     defer client.close()
     let data = Bytes::makei(4, fn(i) { (i + 65).to_byte() })
     client.send_binary(data[:])
@@ -128,7 +132,9 @@ async test "websocket multiple messages" {
         }
       }
     })
-    let client = @websocket.Conn::connect("ws://127.0.0.1:\{addr.port()}")
+    let client = @websocket.Conn::connect(
+      "ws://127.0.0.1:\{addr.port.to_int()}",
+    )
     defer client.close()
     client.send_text("first")
     let msg1 = client.recv()
@@ -173,7 +179,7 @@ async test "smoke: text echo matches upstream" {
         conn.close()
       }
     })
-    let url = "ws://127.0.0.1:\{addr.port()}"
+    let url = "ws://127.0.0.1:\{addr.port.to_int()}"
     // Upstream API
     let upstream = @async_ws.Conn::connect(url)
     defer upstream.close()
@@ -223,7 +229,7 @@ async test "smoke: binary echo matches upstream" {
         conn.close()
       }
     })
-    let url = "ws://127.0.0.1:\{addr.port()}"
+    let url = "ws://127.0.0.1:\{addr.port.to_int()}"
     let data = Bytes::makei(4, fn(i) { (i + 65).to_byte() })
     // Upstream API
     let upstream = @async_ws.Conn::connect(url)
@@ -273,7 +279,7 @@ async test "smoke: close code matches upstream" {
         conn.close()
       }
     })
-    let url = "ws://127.0.0.1:\{addr.port()}"
+    let url = "ws://127.0.0.1:\{addr.port.to_int()}"
     // Upstream: receive close code
     let upstream = @async_ws.Conn::connect(url)
     defer upstream.close()
@@ -326,7 +332,7 @@ async test "smoke: multiple messages match upstream" {
         conn.close()
       }
     })
-    let url = "ws://127.0.0.1:\{addr.port()}"
+    let url = "ws://127.0.0.1:\{addr.port.to_int()}"
     let messages = ["alpha", "beta", "gamma"]
     // Upstream
     let upstream_results : Array[String] = []
@@ -383,7 +389,7 @@ async test "smoke: mixed text and binary match upstream" {
         conn.close()
       }
     })
-    let url = "ws://127.0.0.1:\{addr.port()}"
+    let url = "ws://127.0.0.1:\{addr.port.to_int()}"
     let bin_data = Bytes::makei(3, fn(i) { (i + 0x10).to_byte() })
     // Upstream: text → binary → text
     let upstream = @async_ws.Conn::connect(url)
@@ -442,7 +448,9 @@ async test "websocket empty string" {
         }
       }
     })
-    let client = @websocket.Conn::connect("ws://127.0.0.1:\{addr.port()}")
+    let client = @websocket.Conn::connect(
+      "ws://127.0.0.1:\{addr.port.to_int()}",
+    )
     defer client.close()
     client.send_text("")
     let msg = client.recv()
@@ -476,7 +484,9 @@ async test "websocket unicode text" {
         }
       }
     })
-    let client = @websocket.Conn::connect("ws://127.0.0.1:\{addr.port()}")
+    let client = @websocket.Conn::connect(
+      "ws://127.0.0.1:\{addr.port.to_int()}",
+    )
     defer client.close()
     let test_strings = [
       "\u{3053}\u{3093}\u{306B}\u{3061}\u{306F}", "\u{1F600}\u{1F680}\u{2764}", "hello \u{4E16}\u{754C}",
@@ -515,9 +525,11 @@ async test "websocket empty binary" {
         }
       }
     })
-    let client = @websocket.Conn::connect("ws://127.0.0.1:\{addr.port()}")
+    let client = @websocket.Conn::connect(
+      "ws://127.0.0.1:\{addr.port.to_int()}",
+    )
     defer client.close()
-    let empty = Bytes::new(0)
+    let empty = Bytes::make(0, b'\x00')
     client.send_binary(empty[:])
     let msg = client.recv()
     guard msg is @websocket.Binary(received) else { fail("expected Binary") }
@@ -550,7 +562,9 @@ async test "websocket large binary" {
         }
       }
     })
-    let client = @websocket.Conn::connect("ws://127.0.0.1:\{addr.port()}")
+    let client = @websocket.Conn::connect(
+      "ws://127.0.0.1:\{addr.port.to_int()}",
+    )
     defer client.close()
     let size = 4096
     let data = Bytes::makei(size, fn(i) { (i % 256).to_byte() })
@@ -587,7 +601,9 @@ async test "websocket close with reason" {
         _ => ()
       }
     })
-    let client = @websocket.Conn::connect("ws://127.0.0.1:\{addr.port()}")
+    let client = @websocket.Conn::connect(
+      "ws://127.0.0.1:\{addr.port.to_int()}",
+    )
     defer client.close()
     client.send_close(code=@websocket.Normal, reason="goodbye")
   })
@@ -613,7 +629,9 @@ async test "websocket close with custom code" {
         _ => ()
       }
     })
-    let client = @websocket.Conn::connect("ws://127.0.0.1:\{addr.port()}")
+    let client = @websocket.Conn::connect(
+      "ws://127.0.0.1:\{addr.port.to_int()}",
+    )
     defer client.close()
     client.send_close(code=@websocket.Other(4000))
   })
@@ -633,7 +651,9 @@ async test "websocket invalid handshake" {
       ignore(conn.read_request())
     })
     try {
-      let client = @websocket.Conn::connect("ws://127.0.0.1:\{addr.port()}")
+      let client = @websocket.Conn::connect(
+        "ws://127.0.0.1:\{addr.port.to_int()}",
+      )
       client.close()
       fail("expected InvalidHandshake error")
     } catch {
@@ -664,7 +684,9 @@ async test "websocket server-initiated close" {
       ws.send_text(content.text())
       ws.send_close(code=@async_ws.PolicyViolation, reason="policy")
     })
-    let client = @websocket.Conn::connect("ws://127.0.0.1:\{addr.port()}")
+    let client = @websocket.Conn::connect(
+      "ws://127.0.0.1:\{addr.port.to_int()}",
+    )
     defer client.close()
     client.send_text("test")
     let msg = client.recv()
@@ -704,7 +726,9 @@ async test "websocket close with code" {
         _ => ()
       }
     })
-    let client = @websocket.Conn::connect("ws://127.0.0.1:\{addr.port()}")
+    let client = @websocket.Conn::connect(
+      "ws://127.0.0.1:\{addr.port.to_int()}",
+    )
     defer client.close()
     client.send_close(code=@websocket.Normal)
   })

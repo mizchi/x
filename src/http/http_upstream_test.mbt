@@ -29,7 +29,7 @@ fn content_length_from_headers(headers : String) -> Int32 {
   for line in headers.split("\r\n") {
     let lower = line.to_lower()
     if lower.has_prefix("content-length:") {
-      return @string.parse_int(line[15:].trim(), base=10) catch { _ => 0 }
+      return @string.parse_int(line[15:].trim(), radix=10) catch { _ => 0 }
     }
   }
   0
@@ -58,7 +58,7 @@ async fn read_http_request(conn : @x_socket.Tcp) -> String {
 async fn gzip_bytes(data : &@data.Data) -> Bytes {
   let mut result = b""
   @async.with_task_group(root => {
-    let (r, w) = @io.pipe()
+    let (r, w) = @io.memory_pipe()
     root.spawn_bg(() => {
       defer w.close()
       let enc = @gzip.Encoder(w)
@@ -586,7 +586,7 @@ async test "sender write_reader incorrect length" {
       "Content-Length": "1",
     })
     @async.with_task_group(root => {
-      let (r, w) = @io.pipe()
+      let (r, w) = @io.memory_pipe()
       root.spawn_bg(no_wait=true, allow_failure=true, () => {
         defer w.close()
         w.write(b"ab")

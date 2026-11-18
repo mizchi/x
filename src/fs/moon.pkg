@@ -1,4 +1,5 @@
 import {
+  "moonbitlang/core/async/types",
   "mizchi/x/data",
   "moonbitlang/core/debug",
   "moonbitlang/core/async",
@@ -11,6 +12,7 @@ warnings = "-0029-0014-0067"
 
 options(
   "allow-experimental-packages": [
+    "moonbitlang/core/async/types",
     "moonbitlang/core/async",
     "moonbitlang/core/async/fs",
     "moonbitlang/core/async/io",

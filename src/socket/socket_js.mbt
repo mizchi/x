@@ -1008,3 +1008,18 @@ pub extend Tcp with @io.BinaryWriter::{write_reader}
 impl @io.BinaryWriterImpl for Tcp with fn get_controller(self) {
   self.write_controller
 }
+
+///|
+impl @io.BinaryReaderImpl for Tcp with fn name(_self) {
+  "Tcp"
+}
+
+///|
+impl @io.BinaryWriterImpl for Tcp with fn name(_self) {
+  "Tcp"
+}
+
+///|
+impl @io.BinaryWriterImpl for Tcp with fn flush_partial_data(_self) {
+  ()
+}

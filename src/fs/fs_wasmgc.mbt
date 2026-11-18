@@ -415,3 +415,18 @@ impl @io.BinaryWriterImpl for File with fn get_controller(self) {
   ignore(self)
   abort("writer not supported on this target")
 }
+
+///|
+impl @io.BinaryReaderImpl for File with fn name(_self) {
+  "File"
+}
+
+///|
+impl @io.BinaryWriterImpl for File with fn name(_self) {
+  "File"
+}
+
+///|
+impl @io.BinaryWriterImpl for File with fn flush_partial_data(_self) {
+  ()
+}

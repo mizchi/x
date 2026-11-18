@@ -1,4 +1,5 @@
 import {
+  "moonbitlang/core/async/types",
   "mizchi/x/data",
   "moonbitlang/core/async/process" @async_process,
   "moonbitlang/core/async/stdio" @async_stdio,
@@ -16,6 +17,7 @@ warnings = "-0029-0014"
 
 options(
   "allow-experimental-packages": [
+    "moonbitlang/core/async/types",
     "moonbitlang/core/async/process",
     "moonbitlang/core/async",
     "moonbitlang/core/async/io",

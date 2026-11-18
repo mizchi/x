@@ -1,18 +1,18 @@
 ///|
 pub struct PipeRead {
   priv read_controller : @io.BinaryReaderController
-  inner : @io.PipeRead
+  inner : @io.MemoryPipeRead
 }
 
 ///|
 pub struct PipeWrite {
   priv write_controller : @io.BinaryWriterController
-  inner : @io.PipeWrite
+  inner : @io.MemoryPipeWrite
 }
 
 ///|
 pub fn pipe() -> (PipeRead, PipeWrite) raise {
-  let (r, w) = @io.pipe()
+  let (r, w) = @io.memory_pipe()
   (
     PipeRead::{ read_controller: @io.BinaryReaderController(), inner: r, },
     PipeWrite::{ write_controller: @io.BinaryWriterController(), inner: w, },
@@ -92,4 +92,19 @@ pub extend PipeWrite with @io.BinaryWriter::{write_reader}
 ///|
 impl @io.BinaryWriterImpl for PipeWrite with fn get_controller(self) {
   self.write_controller
+}
+
+///|
+impl @io.BinaryWriterImpl for PipeWrite with fn name(_self) {
+  "@pipe.PipeWrite"
+}
+
+///|
+impl @io.BinaryWriterImpl for PipeWrite with fn flush_partial_data(_self) {
+  ()
+}
+
+///|
+impl @io.BinaryReaderImpl for PipeRead with fn name(_self) {
+  "@pipe.PipeRead"
 }

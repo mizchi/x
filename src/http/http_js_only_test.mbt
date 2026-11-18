@@ -536,7 +536,7 @@ async test "client(js): request rejects absolute url path" {
 
 ///|
 async test "client(js): flush streams request body before end_request" {
-  let start_controller = @js_async.AbortController::new()
+  let start_controller = @js_async.AbortController::AbortController()
   let port = @js_async.Promise::wait(
     js_probe_server_start(),
     abort_controller=start_controller,
@@ -560,7 +560,7 @@ async test "client(js): flush streams request body before end_request" {
   let first_to_end_ms = js_probe_server_first_to_end_ms()
   assert_true(first_to_end_ms >= 20)
 
-  let stop_controller = @js_async.AbortController::new()
+  let stop_controller = @js_async.AbortController::AbortController()
   ignore(
     @js_async.Promise::wait(
       js_probe_server_stop(),
@@ -575,7 +575,7 @@ async test "client(js): flush streams request body before end_request" {
 async test "client(js): request API is rejected in passthrough mode" {
   let mut success = false
   for _ in 0..<4 {
-    let start_controller = @js_async.AbortController::new()
+    let start_controller = @js_async.AbortController::AbortController()
     let proxy_port = @js_async.Promise::wait(
       js_tunnel_probe_start(),
       abort_controller=start_controller,
@@ -632,7 +632,7 @@ async test "client(js): request API is rejected in passthrough mode" {
       }
       Err(_) => ()
     }
-    let stop_controller = @js_async.AbortController::new()
+    let stop_controller = @js_async.AbortController::AbortController()
     ignore(
       @js_async.Promise::wait(
         js_tunnel_probe_stop(),
@@ -666,7 +666,7 @@ async test "server(js): request body is readable before full upload completes" {
     })
     @async.sleep(20)
 
-    let controller = @js_async.AbortController::new()
+    let controller = @js_async.AbortController::AbortController()
     let elapsed = @js_async.Promise::wait(
       js_server_streaming_probe_response_ms(port, 240),
       abort_controller=controller,

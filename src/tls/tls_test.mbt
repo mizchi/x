@@ -1,4 +1,5 @@
 ///|
+#cfg(target="js")
 let key_pem =
   #|-----BEGIN PRIVATE KEY-----
   #|MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDGGuA46vHS2I9u
@@ -30,6 +31,7 @@ let key_pem =
   #|-----END PRIVATE KEY-----
 
 ///|
+#cfg(target="js")
 let cert_pem =
   #|-----BEGIN CERTIFICATE-----
   #|MIICpDCCAYwCCQDY75kUA6AxsTANBgkqhkiG9w0BAQsFADAUMRIwEAYDVQQDDAls
@@ -50,6 +52,7 @@ let cert_pem =
   #|-----END CERTIFICATE-----
 
 ///|
+#cfg(target="js")
 let other_key_pem =
   #|-----BEGIN PRIVATE KEY-----
   #|MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDjTOGQXq+yJzvj
@@ -81,6 +84,7 @@ let other_key_pem =
   #|-----END PRIVATE KEY-----
 
 ///|
+#cfg(target="js")
 let other_cert_pem =
   #|-----BEGIN CERTIFICATE-----
   #|MIICpDCCAYwCCQC2A5LcYyLsATANBgkqhkiG9w0BAQsFADAUMRIwEAYDVQQDDAls
@@ -101,6 +105,7 @@ let other_cert_pem =
   #|-----END CERTIFICATE-----
 
 ///|
+#cfg(target="js")
 async fn write_test_keys() -> (String, String) {
   let suffix = @crypto.bytes_to_hex_string(@tls.rand_bytes(8))
   let key = "/tmp/mizchi_x_tls_key_\{suffix}.pem"
@@ -111,6 +116,7 @@ async fn write_test_keys() -> (String, String) {
 }
 
 ///|
+#cfg(target="js")
 async fn write_other_test_keys() -> (String, String) {
   let suffix = @crypto.bytes_to_hex_string(@tls.rand_bytes(8))
   let key = "/tmp/mizchi_x_tls_other_key_\{suffix}.pem"
@@ -121,18 +127,13 @@ async fn write_other_test_keys() -> (String, String) {
 }
 
 ///|
+#cfg(target="js")
 async fn remove_if_exists(path : String) -> Unit {
   try @fs.remove(path) catch {
     _ => ()
   } noraise {
     _ => ()
   }
-}
-
-///|
-#cfg(target="native")
-async fn test_pipe() -> (@pipe.PipeRead, @pipe.PipeWrite) {
-  @pipe.pipe()
 }
 
 ///|
@@ -162,6 +163,7 @@ test "rand_bytes length" {
 }
 
 ///|
+#cfg(target="js")
 async test "one way" {
   @async.with_timeout(5000, () => {
     let (key, cert) = write_test_keys()
@@ -213,6 +215,7 @@ async test "one way" {
 }
 
 ///|
+#cfg(target="js")
 async test "echo" {
   @async.with_timeout(5000, () => {
     let (key, cert) = write_test_keys()
@@ -266,6 +269,7 @@ async test "echo" {
 }
 
 ///|
+#cfg(target="js")
 async test "`connect` accidental close" {
   @async.with_timeout(5000, () => {
     @async.with_task_group(root => {
@@ -308,6 +312,7 @@ async test "`connect` accidental close" {
 }
 
 ///|
+#cfg(target="js")
 async test "`read` already closed" {
   @async.with_timeout(5000, () => {
     let (key, cert) = write_test_keys()
@@ -354,6 +359,7 @@ async test "`read` already closed" {
 }
 
 ///|
+#cfg(target="js")
 async test "get_peer_certificate" {
   @async.with_timeout(5000, () => {
     let (key, cert) = write_test_keys()
@@ -401,6 +407,7 @@ async test "get_peer_certificate" {
 }
 
 ///|
+#cfg(target="js")
 async test "client custom root certificate" {
   @async.with_timeout(5000, () => {
     let (key, cert) = write_test_keys()
@@ -448,6 +455,7 @@ async test "client custom root certificate" {
 }
 
 ///|
+#cfg(target="js")
 async test "client custom root certificate rejects different root" {
   @async.with_timeout(5000, () => {
     let (key, cert) = write_test_keys()
@@ -504,6 +512,7 @@ async test "client custom root certificate rejects different root" {
 }
 
 ///|
+#cfg(target="js")
 async test "channel binding" {
   @async.with_timeout(5000, () => {
     let (key, cert) = write_test_keys()
@@ -562,6 +571,7 @@ async test "channel binding" {
 }
 
 ///|
+#cfg(target="js")
 async test "peer close connection" {
   @async.with_timeout(5000, () => {
     let (key, cert) = write_test_keys()

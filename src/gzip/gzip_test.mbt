@@ -1,7 +1,7 @@
 ///|
 async test "encode decode roundtrip" {
   @async.with_task_group(root => {
-    let (compressed_r, compressed_w) = @io.pipe()
+    let (compressed_r, compressed_w) = @io.memory_pipe()
     root.spawn_bg(() => {
       defer compressed_w.close()
       let encoder = @gzip.Encoder(
@@ -25,7 +25,7 @@ async test "encode decode roundtrip" {
 async test "encoder flush emits chunks" {
   let log : Array[String] = []
   @async.with_task_group(root => {
-    let (compressed_r, compressed_w) = @io.pipe()
+    let (compressed_r, compressed_w) = @io.memory_pipe()
     root.spawn_bg(() => {
       defer compressed_w.close()
       let encoder = @gzip.Encoder(compressed_w)
@@ -51,7 +51,7 @@ async test "encoder flush emits chunks" {
 async test "large payload roundtrip" {
   @async.with_task_group(root => {
     let payload = Bytes::makei(70000, i => (i % 251).to_byte())
-    let (compressed_r, compressed_w) = @io.pipe()
+    let (compressed_r, compressed_w) = @io.memory_pipe()
     root.spawn_bg(() => {
       defer compressed_w.close()
       let encoder = @gzip.Encoder(compressed_w)

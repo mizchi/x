@@ -1311,7 +1311,7 @@ fn new_server_connection(
     conn_id,
     peer_addr,
     reader_buffer: @io.BinaryReaderController(),
-    read_carry: Bytes::new(0),
+    read_carry: Bytes::make(0, b'\x00'),
     read_carry_offset: 0,
     passthrough_mode: false,
     response_started: false,
@@ -1343,7 +1343,7 @@ fn ServerConnection::set_read_carry(
 ) -> Unit {
   let rest = data.length() - offset
   if rest <= 0 {
-    self.read_carry = Bytes::new(0)
+    self.read_carry = Bytes::make(0, b'\x00')
     self.read_carry_offset = 0
     return
   }
@@ -1356,7 +1356,7 @@ pub fn ServerConnection::close(self : ServerConnection) -> Unit {
   if self.closed {
     return
   }
-  self.read_carry = Bytes::new(0)
+  self.read_carry = Bytes::make(0, b'\x00')
   self.read_carry_offset = 0
   js_conn_close(self.conn_id)
   self.response_ended = true
@@ -1376,7 +1376,7 @@ pub fn ServerConnection::client_addr(self : ServerConnection) -> Addr {
 ///|
 pub fn ServerConnection::skip_request_body(self : ServerConnection) -> Unit {
   self.reader_buffer = @io.BinaryReaderController()
-  self.read_carry = Bytes::new(0)
+  self.read_carry = Bytes::make(0, b'\x00')
   self.read_carry_offset = 0
   js_conn_skip_request_body(self.conn_id)
   self.request_body_drained = true
@@ -1472,7 +1472,7 @@ impl @io.BinaryReaderImpl for ServerConnection with fn raw_read_impl(
     buf.blit_from_bytes(offset, self.read_carry, self.read_carry_offset, n)
     self.read_carry_offset += n
     if self.read_carry_offset >= self.read_carry.length() {
-      self.read_carry = Bytes::new(0)
+      self.read_carry = Bytes::make(0, b'\x00')
       self.read_carry_offset = 0
     }
     return n
@@ -1482,7 +1482,7 @@ impl @io.BinaryReaderImpl for ServerConnection with fn raw_read_impl(
       let req_prefetch_len = read_prefetch_len(max_len)
       let req_promise = js_conn_read_request(self.conn_id, req_prefetch_len)
       let req_data = @js_async.Promise::wait(req_promise) catch {
-        _ => Bytes::new(0)
+        _ => Bytes::make(0, b'\x00')
       }
       let req_len = req_data.length()
       if req_len > 0 {
@@ -1509,7 +1509,7 @@ impl @io.BinaryReaderImpl for ServerConnection with fn raw_read_impl(
     let req_prefetch_len = read_prefetch_len(max_len)
     let req_promise = js_conn_read_request(self.conn_id, req_prefetch_len)
     let req_data = @js_async.Promise::wait(req_promise) catch {
-      _ => Bytes::new(0)
+      _ => Bytes::make(0, b'\x00')
     }
     let req_len = req_data.length()
     if req_len <= 0 {
@@ -1577,7 +1577,7 @@ pub async fn Server::new(
   ignore(dual_stack)
   ignore(reuse_addr)
   let h = host.unwrap_or("127.0.0.1")
-  let controller = @js_async.AbortController::new()
+  let controller = @js_async.AbortController::AbortController()
   let promise = js_server_new(
     h,
     port.unwrap_or(3000),
@@ -1609,7 +1609,7 @@ pub fn Server::addr(self : Server) -> Addr {
 pub async fn Server::accept(
   self : Server,
 ) -> (ServerConnection, Addr) raise HttpError {
-  let controller = @js_async.AbortController::new()
+  let controller = @js_async.AbortController::AbortController()
   let promise = js_server_accept(self.id)
   let result = @js_async.Promise::wait(promise, abort_controller=controller) catch {
     err => raise classify_http_error(err.to_string())
@@ -1656,7 +1656,7 @@ pub async fn Server::run_forever(
       }
     })
   }
-  let controller = @js_async.AbortController::new()
+  let controller = @js_async.AbortController::AbortController()
   let promise = js_server_run(
     self.id,
     on_request,
@@ -1678,7 +1678,7 @@ pub async fn Server::close_graceful(
   self : Server,
   timeout_ms? : Int32,
 ) -> Unit raise HttpError {
-  let controller = @js_async.AbortController::new()
+  let controller = @js_async.AbortController::AbortController()
   let promise = js_server_close_graceful(self.id, timeout_ms.unwrap_or(30000))
   @js_async.Promise::wait(promise, abort_controller=controller) catch {
     err => raise classify_http_error(err.to_string())
@@ -1694,7 +1694,7 @@ async fn stream_request_internal_js(
 ) -> (Response, Stream) raise HttpError {
   let hjson = headers_to_json(headers)
   let body_str = body.text() catch { _ => "" }
-  let controller = @js_async.AbortController::new()
+  let controller = @js_async.AbortController::AbortController()
   let promise = js_fetch_stream(url, meth, hjson, body_str)
   let result = @js_async.Promise::wait(promise, abort_controller=controller) catch {
     err => raise classify_http_error(err.to_string())
@@ -1800,7 +1800,7 @@ pub async fn put_stream(
 
 ///|
 pub async fn Stream::read_some(self : Stream) -> Bytes? raise HttpError {
-  let controller = @js_async.AbortController::new()
+  let controller = @js_async.AbortController::AbortController()
   let promise = js_stream_read(self.id)
   let chunk = @js_async.Promise::wait(promise, abort_controller=controller) catch {
     err => raise classify_http_error(err.to_string())
@@ -1867,7 +1867,7 @@ async fn request_internal_js(
   let body_data : &@data.Data = @io.BinaryReader::read_all(client) catch {
     err => {
       client.close()
-      raise classify_http_error(err.to_string())
+      raise classify_http_error((err : Error).to_string())
     }
   }
   client.close()
@@ -2887,7 +2887,7 @@ pub async fn Client::new(
   if proxy is Some(_) || !verify {
     raise HttpError::NotSupported
   }
-  let controller = @js_async.AbortController::new()
+  let controller = @js_async.AbortController::AbortController()
   let promise = js_client_new(url, headers_to_json(headers.unwrap_or({})))
   let result = @js_async.Promise::wait(promise, abort_controller=controller) catch {
     err => raise classify_http_error(err.to_string())
@@ -2928,7 +2928,7 @@ pub async fn Client::request(
   if self.passthrough_mode {
     raise HttpError::NetworkError("client is in passthrough mode")
   }
-  let controller = @js_async.AbortController::new()
+  let controller = @js_async.AbortController::AbortController()
   let promise = js_client_request_begin(
     self.id,
     request_method_to_string(meth),
@@ -2951,7 +2951,7 @@ pub async fn Client::end_request(self : Client) -> Response raise HttpError {
   if self.passthrough_mode {
     raise HttpError::NetworkError("client is in passthrough mode")
   }
-  let controller = @js_async.AbortController::new()
+  let controller = @js_async.AbortController::AbortController()
   let promise = js_client_end_request(self.id)
   let result = @js_async.Promise::wait(promise, abort_controller=controller) catch {
     err => raise classify_http_error(err.to_string())
@@ -2972,7 +2972,7 @@ pub async fn Client::flush(self : Client) -> Unit raise HttpError {
   if self.passthrough_mode {
     raise HttpError::NetworkError("client is in passthrough mode")
   }
-  let controller = @js_async.AbortController::new()
+  let controller = @js_async.AbortController::AbortController()
   let promise = js_client_request_flush(self.id)
   let err = @js_async.Promise::wait(promise, abort_controller=controller) catch {
     e => raise classify_http_error(e.to_string())
@@ -2991,7 +2991,7 @@ pub async fn Client::skip_response_body(self : Client) -> Unit raise HttpError {
   if self.passthrough_mode {
     raise HttpError::NetworkError("client is in passthrough mode")
   }
-  let controller = @js_async.AbortController::new()
+  let controller = @js_async.AbortController::AbortController()
   let promise = js_client_skip_response_body(self.id)
   @js_async.Promise::wait(promise, abort_controller=controller) catch {
     err => raise classify_http_error(err.to_string())
@@ -3009,7 +3009,7 @@ pub async fn Client::enter_passthrough_mode(
   if self.passthrough_mode {
     return
   }
-  let controller = @js_async.AbortController::new()
+  let controller = @js_async.AbortController::AbortController()
   let promise = js_client_enter_passthrough(self.id)
   let err = @js_async.Promise::wait(promise, abort_controller=controller) catch {
     e => raise classify_http_error(e.to_string())
@@ -3087,7 +3087,7 @@ impl @io.BinaryReaderImpl for Client with fn raw_read_impl(
   if self.closed {
     0
   } else {
-    let controller = @js_async.AbortController::new()
+    let controller = @js_async.AbortController::AbortController()
     let promise = if self.passthrough_mode {
       js_client_tunnel_read(self.id, max_len)
     } else {
@@ -3184,4 +3184,34 @@ pub extend Client with @io.BinaryWriter::{write_reader}
 ///|
 impl @io.BinaryWriterImpl for Client with fn get_controller(self) {
   self.write_controller
+}
+
+///|
+impl @io.BinaryReaderImpl for Client with fn name(_self) {
+  "Client"
+}
+
+///|
+impl @io.BinaryReaderImpl for ServerConnection with fn name(_self) {
+  "ServerConnection"
+}
+
+///|
+impl @io.BinaryWriterImpl for Client with fn name(_self) {
+  "Client"
+}
+
+///|
+impl @io.BinaryWriterImpl for Client with fn flush_partial_data(_self) {
+  ()
+}
+
+///|
+impl @io.BinaryWriterImpl for ServerConnection with fn name(_self) {
+  "ServerConnection"
+}
+
+///|
+impl @io.BinaryWriterImpl for ServerConnection with fn flush_partial_data(_self) {
+  ()
 }

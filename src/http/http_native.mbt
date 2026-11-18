@@ -188,7 +188,7 @@ pub async fn Client::end_request(self : Client) -> Response raise HttpError {
 
 ///|
 pub async fn Client::flush(self : Client) -> Unit raise HttpError {
-  self.inner.flush() catch {
+  self.inner.flush_partial_data() catch {
     err => raise classify_http_error(err.to_string())
   }
 }
@@ -305,7 +305,7 @@ async fn request_internal(
           headers=to_upstream_headers(headers),
           proxy?=upstream_proxy,
         )
-        (to_response(resp), body_data)
+        (to_response(resp), body_data.binary())
       }
       "PUT" => {
         let (resp, body_data) = @async_http.put_binary(
@@ -314,7 +314,7 @@ async fn request_internal(
           headers=to_upstream_headers(headers),
           proxy?=upstream_proxy,
         )
-        (to_response(resp), body_data)
+        (to_response(resp), body_data.binary())
       }
       _ => {
         let client = Client::new(extract_host_url(url), proxy?)
@@ -454,14 +454,14 @@ pub async fn put_stream(
 ///|
 pub async fn Stream::read_some(self : Stream) -> Bytes? raise HttpError {
   self.inner.read() catch {
-    err => raise classify_http_error(err.to_string())
+    err => raise classify_http_error(error_message(err))
   }
 }
 
 ///|
 pub async fn Stream::read_all(self : Stream) -> Bytes raise HttpError {
   let data : &@data.Data = @io.BinaryReader::read_all(self.inner) catch {
-    err => raise classify_http_error(err.to_string())
+    err => raise classify_http_error(error_message(err))
   }
   data.binary()
 }
@@ -546,7 +546,7 @@ fn to_request(req : @async_http.RequestHeader) -> Request raise HttpError {
 
 ///|
 fn to_addr(addr : @socket.Addr) -> Addr {
-  Addr::{ text: addr.to_string(), port: addr.port(), }
+  Addr::{ text: addr.to_string(), port: addr.port.to_int(), }
 }
 
 ///|
@@ -587,7 +587,7 @@ pub async fn Server::new(
 
 ///|
 pub fn Server::port(self : Server) -> Int32 {
-  self.inner.addr.port()
+  self.inner.addr.port.to_int()
 }
 
 ///|
@@ -707,7 +707,7 @@ pub async fn ServerConnection::send_response(
 pub async fn ServerConnection::flush(
   self : ServerConnection,
 ) -> Unit raise HttpError {
-  self.inner.flush() catch {
+  self.inner.flush_partial_data() catch {
     err => raise classify_http_error(err.to_string())
   }
 }
@@ -809,4 +809,40 @@ pub extend ServerConnection with @io.BinaryWriter::{write_reader}
 ///|
 impl @io.BinaryWriterImpl for ServerConnection with fn get_controller(self) {
   self.write_controller
+}
+
+///|
+impl @io.BinaryReaderImpl for Client with fn name(_self) {
+  "Client"
+}
+
+///|
+impl @io.BinaryReaderImpl for ServerConnection with fn name(_self) {
+  "ServerConnection"
+}
+
+///|
+impl @io.BinaryWriterImpl for Client with fn name(_self) {
+  "Client"
+}
+
+///|
+impl @io.BinaryWriterImpl for Client with fn flush_partial_data(_self) {
+  ()
+}
+
+///|
+impl @io.BinaryWriterImpl for ServerConnection with fn name(_self) {
+  "ServerConnection"
+}
+
+///|
+impl @io.BinaryWriterImpl for ServerConnection with fn flush_partial_data(_self) {
+  ()
+}
+
+///|
+/// Core's reader/writer errors only derive `Debug`; `Error` still has `Show`.
+fn error_message(err : Error) -> String {
+  err.to_string()
 }

@@ -80,3 +80,18 @@ impl @io.BinaryWriterImpl for Output with fn get_controller(self) {
   ignore(self)
   abort("writer not supported on this target")
 }
+
+///|
+impl @io.BinaryReaderImpl for Input with fn name(_self) {
+  "Input"
+}
+
+///|
+impl @io.BinaryWriterImpl for Output with fn name(_self) {
+  "Output"
+}
+
+///|
+impl @io.BinaryWriterImpl for Output with fn flush_partial_data(_self) {
+  ()
+}

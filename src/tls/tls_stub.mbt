@@ -141,3 +141,18 @@ impl @io.BinaryWriterImpl for Tls with fn get_controller(self) {
   ignore(self)
   abort("writer not supported on this target")
 }
+
+///|
+impl @io.BinaryReaderImpl for Tls with fn name(_self) {
+  "Tls"
+}
+
+///|
+impl @io.BinaryWriterImpl for Tls with fn name(_self) {
+  "Tls"
+}
+
+///|
+impl @io.BinaryWriterImpl for Tls with fn flush_partial_data(_self) {
+  ()
+}

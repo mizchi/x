@@ -52,7 +52,7 @@ pub fn[W] Encoder::Encoder(
 
 ///|
 pub async fn[W : @io.BinaryWriter] Encoder::flush(self : Encoder[W]) -> Unit {
-  self.inner.flush()
+  self.inner.flush_partial_data()
 }
 
 ///|
@@ -98,4 +98,25 @@ impl[W : @io.BinaryWriter] @io.BinaryWriterImpl for Encoder[W] with fn get_contr
   self,
 ) {
   self.write_controller
+}
+
+///|
+impl[R : @io.BinaryReader] @io.BinaryReaderImpl for Decoder[R] with fn name(
+  _self,
+) {
+  "@gzip.Decoder"
+}
+
+///|
+impl[W : @io.BinaryWriter] @io.BinaryWriterImpl for Encoder[W] with fn name(
+  _self,
+) {
+  "@gzip.Encoder"
+}
+
+///|
+impl[W : @io.BinaryWriter] @io.BinaryWriterImpl for Encoder[W] with fn flush_partial_data(
+  self,
+) {
+  self.inner.flush_partial_data()
 }
