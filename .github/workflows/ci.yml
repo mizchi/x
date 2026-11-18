@@ -93,6 +93,10 @@ jobs:
         if: matrix.target == 'js'
         uses: pnpm/action-setup@v4
 
+      - name: Setup just
+        if: matrix.module == 'x' && matrix.target == 'js'
+        uses: extractions/setup-just@v3
+
       - name: Setup Node.js
         if: matrix.target == 'js'
         uses: actions/setup-node@v5
@@ -131,7 +135,7 @@ jobs:
 
       - name: Moon test
         if: matrix.module != 'x' || matrix.target != 'js'
-        run: moon test --target ${{ matrix.target }}
+        run: moon test --target ${{ matrix.target }} src
         working-directory: ${{ matrix.module == 'x' && '.' || 'fswatch' }}
 
       - name: Moon test without optional jsimd
